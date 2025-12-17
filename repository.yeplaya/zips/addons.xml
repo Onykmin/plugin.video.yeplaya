@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<addons>
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.0" provider-name="onykmin">
+        <requires>
+            <import addon="xbmc.python" version="3.0.0" />
+            <import addon="script.module.requests" version="2.18.4" />
+            <import addon="script.module.unidecode" version="0.4.16" />
+        </requires>
+        <extension point="xbmc.python.pluginsource" library="main.py">
+            <provides>video</provides>
+        </extension>
+        <extension point="xbmc.addon.metadata">
+            <summary>Webshare.cz video plugin for Kodi</summary>
+            <disclaimer lang="en_GB">This addon streams content from Webshare.cz. You need a valid Webshare account. The addon author is not responsible for the content hosted on Webshare.</disclaimer>
+            <disclaimer lang="sk_SK">Tento doplnok streamuje obsah z Webshare.cz. Potrebujete platný Webshare účet. Autor doplnku nezodpovedá za obsah umiestnený na Webshare.</disclaimer>
+            <disclaimer lang="cs_CZ">Tento doplněk streamuje obsah z Webshare.cz. Potřebujete platný Webshare účet. Autor doplňku neodpovídá za obsah umístěný na Webshare.</disclaimer>
+            <platform>all</platform>
+            <license>AGPL 3.0</license>
+            <source>https://github.com/Onykmin/plugin.video.yeplaya</source>
+            <assets>
+                <icon>resources/icon.png</icon>
+            </assets>
+            <news>
+[B]1.0.0[/B]
+- rebrand to Ye-Playa
+- based on YAWsP by cache-sk (https://www.xbmc-kodi.cz/prispevek-yet-another-webshare-plugin)
+- i18n: extract hardcoded strings to language resources
+- improve navigation: remove prev button, add back to search menu
+- reduce duplicate file groups in selection dialogs
+- hide back to search button on first page (use .. instead)
+        </news>
+        </extension>
+    </addon>
+    <addon id="repository.yeplaya" name="Ye-Playa Repository" version="1.0.0" provider-name="onykmin">
+        <extension point="xbmc.addon.repository" name="Ye-Playa Repository">
+            <dir>
+                <info compressed="false">https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/addons.xml</info>
+                <checksum>https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/addons.xml.md5</checksum>
+                <datadir zip="true">https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/</datadir>
+            </dir>
+        </extension>
+        <extension point="xbmc.addon.metadata">
+            <summary>Ye-Playa addon repository</summary>
+            <description>Official repository for Ye-Playa - Webshare.cz video plugin for Kodi. Install this repository to receive automatic updates for Ye-Playa.</description>
+            <disclaimer />
+            <platform>all</platform>
+            <assets>
+                <icon>icon.png</icon>
+                <fanart>fanart.jpg</fanart>
+            </assets>
+        </extension>
+    </addon>
+</addons>
