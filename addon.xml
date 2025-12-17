@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.0" provider-name="onykmin">
+    <requires>
+        <import addon="xbmc.python" version="3.0.0"/>
+        <import addon="script.module.requests" version="2.18.4"/>
+        <import addon="script.module.unidecode" version="0.4.16"/>
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="main.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary>Webshare.cz video plugin for Kodi</summary>
+        <disclaimer lang="en_GB">This addon streams content from Webshare.cz. You need a valid Webshare account. The addon author is not responsible for the content hosted on Webshare.</disclaimer>
+        <disclaimer lang="sk_SK">Tento doplnok streamuje obsah z Webshare.cz. Potrebujete platný Webshare účet. Autor doplnku nezodpovedá za obsah umiestnený na Webshare.</disclaimer>
+        <disclaimer lang="cs_CZ">Tento doplněk streamuje obsah z Webshare.cz. Potřebujete platný Webshare účet. Autor doplňku neodpovídá za obsah umístěný na Webshare.</disclaimer>
+        <platform>all</platform>
+        <license>AGPL 3.0</license>
+        <source>https://github.com/Onykmin/plugin.video.yeplaya</source>
+        <assets>
+            <icon>resources/icon.png</icon>
+        </assets>
+        <news>
+[B]1.0.0[/B]
+- rebrand to Ye-Playa
+- based on YAWsP by cache-sk (https://www.xbmc-kodi.cz/prispevek-yet-another-webshare-plugin)
+- i18n: extract hardcoded strings to language resources
+- improve navigation: remove prev button, add back to search menu
+- reduce duplicate file groups in selection dialogs
+- hide back to search button on first page (use .. instead)
+        </news>
+    </extension>
+</addon>
