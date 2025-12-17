@@ -40,18 +40,21 @@ def main():
         result = subprocess.run([
             'zip', '-r', f'{ADDON_ID}/{EXPORT_DIR}/{ZIP_NAME}', ADDON_ID,
             '-x', f'{ADDON_ID}/.git/*',
+            '-x', f'{ADDON_ID}/.github/*',
             '-x', f'{ADDON_ID}/__pycache__/*',
             '-x', f'{ADDON_ID}/.idea/*',
             '-x', f'{ADDON_ID}/.vscode/*',
             '-x', f'{ADDON_ID}/.claude/*',
             '-x', f'{ADDON_ID}/exports/*',
             '-x', f'{ADDON_ID}/tests/*',
+            '-x', f'{ADDON_ID}/repository.yeplaya/*',
             '-x', '*.pyc',
             '-x', f'{ADDON_ID}/.gitignore',
             '-x', f'{ADDON_ID}/LICENSE',
             '-x', f'{ADDON_ID}/README.md',
             '-x', f'{ADDON_ID}/build_zip.sh',
             '-x', f'{ADDON_ID}/build_zip.py',
+            '-x', f'{ADDON_ID}/repo_generator.py',
             '-q'
         ], check=True)
 

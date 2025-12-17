@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="repository.yeplaya" name="Ye-Playa Repository" version="1.0.0" provider-name="onykmin">
+    <extension point="xbmc.addon.repository" name="Ye-Playa Repository">
+        <dir>
+            <info compressed="false">https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/addons.xml</info>
+            <checksum>https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/addons.xml.md5</checksum>
+            <datadir zip="true">https://raw.githubusercontent.com/Onykmin/plugin.video.yeplaya/main/repository.yeplaya/zips/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary>Ye-Playa addon repository</summary>
+        <description>Official repository for Ye-Playa - Webshare.cz video plugin for Kodi. Install this repository to receive automatic updates for Ye-Playa.</description>
+        <disclaimer></disclaimer>
+        <platform>all</platform>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+        </assets>
+    </extension>
+</addon>

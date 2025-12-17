@@ -32,18 +32,21 @@ echo "Creating ZIP..."
 cd ..
 zip -r "${ADDON_ID}/${EXPORT_DIR}/${ZIP_NAME}" "${ADDON_ID}" \
     -x "${ADDON_ID}/.git/*" \
+    -x "${ADDON_ID}/.github/*" \
     -x "${ADDON_ID}/__pycache__/*" \
     -x "${ADDON_ID}/.idea/*" \
     -x "${ADDON_ID}/.vscode/*" \
     -x "${ADDON_ID}/.claude/*" \
     -x "${ADDON_ID}/exports/*" \
     -x "${ADDON_ID}/tests/*" \
+    -x "${ADDON_ID}/repository.yeplaya/*" \
     -x "${ADDON_ID}/*.pyc" \
     -x "${ADDON_ID}/.gitignore" \
     -x "${ADDON_ID}/LICENSE" \
     -x "${ADDON_ID}/README.md" \
     -x "${ADDON_ID}/build_zip.sh" \
     -x "${ADDON_ID}/build_zip.py" \
+    -x "${ADDON_ID}/repo_generator.py" \
     -q
 
 cd "${ADDON_ID}"

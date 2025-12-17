@@ -12,6 +12,9 @@ exports/*
 *.zip
 csfd-addon/
 
+# Repository generated files (GitHub Action generates these)
+repository.yeplaya/zips/
+
 # IDE
 .vscode/
 .idea/

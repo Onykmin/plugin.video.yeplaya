@@ -1,0 +1,55 @@
+name: Update Kodi Repository
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  update-repository:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate repository
+        run: |
+          python3 repo_generator.py
+
+      - name: Commit and push repository updates
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add repository.yeplaya/zips/
+          git diff --staged --quiet || git commit -m "Update repository: $(git describe --tags --abbrev=0)"
+          git push
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            repository.yeplaya/zips/plugin.video.yeplaya/plugin.video.yeplaya-*.zip
+            repository.yeplaya/zips/repository.yeplaya/repository.yeplaya-*.zip
+          body: |
+            ## Installation
+
+            ### For New Users
+            Download and install: `repository.yeplaya-*.zip`
+
+            ### For Existing Users
+            If you already have the repository installed, updates will happen automatically!
+
+            ## Changes
+            See commit history for details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
