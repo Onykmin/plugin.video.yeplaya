@@ -10,10 +10,11 @@ exports/*
 .claude
 # Kodi addon data
 *.zip
+# Exception: track repository distribution zips
+!repository.yeplaya/zips/**/*.zip
+!repository.yeplaya/zips/*.xml
+!repository.yeplaya/zips/*.md5
 csfd-addon/
-
-# Repository generated files (GitHub Action generates these)
-repository.yeplaya/zips/
 
 # IDE
 .vscode/
