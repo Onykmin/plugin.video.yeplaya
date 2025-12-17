@@ -30,7 +30,7 @@ EXCLUDED_DIRS = {
 
 EXCLUDED_FILES = {
     '.gitignore', '.gitattributes', 'build_zip.py', 'build_zip.sh',
-    'repo_generator.py', 'csfd_scraper.py', '.DS_Store'
+    'repo_generator.py', '.DS_Store', 'LICENSE', 'README.md'
 }
 
 
