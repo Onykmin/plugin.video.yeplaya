@@ -12,8 +12,8 @@ import xbmcplugin
 import xbmcaddon
 
 from lib.api import api, parse_xml, is_ok, revalidate, getinfo, getlink, get_url_base, get_session
-from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, infonize, fpsize, get_handle, get_addon
-from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, get_or_fetch_grouped, get_series_cache
+from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, infonize, fpsize, get_handle, get_addon, refresh_settings
+from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, get_or_fetch_grouped, get_series_cache, cache_set, clear_cache
 from lib.grouping import fetch_and_group_series, deduplicate_versions
 from lib.search import calculate_search_relevance
 from lib.metadata import enrich_file_metadata
@@ -70,9 +70,9 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None):
 
             # Show series/movie view if we found any series OR movies
             if grouped and (len(grouped['series']) >= 1 or len(grouped.get('movies', {})) >= 1):
-                # Cache for navigation
-                cache_key = '{0}_{1}_{2}'.format(what, category, sort)
-                _series_cache[cache_key] = grouped
+                # Cache for navigation (thread-safe)
+                cache_key = build_cache_key(what, category, sort)
+                cache_set(cache_key, grouped)
 
                 # Get page number from params
                 page = int(params.get('page', 0)) if params else 0
@@ -146,11 +146,22 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
     # Pagination config
     items_per_page = 25  # Max items per page
     total_items = len(all_items)
-    start_idx = page * items_per_page
-    end_idx = start_idx + items_per_page
 
     # Calculate page display numbers
-    total_pages = (total_items + items_per_page - 1) // items_per_page
+    total_pages = max(1, (total_items + items_per_page - 1) // items_per_page)
+
+    # Validate page bounds
+    original_page = page
+    if page < 0:
+        page = 0
+    elif page >= total_pages:
+        page = total_pages - 1
+    if page != original_page:
+        log_debug("Page {} out of bounds, clamped to {}".format(original_page, page))
+        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+
+    start_idx = page * items_per_page
+    end_idx = start_idx + items_per_page
     current_display_page = page + 1
 
     # Back to search menu button (only on page 2+, since ".." works on page 1)
@@ -217,10 +228,15 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
                             display_name, season_count, season_word, episode_count, episode_word)
                         listitem = xbmcgui.ListItem(label=label)
                         listitem.setArt({'icon': 'DefaultTVShows.png'})
-                        url_params = {'action': 'browse_series', 'series': series_name, 'what': what}
-                        if category is not None:
+                        url_params = {'action': 'browse_series'}
+                        # Defensive checks for all URL params
+                        if series_name:
+                            url_params['series'] = series_name
+                        if what:
+                            url_params['what'] = what
+                        if category:
                             url_params['category'] = category
-                        if sort is not None:
+                        if sort:
                             url_params['sort'] = sort
                         url = get_url(**url_params)
                         xbmcplugin.addDirectoryItem(_handle, url, listitem, True)
@@ -235,11 +251,15 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             listitem = xbmcgui.ListItem(label=label)
             listitem.setArt({'icon': 'DefaultTVShows.png'})
 
-            # Build URL params - include category/sort even if empty to preserve cache key
-            url_params = {'action': 'browse_series', 'series': series_name, 'what': what}
-            if category is not None:
+            # Build URL params - defensive checks for all params
+            url_params = {'action': 'browse_series'}
+            if series_name:
+                url_params['series'] = series_name
+            if what:
+                url_params['what'] = what
+            if category:
                 url_params['category'] = category
-            if sort is not None:
+            if sort:
                 url_params['sort'] = sort
             url = get_url(**url_params)
             xbmcplugin.addDirectoryItem(_handle, url, listitem, True)
@@ -312,7 +332,11 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
 
 def browse_series(params):
     """Display seasons for selected series."""
-    series_name = params['series']
+    series_name = params.get('series')
+    if not series_name:
+        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+        xbmcplugin.endOfDirectory(_handle)
+        return
     xbmcplugin.setPluginCategory(_handle, series_name)
     xbmcplugin.setContent(_handle, 'seasons')
 
@@ -539,7 +563,7 @@ def show_version_dialog(params):
         # Get playback link and resolve directly
         link = getlink(chosen_file['ident'], token)
         if link is not None:
-            headers = _session.headers
+            headers = _session.headers if _session and hasattr(_session, 'headers') else None
             if headers:
                 headers.update({'Cookie': 'wst=' + token})
                 link = link + '|' + urlencode(headers)
@@ -547,7 +571,7 @@ def show_version_dialog(params):
             listitem.setProperty('mimetype', 'application/octet-stream')
             xbmcplugin.setResolvedUrl(_handle, True, listitem)
         else:
-            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+            popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
     else:
         # User canceled - must still resolve
@@ -562,7 +586,11 @@ def select_version(params):
 def select_movie_version(params):
     """Show version selection dialog for movies."""
     token = revalidate()
-    movie_key = params['movie_key']
+    movie_key = params.get('movie_key')
+    if not movie_key:
+        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+        return
 
     # Get from cache or fetch if needed
     cache_key, grouped = get_or_fetch_grouped(params, token, check_key=movie_key, check_type='movies')
@@ -629,7 +657,7 @@ def select_movie_version(params):
         # Get playback link and resolve directly (same as show_version_dialog)
         link = getlink(selected_version['ident'], token)
         if link is not None:
-            headers = _session.headers
+            headers = _session.headers if _session and hasattr(_session, 'headers') else None
             if headers:
                 headers.update({'Cookie': 'wst=' + token})
                 link = link + '|' + urlencode(headers)
@@ -637,7 +665,7 @@ def select_movie_version(params):
             listitem.setProperty('mimetype', 'application/octet-stream')
             xbmcplugin.setResolvedUrl(_handle, True, listitem)
         else:
-            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+            popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
     else:
         # User canceled - must still resolve
@@ -656,18 +684,8 @@ def browse_other(params):
     xbmcplugin.setPluginCategory(_handle, 'Other files')
     xbmcplugin.setContent(_handle, 'files')
 
-    # Get from cache - handle missing keys (urlencode skips empty strings)
-    category = params.get('category', '')
-    sort_val = params.get('sort', '')
-    cache_key = '{0}_{1}_{2}'.format(params['what'], category, sort_val)
-    grouped = _series_cache.get(cache_key, {})
-
-    # If cache is empty, re-fetch (Kodi may have restarted plugin)
-    if not grouped:
-        if token:
-            grouped = fetch_and_group_series(token, params['what'], category, sort_val)
-            if grouped:
-                _series_cache[cache_key] = grouped
+    # Get from cache or fetch if needed (thread-safe)
+    cache_key, grouped = get_or_fetch_grouped(params, token)
 
     # Show grouped movies first
     if grouped.get('movies'):
@@ -772,7 +790,8 @@ def search(params):
             if what is not None:
                 storesearch(what)
                 _addon.setSetting('slast', what)
-                log_debug("Stored search, set slast='{}'".format(what))
+                clear_cache()  # Clear stale data on new search session
+                log_debug("Stored search, set slast='{}', cleared cache".format(what))
                 category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
                 sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
                 limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
@@ -789,11 +808,9 @@ def search(params):
             log_debug("Skipping dialog, slast='{}' indicates previous interaction".format(slast))
 
     if what is not None:
-        if 'offset' not in params:
-            _addon.setSetting('slast',what)
-        else:
-            _addon.setSetting('slast',NONE_WHAT)
-            updateListing=True
+        # Keep slast stable during search session (don't modify on pagination)
+        # This ensures back navigation returns to search results, not previous search
+        _addon.setSetting('slast', what)
 
         category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
         sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
@@ -997,9 +1014,12 @@ def goto_page(params):
 class SettingsMonitor(xbmc.Monitor):
     """Monitor for settings changes to refresh cached addon object."""
     def onSettingsChanged(self):
-        global _addon, _label, _filesize
+        global _addon
         log_debug('Settings changed, refreshing cached values')
         _addon = xbmcaddon.Addon()
-        _label = _addon.getSetting('labelformat') if 'true' == _addon.getSetting('customformat') else "{name}"
-        _filesize = 'true' == _addon.getSetting('resultsize')
+        refresh_settings()  # Also refresh utils module settings
+
+
+# Instantiate settings monitor at module load
+_settings_monitor = SettingsMonitor()
 

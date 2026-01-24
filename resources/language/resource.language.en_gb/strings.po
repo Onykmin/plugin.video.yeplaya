@@ -333,3 +333,19 @@ msgctxt "#30419"
 msgid "versions"
 msgstr ""
 
+msgctxt "#30305"
+msgid "Network error - please check connection"
+msgstr ""
+
+msgctxt "#30306"
+msgid "Playback error"
+msgstr ""
+
+msgctxt "#30307"
+msgid "File info unavailable"
+msgstr ""
+
+msgctxt "#30308"
+msgid "Could not get stream link"
+msgstr ""
+

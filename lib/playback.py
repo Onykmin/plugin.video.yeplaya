@@ -40,23 +40,36 @@ _addon = get_addon()
 _session = get_session()
 
 def play(params):
-    token = revalidate()
-    if 'ident' not in params:
-        xbmc.log("YAWsP: Missing ident in play", xbmc.LOGERROR)
+    try:
+        token = revalidate()
+        if token is None:
+            popinfo(_addon.getLocalizedString(30102), icon=xbmcgui.NOTIFICATION_ERROR)
+            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+            return
+        if 'ident' not in params:
+            xbmc.log("YAWsP: Missing ident in play", xbmc.LOGERROR)
+            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+            return
+        link = getlink(params['ident'],token)
+        if link is not None:
+            #headers experiment
+            headers = _session.headers if _session and hasattr(_session, 'headers') else None
+            if headers:
+                headers.update({'Cookie':'wst='+token})
+                link = link + '|' + urlencode(headers)
+            listitem = xbmcgui.ListItem(label=params['name'],path=link)
+            listitem.setProperty('mimetype', 'application/octet-stream')
+            xbmcplugin.setResolvedUrl(_handle, True, listitem)
+        else:
+            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+    except requests.exceptions.RequestException as e:
+        xbmc.log("YAWsP: Network error in play: " + str(e), xbmc.LOGERROR)
+        popinfo(_addon.getLocalizedString(30305), icon=xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
-        return
-    link = getlink(params['ident'],token)
-    if link is not None:
-        #headers experiment
-        headers = _session.headers
-        if headers:
-            headers.update({'Cookie':'wst='+token})
-            link = link + '|' + urlencode(headers)
-        listitem = xbmcgui.ListItem(label=params['name'],path=link)
-        listitem.setProperty('mimetype', 'application/octet-stream')
-        xbmcplugin.setResolvedUrl(_handle, True, listitem)
-    else:
-        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+    except Exception as e:
+        xbmc.log("YAWsP: Playback error: " + str(e), xbmc.LOGERROR)
+        popinfo(_addon.getLocalizedString(30306), icon=xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
 
@@ -88,42 +101,66 @@ def download(params):
     except (ValueError, TypeError):
         every = 10
         
+    name = None
     try:
         link = getlink(params['ident'],token,'file_download')
+        if link is None:
+            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING, sound=True)
+            return
         info = getinfo(params['ident'],token)
-        name = info.find('name').text
+        if info is None:
+            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING, sound=True)
+            return
+        name_elem = info.find('name')
+        if name_elem is None or name_elem.text is None:
+            popinfo(_addon.getLocalizedString(30307), icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
+            return
+        name = name_elem.text
         # Sanitize filename - remove path separators and parent references
         name = os.path.basename(name.replace('..', '').replace('/', '_').replace('\\', '_'))
         if normalize:
-            name = unidecode(name)
+            normalized = unidecode(name)
+            # Fallback to ident if unidecode returns empty string
+            if not normalized or not normalized.strip():
+                name = params.get('ident', 'download') + os.path.splitext(name)[1]
+            else:
+                name = normalized
         bf = io.open(os.path.join(where,name), 'wb') if local else xbmcvfs.File(join(where,name), 'w')
         response = _session.get(link, stream=True, timeout=60)
         total = response.headers.get('content-length')
-        if total is None:
-            popinfo(_addon.getLocalizedString(30301) + name, icon=xbmcgui.NOTIFICATION_WARNING, sound=True)
-            bf.write(response.content)
-        elif not notify:
-            popinfo(_addon.getLocalizedString(30302) + name)
-            bf.write(response.content)
-        else:
-            popinfo(_addon.getLocalizedString(30302) + name)
-            dl = 0
+        # Always stream in chunks to avoid memory spikes
+        popinfo(_addon.getLocalizedString(30302) + name)
+        dl = 0
+        if total is not None:
             total = int(total)
-            pct = total / 100
-            lastpop=0
-            for data in response.iter_content(chunk_size=4096):
-                dl += len(data)
-                bf.write(data)
-                done = int(dl / pct)
+            pct = total / 100 if total > 0 else 1
+        else:
+            # Fallback: estimate progress by MB downloaded
+            total = None
+            pct = 1
+        lastpop = 0
+        for data in response.iter_content(chunk_size=4096):
+            dl += len(data)
+            bf.write(data)
+            if notify:
+                if total is not None:
+                    done = int(dl / pct)
+                else:
+                    # Show MB downloaded when size unknown
+                    done = dl // (1024 * 1024)
                 if done % every == 0 and lastpop != done:
-                    popinfo(str(done) + '% - ' + name)
+                    if total is not None:
+                        popinfo(str(done) + '% - ' + name)
+                    else:
+                        popinfo(str(done) + 'MB - ' + name)
                     lastpop = done
         bf.close()
         popinfo(_addon.getLocalizedString(30303) + name, sound=True)
     except (IOError, OSError, requests.exceptions.RequestException) as e:
         #TODO - remove unfinished file?
         xbmc.log("YAWsP: Download failed: " + str(e), xbmc.LOGERROR)
-        popinfo(_addon.getLocalizedString(30304) + name, icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
+        err_name = name if name else 'file'
+        popinfo(_addon.getLocalizedString(30304) + err_name, icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
 
 
 def queue(params):

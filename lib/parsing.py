@@ -267,6 +267,7 @@ def clean_series_name(name):
     name = unidecode(name)
     name = name.strip().lower()
 
+    # Strip articles from START
     if name.startswith('the '):
         name = name[4:]
     elif name.startswith('a '):
@@ -274,10 +275,27 @@ def clean_series_name(name):
     elif name.startswith('an '):
         name = name[3:]
 
+    # Strip articles from END (handles "Name, The" patterns)
+    for suffix in [', the', ', a', ', an', ' the', ' a', ' an']:
+        if name.endswith(suffix):
+            name = name[:-len(suffix)]
+            break
+
+    # Remove inline articles
     name = name.replace(' the ', ' ').replace(' a ', ' ').replace(' an ', ' ')
     name = ' '.join(name.split())
 
     return name.strip()
+
+
+def get_word_set_key(name):
+    """Get sorted word set for order-independent matching.
+
+    Used in merge phase to detect series with same words but different order.
+    Example: "south park" and "park south" both return "park south"
+    """
+    words = sorted(set(name.split()))
+    return ' '.join(words)
 
 
 def extract_language_tag(filename):
@@ -375,8 +393,11 @@ def parse_episode_info(filename):
     match = _PATTERN_S00E00.match(filename)
     if match:
         raw_name = match.group(1)
-        season = int(match.group(2))
-        episode = int(match.group(3))
+        try:
+            season = int(match.group(2))
+            episode = int(match.group(3))
+        except (ValueError, TypeError):
+            return None
         series_name = clean_series_name(raw_name)
         return {
             'is_series': True,
@@ -389,8 +410,11 @@ def parse_episode_info(filename):
     # Try S##E## format (reversed: episode marker first, like "S01E02 Chainsaw Man")
     match = _PATTERN_S00E00_REVERSED.match(filename)
     if match:
-        season = int(match.group(1))
-        episode = int(match.group(2))
+        try:
+            season = int(match.group(1))
+            episode = int(match.group(2))
+        except (ValueError, TypeError):
+            return None
         raw_name = match.group(3)
         # Remove file extension
         raw_name = re.sub(r'\.(mkv|avi|mp4|m4v|wmv|flv|webm|mov)$', '', raw_name, flags=re.IGNORECASE)
@@ -413,8 +437,11 @@ def parse_episode_info(filename):
     match = _PATTERN_0x00.match(filename)
     if match:
         raw_name = match.group(1)
-        season = int(match.group(2))
-        episode = int(match.group(3))
+        try:
+            season = int(match.group(2))
+            episode = int(match.group(3))
+        except (ValueError, TypeError):
+            return None
         series_name = clean_series_name(raw_name)
         return {
             'is_series': True,

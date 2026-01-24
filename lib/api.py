@@ -33,7 +33,7 @@ REALM = ':Webshare:'
 _url = sys.argv[0] if len(sys.argv) > 0 else ''
 _addon = xbmcaddon.Addon()
 _session = requests.Session()
-_session.headers.update(HEADERS)
+_session.headers = HEADERS.copy()  # Use assignment to avoid header accumulation
 
 
 # ============================================================================
@@ -136,6 +136,11 @@ def login():
         _addon.openSettings()
 
 
+def clear_token_cache():
+    """Clear module-level token cache on invalidation."""
+    _addon.setSetting('token', '')
+
+
 def revalidate():
     """Revalidate token or login if needed."""
     from lib.utils import popinfo
@@ -158,8 +163,8 @@ def revalidate():
                 popinfo(_addon.getLocalizedString(30103), icon=xbmcgui.NOTIFICATION_WARNING)
             return token
         else:
-            # Token invalid, clear it and retry
-            _addon.setSetting('token', '')
+            # Token invalid (401-like), clear cache and retry
+            clear_token_cache()
             if attempt == max_attempts - 1:
                 # Last attempt failed
                 return None

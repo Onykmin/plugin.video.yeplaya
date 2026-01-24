@@ -8,7 +8,7 @@ import xbmcaddon
 from lib.logging import log_debug, log_error
 from lib.parsing import (parse_episode_info, parse_movie_info, parse_quality_metadata,
                          extract_language_tag, extract_dual_names, get_display_name,
-                         get_s00e00_pattern, get_0x00_pattern)
+                         get_s00e00_pattern, get_0x00_pattern, get_word_set_key)
 from lib.api import api, parse_xml, is_ok
 from lib.utils import todict
 
@@ -91,6 +91,57 @@ def merge_substring_series(grouped):
 
         # Remove long_key series
         del series[long_key]
+
+    return grouped
+
+
+def merge_word_order_series(grouped):
+    """Merge series with same words but different order.
+
+    Example: "south park" and "park south" → merge into first encountered
+
+    Uses get_word_set_key() to create order-independent comparison keys.
+
+    Args:
+        grouped: Dict with 'series' and 'non_series' keys
+
+    Returns:
+        Modified grouped dict with merged series
+    """
+    series = grouped.get('series', {})
+    if not series:
+        return grouped
+
+    # Build word-set to keys mapping
+    word_set_map = {}  # {word_set_key: [series_keys...]}
+    for key in series.keys():
+        ws_key = get_word_set_key(key)
+        if ws_key not in word_set_map:
+            word_set_map[ws_key] = []
+        word_set_map[ws_key].append(key)
+
+    # Find and merge duplicates
+    for ws_key, keys in word_set_map.items():
+        if len(keys) < 2:
+            continue
+
+        # Use first key as target
+        target = keys[0]
+        for source in keys[1:]:
+            if source not in series or target not in series:
+                continue
+
+            log_debug(f'Word-order merge: "{source}" → "{target}"')
+
+            # Merge season data
+            merge_season_data(series[target], series[source])
+
+            # Pick best display name
+            target_display = series[target].get('display_name', target.title())
+            source_display = series[source].get('display_name', source.title())
+            series[target]['display_name'] = pick_best_display_name(target_display, source_display)
+
+            del series[source]
 
     return grouped
 
@@ -441,6 +492,9 @@ def group_by_series(files, token=None, enable_csfd=True):
                             canonical_key = dual_result['canonical_key']
                             display_name = dual_result['display_name']
                             log_debug(f'Dual names detected: {dual_names[0]} / {dual_names[1]}')
+                        else:
+                            # Fallback: use normalized series name
+                            log_debug(f'Dual names returned None, using fallback: {dual_names[0]} / {dual_names[1]}')
                     except Exception as e:
                         log_error(f'Dual names processing error: {e}')
 
@@ -547,6 +601,9 @@ def group_by_series(files, token=None, enable_csfd=True):
     # Merge series with substring relationships
     result = merge_substring_series(result)
 
+    # Merge series with same words but different order
+    result = merge_word_order_series(result)
+
     # Merge series with dual canonical names (e.g., "the penguin|tucnak")
     result = merge_dual_canonical_series(result)
 
@@ -610,15 +667,20 @@ def group_movies(files):
         canonical_key = f"{movie_info['title']}|{movie_info['year']}"
 
         # Handle dual names
-        if movie_info['dual_names']:
-            dual_result = create_canonical_from_dual_names(
-                movie_info['dual_names'][0],
-                movie_info['dual_names'][1]
-            )
-            canonical_key = f"{dual_result['canonical_key']}|{movie_info['year']}"
-            display_name = dual_result['display_name']
-        else:
-            display_name = movie_info['raw_title']
+        display_name = movie_info['raw_title']
+        if movie_info['dual_names'] and DUAL_NAMES_AVAILABLE:
+            try:
+                dual_result = create_canonical_from_dual_names(
+                    movie_info['dual_names'][0],
+                    movie_info['dual_names'][1]
+                )
+                if dual_result:
+                    canonical_key = f"{dual_result['canonical_key']}|{movie_info['year']}"
+                    display_name = dual_result['display_name']
+                else:
+                    log_debug(f'Movie dual names returned None: {movie_info["dual_names"]}')
+            except Exception as e:
+                log_error(f'Movie dual names error: {e}')
 
         # Initialize movie entry
         if canonical_key not in result['movies']:
@@ -646,17 +708,32 @@ def group_movies(files):
     return result
 
 
-def fetch_and_group_series(token, what, category, sort, limit=500):
-    """Fetch ALL search results and group by series.
+def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20, cancel_callback=None):
+    """Fetch search results and group by series.
 
-    Fetches all pages to get complete episode list.
+    Args:
+        token: WebShare authentication token
+        what: Search query
+        category: Category filter
+        sort: Sort order
+        limit: Results per page (default 500)
+        max_pages: Maximum pages to fetch (default 20, prevents unbounded fetching)
+        cancel_callback: Optional callable returning True to cancel fetching
+
+    Fetches up to max_pages to get episode list.
     """
     all_files = []
     offset = 0
+    page = 0
 
     NONE_WHAT = _get_none_what()
 
-    while True:
+    while page < max_pages:
+        # Check for cancellation
+        if cancel_callback and cancel_callback():
+            log_debug('fetch_and_group_series: cancelled by callback')
+            break
+
         response = api('search', {
             'what': '' if what == NONE_WHAT else what,
             'category': category,
@@ -695,6 +772,7 @@ def fetch_and_group_series(token, what, category, sort, limit=500):
             break
 
         offset += limit
+        page += 1
 
     # Group by series and movies
     return group_by_series(all_files, token=token, enable_csfd=False) if all_files else None

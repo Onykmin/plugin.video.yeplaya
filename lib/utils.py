@@ -15,20 +15,71 @@ except ImportError:
     from urllib import urlencode
 
 # Global state
-_handle = int(sys.argv[1]) if len(sys.argv) > 1 else -1
+def _get_handle():
+    """Get plugin handle safely, returns -1 if not in Kodi context."""
+    if len(sys.argv) > 1:
+        try:
+            return int(sys.argv[1])
+        except (ValueError, TypeError):
+            return -1
+    return -1
+
+_handle = _get_handle()
 _addon = xbmcaddon.Addon()
-_label = _addon.getSetting('labelformat') if 'true' == _addon.getSetting('customformat') else "{name}"
-_filesize = 'true' == _addon.getSetting('resultsize')
+
+
+def get_label_format():
+    """Get label format, refreshed from settings."""
+    if 'true' == _addon.getSetting('customformat'):
+        return _addon.getSetting('labelformat')
+    return "{name}"
+
+
+def get_filesize_enabled():
+    """Get filesize display setting, refreshed from settings."""
+    return 'true' == _addon.getSetting('resultsize')
 
 
 # ============================================================================
 # Utility Functions
 # ============================================================================
 
+def sanitize_url_param(value):
+    """Sanitize a URL parameter value for safe encoding.
+
+    Handles None, unicode, and special characters.
+    """
+    if value is None:
+        return ''
+    # Convert to string if not already
+    if not isinstance(value, str):
+        value = str(value)
+    # Handle unicode - encode to UTF-8 compatible string
+    try:
+        # Python 3: strings are already unicode, just ensure it's valid
+        value.encode('utf-8')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        # Fallback to ASCII with replacement
+        value = value.encode('ascii', 'replace').decode('ascii')
+    return value
+
+
 def get_url(**kwargs):
-    """Build plugin URL with parameters."""
+    """Build plugin URL with parameters.
+
+    Sanitizes all parameter values before encoding.
+    Skips None values to keep URLs clean.
+    """
     from lib.api import get_url_base
-    return '{0}?{1}'.format(get_url_base(), urlencode(kwargs, 'utf-8'))
+    # Sanitize all values and skip None/empty
+    sanitized = {}
+    for k, v in kwargs.items():
+        sanitized_value = sanitize_url_param(v)
+        # Include empty strings explicitly set (like category='')
+        # but skip None values converted to empty
+        if v is not None or sanitized_value:
+            sanitized[k] = sanitized_value
+    return '{0}?{1}'.format(get_url_base(), urlencode(sanitized, 'utf-8'))
 
 
 def popinfo(message, heading=None, icon=xbmcgui.NOTIFICATION_INFO, time=3000, sound=False):
@@ -97,7 +148,7 @@ def labelize(file):
         size = file['sizelized']
     else:
         size = '?'
-    return _label.format(name=file['name'], size=size)
+    return get_label_format().format(name=file['name'], size=size)
 
 
 def tolistitem(file, addcommands=[]):
@@ -108,7 +159,7 @@ def tolistitem(file, addcommands=[]):
     infotag.setTitle(label)
     if 'img' in file:
         listitem.setArt({'thumb': file['img']})
-    if _filesize and 'size' in file and file['size'].isdigit():
+    if get_filesize_enabled() and 'size' in file and file['size'].isdigit():
         listitem.setInfo('video', {'size': int(file['size'])})
     listitem.setProperty('IsPlayable', 'true')
     commands = []
@@ -144,3 +195,9 @@ def get_handle():
 def get_addon():
     """Get global addon object."""
     return _addon
+
+
+def refresh_settings():
+    """Refresh addon object to pick up setting changes."""
+    global _addon
+    _addon = xbmcaddon.Addon()
