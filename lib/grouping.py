@@ -705,6 +705,107 @@ def group_movies(files):
             reverse=True
         )
 
+    # Merge movies with substring title relationships (same year)
+    result = merge_substring_movies(result)
+
+    return result
+
+
+def merge_substring_movies(result):
+    """Merge movies where one title is substring of another (same year).
+
+    Example: 'avatar|2009' and '1 avatar|2009' -> merge into 'avatar|2009'
+             'avatar 1|2009' and 'avatar|2009' -> merge into 'avatar|2009'
+
+    Args:
+        result: Dict with 'movies' key
+
+    Returns:
+        Modified result dict with merged movies
+    """
+    movies = result.get('movies', {})
+    if not movies:
+        return result
+
+    # Group by year first (only merge within same year)
+    by_year = {}
+    for key, data in movies.items():
+        year = data.get('year')
+        if year not in by_year:
+            by_year[year] = []
+        by_year[year].append(key)
+
+    keys_to_delete = set()
+    merges = []  # [(target_key, source_key), ...]
+
+    for year, keys in by_year.items():
+        if len(keys) < 2:
+            continue
+
+        # Extract title part from key (before |year)
+        key_titles = {}
+        for key in keys:
+            if '|' in key:
+                # Handle dual-name keys like 'inception|pocatek|2010'
+                parts = key.rsplit('|', 1)  # Split from right to get year
+                title_part = parts[0] if len(parts) > 1 else key
+            else:
+                title_part = key
+            key_titles[key] = title_part
+
+        # Find substring relationships
+        for i, key1 in enumerate(keys):
+            if key1 in keys_to_delete:
+                continue
+            title1 = key_titles[key1]
+            words1 = set(title1.split())
+
+            for key2 in keys[i+1:]:
+                if key2 in keys_to_delete:
+                    continue
+                title2 = key_titles[key2]
+                words2 = set(title2.split())
+
+                # Check substring relationship (word-based)
+                # Merge if one title's words are subset of another
+                if words1.issubset(words2) and len(words1) >= 1:
+                    # title1 is shorter/simpler -> merge title2 into title1
+                    merges.append((key1, key2))
+                    keys_to_delete.add(key2)
+                elif words2.issubset(words1) and len(words2) >= 1:
+                    # title2 is shorter/simpler -> merge title1 into title2
+                    merges.append((key2, key1))
+                    keys_to_delete.add(key1)
+                    break  # key1 is now a merge source, don't check more
+
+    # Perform merges
+    for target_key, source_key in merges:
+        if target_key not in movies or source_key not in movies:
+            continue
+
+        # Merge versions
+        movies[target_key]['versions'].extend(movies[source_key]['versions'])
+
+        # Deduplicate and re-sort
+        movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
+        movies[target_key]['versions'].sort(
+            key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+            reverse=True
+        )
+
+        # Pick shorter/cleaner display name
+        target_display = movies[target_key].get('display_name', target_key)
+        source_display = movies[source_key].get('display_name', source_key)
+        if len(source_display) < len(target_display) and not any(c in source_display for c in '|/'):
+            movies[target_key]['display_name'] = source_display
+
+        log_debug(f'Movie merge: "{source_key}" → "{target_key}"')
+
+    # Delete merged movies
+    for key in keys_to_delete:
+        if key in movies:
+            del movies[key]
+
     return result
 
 

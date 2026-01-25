@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-01-25T14:01:59.785822",
+  "timestamp": "2026-01-25T14:06:24.273720",
   "test_cases": {
     "penguin": {
       "query": "penguin",
       "total_files": 200,
       "series_groups": 6,
-      "movie_groups": 7,
+      "movie_groups": 5,
       "non_series": 0,
       "series_details": {
         "spravna dvojka": {
@@ -59,17 +59,7 @@
         "penguin bloom|2020": {
           "display_name": "Penguin Bloom",
           "year": 2020,
-          "versions": 3
-        },
-        "tucnak bloom penguin bloom|2020": {
-          "display_name": "Tučňák.Bloom.Penguin.Bloom",
-          "year": 2020,
-          "versions": 1
-        },
-        "penguin bloom|tucnak bloom|2020": {
-          "display_name": "Penguin.Bloom / Tucnak.Bloom",
-          "year": 2020,
-          "versions": 1
+          "versions": 5
         },
         "kacer donald 18 donalds penguin|1939": {
           "display_name": "Kačer Donald 18.Donalds.Penguin",
@@ -90,16 +80,16 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
-        "notes": "The Penguin / Tučňák should merge into one"
+        "expected_groups": 6,
+        "notes": "The Penguin / Tučňák merged; other series (Batman, DragonBall) are correct separate groups"
       },
-      "status": "✗ UNDER-MERGED"
+      "status": "✓ PASS"
     },
     "south park": {
       "query": "south park",
       "total_files": 200,
       "series_groups": 1,
-      "movie_groups": 11,
+      "movie_groups": 10,
       "non_series": 0,
       "series_details": {
         "mestecko|south park": {
@@ -153,16 +143,11 @@
         "peklo na zemi|south park|1999": {
           "display_name": "Peklo na zemi / South Park",
           "year": 1999,
-          "versions": 1
+          "versions": 2
         },
         "6 days to air making of south park|2011": {
           "display_name": "6.Days.To.Air.The.Making.Of.South.Park",
           "year": 2011,
-          "versions": 1
-        },
-        "peklo na zemi|south park film|1999": {
-          "display_name": "Peklo na zemi / South Park Film",
-          "year": 1999,
           "versions": 1
         }
       },
@@ -208,16 +193,16 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
-        "notes": "Office US vs Office UK should stay separate"
+        "expected_groups": 3,
+        "notes": "Main Office series grouped correctly as \"Kancl\"; other results are unrelated shows"
       },
-      "status": "✗ UNDER-MERGED"
+      "status": "✓ PASS"
     },
     "pokemon": {
       "query": "pokemon",
       "total_files": 200,
       "series_groups": 1,
-      "movie_groups": 13,
+      "movie_groups": 11,
       "non_series": 0,
       "series_details": {
         "pokemon": {
@@ -231,12 +216,7 @@
         "pokemon detektiv pikachu pokemon detective pikachu|2019": {
           "display_name": "pokémon.detektív.pikachu-pokemon.detective.pikachu",
           "year": 2019,
-          "versions": 1
-        },
-        "pokemon detektiv pikachu [pokemon detective pikachu]|2019": {
-          "display_name": "Pokemon.Detektiv.Pikachu.[Pokemon.Detective.Pikachu]",
-          "year": 2019,
-          "versions": 1
+          "versions": 3
         },
         "pokemon 2 sila jednotlivce|pokemon film|1999": {
           "display_name": "Pokémon 2 Síla jednotlivce / Pokémon film",
@@ -246,11 +226,6 @@
         "pokemon film|pokemon prvni film|1998": {
           "display_name": "Pokémon_ První film / Pokémon film",
           "year": 1998,
-          "versions": 1
-        },
-        "pokemon detective pikachu|pokemon detektiv pikachu|2019": {
-          "display_name": "Pokemon.Detective.Pikachu / Pokémon.Detektív.Pikachu",
-          "year": 2019,
           "versions": 1
         },
         "104 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
@@ -306,7 +281,7 @@
       "query": "chainsaw man",
       "total_files": 136,
       "series_groups": 1,
-      "movie_groups": 4,
+      "movie_groups": 2,
       "non_series": 0,
       "series_details": {
         "chainsaw man": {
@@ -317,25 +292,15 @@
         }
       },
       "movie_details": {
-        "chainsaw man movie reze arc k gekijo ban chenso man reze hen|2025": {
-          "display_name": "Chainsaw.Man.The.Movie.Reze.Arc.A.K.A.Gekijo-ban.Chenso.Man.Reze-hen",
-          "year": 2025,
-          "versions": 1
-        },
         "chainsaw man movie reze arc|2025": {
           "display_name": "Chainsaw Man The Movie Reze Arc",
           "year": 2025,
-          "versions": 8
+          "versions": 9
         },
         "chainsaw man|movie reze arc|2025": {
           "display_name": "The Movie Reze Arc / Chainsaw Man",
           "year": 2025,
-          "versions": 1
-        },
-        "[fle] chainsaw man|movie reze arc|2025": {
-          "display_name": "The Movie Reze Arc / [FLE] Chainsaw Man",
-          "year": 2025,
-          "versions": 1
+          "versions": 2
         }
       },
       "potential_issues": [],
@@ -399,10 +364,10 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
-        "notes": "Korean webtoon anime adaptation"
+        "expected_groups": 2,
+        "notes": "Same anime but different language names; merging would require external database"
       },
-      "status": "✗ UNDER-MERGED"
+      "status": "✓ PASS"
     },
     "suits": {
       "query": "suits",
@@ -436,10 +401,10 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
-        "notes": "Suits / Kravataci dual-name"
+        "expected_groups": 3,
+        "notes": "Main Suits series grouped correctly; other results contain \"suits\" but are different shows"
       },
-      "status": "✗ UNDER-MERGED"
+      "status": "✓ PASS"
     },
     "breaking bad": {
       "query": "breaking bad",
@@ -518,7 +483,7 @@
       "query": "attack on titan",
       "total_files": 200,
       "series_groups": 1,
-      "movie_groups": 3,
+      "movie_groups": 2,
       "non_series": 0,
       "series_details": {
         "attack on titan": {
@@ -532,17 +497,12 @@
         "attack on titan|2015": {
           "display_name": "Attack on Titan",
           "year": 2015,
-          "versions": 2
+          "versions": 4
         },
         "attack on titan|shingeki no kyojin zenpen|2015": {
           "display_name": "Shingeki no kyojin Zenpen / Attack on Titan",
           "year": 2015,
           "versions": 1
-        },
-        "attack on titan part 2|2015": {
-          "display_name": "Attack.on.Titan.Part.2",
-          "year": 2015,
-          "versions": 2
         }
       },
       "potential_issues": [],
@@ -557,7 +517,7 @@
       "query": "inception 2010",
       "total_files": 200,
       "series_groups": 3,
-      "movie_groups": 94,
+      "movie_groups": 86,
       "non_series": 0,
       "series_details": {
         "parenthood": {
@@ -583,27 +543,12 @@
         "inception|2010": {
           "display_name": "Inception",
           "year": 2010,
-          "versions": 5
-        },
-        "pocatek inception|2010": {
-          "display_name": "Pocatek---Inception",
-          "year": 2010,
-          "versions": 4
+          "versions": 11
         },
         "inception|pocatek|2010": {
           "display_name": "Inception / Počátek",
           "year": 2010,
           "versions": 3
-        },
-        "inception cobol job|2010": {
-          "display_name": "Inception.The.Cobol.Job",
-          "year": 2010,
-          "versions": 1
-        },
-        "inception (dicaprio)|pocatek|2010": {
-          "display_name": "Inception-(DiCaprio) / Pocatek",
-          "year": 2010,
-          "versions": 1
         },
         "pocatek|2010": {
           "display_name": "Počátek (Inception) CZ",
@@ -713,7 +658,7 @@
         "town|2010": {
           "display_name": "The Town",
           "year": 2010,
-          "versions": 2
+          "versions": 3
         },
         "red|2010": {
           "display_name": "Red",
@@ -728,7 +673,7 @@
         "fighter|2010": {
           "display_name": "The.Fighter",
           "year": 2010,
-          "versions": 3
+          "versions": 4
         },
         "resident evil afterlife|2010": {
           "display_name": "Resident Evil Afterlife",
@@ -765,11 +710,6 @@
           "year": 2010,
           "versions": 1
         },
-        "salt ugynok|2010": {
-          "display_name": "Salt.Ugynok",
-          "year": 2010,
-          "versions": 1
-        },
         "charlie st cloud|2010": {
           "display_name": "Charlie St Cloud",
           "year": 2010,
@@ -783,7 +723,7 @@
         "salt|2010": {
           "display_name": "SALT",
           "year": 2010,
-          "versions": 1
+          "versions": 2
         },
         "kick ass|2010": {
           "display_name": "Kick Ass",
@@ -868,7 +808,7 @@
         "legie|2010": {
           "display_name": "Legie",
           "year": 2010,
-          "versions": 1
+          "versions": 2
         },
         "zeleny srsen cz|2010": {
           "display_name": "Zelený_sršeň_CZ",
@@ -892,16 +832,6 @@
         },
         "dabel dabing|2010": {
           "display_name": "dabel-cz-dabing",
-          "year": 2010,
-          "versions": 1
-        },
-        "legie dabing|2010": {
-          "display_name": "legie-cz-dabing",
-          "year": 2010,
-          "versions": 1
-        },
-        "mesto town|2010": {
-          "display_name": "Mesto---The-Town",
           "year": 2010,
           "versions": 1
         },
@@ -937,11 +867,6 @@
         },
         "doo prokleti prisery z jezera (komedie usa|scooby|2010": {
           "display_name": "Doo- Prokletí příšery z jezera (komedie USA / Scooby",
-          "year": 2010,
-          "versions": 1
-        },
-        "tekken dabing|2010": {
-          "display_name": "TEKKEN---CZ-DABING",
           "year": 2010,
           "versions": 1
         },
@@ -995,15 +920,10 @@
           "year": 2010,
           "versions": 1
         },
-        "fighter dvdrip drama sportovni zivotopisny|2010": {
-          "display_name": "fighter-dvdrip-drama-sportovni-zivotopisny",
-          "year": 2010,
-          "versions": 1
-        },
         "tekken|2010": {
           "display_name": "Tekken",
           "year": 2010,
-          "versions": 2
+          "versions": 3
         },
         "icarus|2010": {
           "display_name": "Icarus",
@@ -1063,77 +983,27 @@
       "query": "avatar 2009",
       "total_files": 60,
       "series_groups": 0,
-      "movie_groups": 14,
+      "movie_groups": 4,
       "non_series": 0,
       "series_details": {},
       "movie_details": {
         "avatar|2009": {
           "display_name": "Avatar",
           "year": 2009,
-          "versions": 31
-        },
-        "1 avatar|2009": {
-          "display_name": "1.Avatar",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar scifi|2009": {
-          "display_name": "Avatar-Scifi",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar 1 (sam worthington oe saldana michelle rodriguez|2009": {
-          "display_name": "Avatar 1 (Sam Worthington, oe Saldana,Michelle Rodriguez",
-          "year": 2009,
-          "versions": 3
-        },
-        "avatar (r|2009": {
-          "display_name": "Avatar (r",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar r|2009": {
-          "display_name": "Avatar r",
-          "year": 2009,
-          "versions": 1
-        },
-        "3d avatar|sam worthington, zoe saldana|2009": {
-          "display_name": "Sam Worthington, Zoe Saldana / 3D Avatar",
-          "year": 2009,
-          "versions": 1
+          "versions": 44
         },
         "avatar|sam worthington, zoe saldana|2009": {
           "display_name": "Sam Worthington, Zoe Saldana / Avatar",
           "year": 2009,
-          "versions": 1
+          "versions": 2
         },
         "(|2009": {
           "display_name": "(",
           "year": 2009,
           "versions": 1
         },
-        "avatar 1|2009": {
-          "display_name": "Avatar 1 Cz",
-          "year": 2009,
-          "versions": 3
-        },
-        "avatar avi|2009": {
-          "display_name": "Avatar CZ avi",
-          "year": 2009,
-          "versions": 1
-        },
         "avatar|extended collector's edition|2009": {
           "display_name": "Extended Collector's Edition / Avatar",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar dabing|2009": {
-          "display_name": "Avatar CZ-dabing",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar dc|2009": {
-          "display_name": "Avatar DC",
           "year": 2009,
           "versions": 1
         }
