@@ -738,6 +738,13 @@ def merge_substring_movies(result):
     keys_to_delete = set()
     merges = []  # [(target_key, source_key), ...]
 
+    # Non-significant words for merging same-year edition variants
+    # Year grouping already separates different-year releases; this handles
+    # same-year variants like "Avatar" vs "Avatar Extended" (both 2009)
+    non_significant = {'1', '2', '3', '4', '5', 'i', 'ii', 'iii', 'iv', 'v',
+                       'extended', 'directors', 'cut', 'theatrical', 'remastered',
+                       'unrated', 'special', 'edition', 'final', 'ultimate', 'dc'}
+
     for year, keys in by_year.items():
         if len(keys) < 2:
             continue
@@ -768,15 +775,18 @@ def merge_substring_movies(result):
 
                 # Check substring relationship (word-based)
                 # Merge if one title's words are subset of another
+                # and extra words are non-significant
                 if words1.issubset(words2) and len(words1) >= 1:
-                    # title1 is shorter/simpler -> merge title2 into title1
-                    merges.append((key1, key2))
-                    keys_to_delete.add(key2)
+                    extra_words = words2 - words1
+                    if all(w in non_significant or w.isdigit() for w in extra_words):
+                        merges.append((key1, key2))
+                        keys_to_delete.add(key2)
                 elif words2.issubset(words1) and len(words2) >= 1:
-                    # title2 is shorter/simpler -> merge title1 into title2
-                    merges.append((key2, key1))
-                    keys_to_delete.add(key1)
-                    break  # key1 is now a merge source, don't check more
+                    extra_words = words1 - words2
+                    if all(w in non_significant or w.isdigit() for w in extra_words):
+                        merges.append((key2, key1))
+                        keys_to_delete.add(key1)
+                        break  # key1 is now a merge source, don't check more
 
     # Perform merges
     for target_key, source_key in merges:

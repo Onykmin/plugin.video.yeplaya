@@ -144,13 +144,13 @@ TEST_CASES = {
     # Movies
     'inception 2010': {
         'type': 'movie',
-        'expected_groups': 86,  # Search returns many 2010 movies, not just Inception
-        'notes': 'Search returns all movies from 2010; Inception variants are merged',
+        'expected_groups': 94,  # Search returns many 2010 movies, not just Inception
+        'notes': 'Search returns all movies from 2010; stricter validation avoids over-merging',
     },
     'avatar 2009': {
         'type': 'movie',
-        'expected_groups': 4,  # Main Avatar + few edge cases with weird parsing
-        'notes': 'Avatar variants merged into 44 versions; few edge cases remain',
+        'expected_groups': 10,  # Main Avatar + edge cases with actor names/metadata in title
+        'notes': 'Avatar variants merged; edge cases from actor names in titles (Sam Worthington)',
     },
 }
 

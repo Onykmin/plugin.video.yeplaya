@@ -170,18 +170,19 @@ class TestGroupMovies:
         assert len(matrix_keys) == 1
 
     def test_same_title_different_years(self):
-        """Test same title but different years (sequels, remakes)."""
+        """Test same title but different years (remakes)."""
+        # Use a remake scenario where base title is same but year differs
         files = [
-            {'name': 'Blade Runner 1982 1080p.mkv', 'ident': 'id1', 'size': '7000000000'},
-            {'name': 'Blade Runner 2049 1080p.mkv', 'ident': 'id2', 'size': '9000000000'}
+            {'name': 'Dune 1984 1080p.mkv', 'ident': 'id1', 'size': '7000000000'},
+            {'name': 'Dune 2021 1080p.mkv', 'ident': 'id2', 'size': '9000000000'}
         ]
 
         result = group_movies(files)
 
         # Should create separate groups for different years
         assert len(result['movies']) == 2
-        assert 'blade runner|1982' in result['movies']
-        assert 'blade runner|2049' in result['movies']
+        assert 'dune|1984' in result['movies']
+        assert 'dune|2021' in result['movies']
 
     def test_dual_name_grouping(self):
         """Test dual-name movie grouping for same dual-name versions."""

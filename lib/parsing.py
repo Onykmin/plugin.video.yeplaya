@@ -3,6 +3,7 @@
 # Author: onykmin
 # License: AGPL v.3 https://www.gnu.org/licenses/agpl-3.0.html
 
+import datetime
 import re
 
 try:
@@ -156,10 +157,12 @@ def extract_dual_names(raw_name):
         name1 = bracket_match.group(1).strip()
         name2 = bracket_match.group(2).strip()
 
-        quality_keywords = ['p', 'hd', 'fps', 'x264', 'x265', 'hevc', 'aac', 'dts', 'bluray', 'webrip']
+        quality_keywords = ['720p', '1080p', '2160p', '480p', '360p', 'hd', 'fps', 'x264', 'x265', 'hevc', 'aac', 'dts', 'bluray', 'webrip']
         is_quality = any(kw in name2.lower() for kw in quality_keywords)
+        is_hex_hash = bool(re.match(r'^[0-9A-Fa-f]{6,8}$', name2))  # Release group hashes
+        is_year = bool(re.match(r'^(?:19|20)\d{2}$', name2))  # Years like 2009, 2024
 
-        if name1 and name2 and len(name1) > 1 and len(name2) > 1 and not is_quality:
+        if name1 and name2 and len(name1) > 1 and len(name2) > 1 and not is_quality and not is_hex_hash and not is_year:
             return (name1, name2)
 
     # Try parentheses format: "Name1 (Name2)"
@@ -169,7 +172,7 @@ def extract_dual_names(raw_name):
         name2 = paren_match.group(2).strip()
 
         is_year = re.match(r'^\d{4}$', name2)
-        quality_keywords = ['p', 'hd', 'fps', 'x264', 'x265', 'hevc', 'aac', 'dts', 'bluray', 'webrip']
+        quality_keywords = ['720p', '1080p', '2160p', '480p', '360p', 'hd', 'fps', 'x264', 'x265', 'hevc', 'aac', 'dts', 'bluray', 'webrip']
         is_quality = any(kw in name2.lower() for kw in quality_keywords)
         is_lang_only = re.match(r'^[A-Z]{2,3}$', name2)
 
@@ -190,6 +193,21 @@ def extract_dual_names(raw_name):
             norm1 = normalize('NFKD', name1.lower()).encode('ASCII', 'ignore').decode()
             norm2 = normalize('NFKD', name2.lower()).encode('ASCII', 'ignore').decode()
             if norm1 == norm2:
+                return None
+
+            # Filter false positives in name2:
+            # Episode numbers: "07", "01 CZ", "06.5"
+            is_episode_num = bool(re.match(r'^\d{1,3}(\.\d)?(\s+[A-Z]{2})?(\s+\d+\.\s*serie)?$', name2, re.IGNORECASE))
+            # Episode markers: "S01E02...", "01x05..."
+            is_episode_marker = bool(re.match(r'^[Ss]\d{1,2}[Ee]\d{1,3}', name2))
+            # Quality/codec: contains resolution, codec, source keywords
+            quality_keywords = ['720p', '1080p', '2160p', '4k', 'x264', 'x265', 'hevc', 'h264', 'h265',
+                               'bluray', 'webrip', 'webdl', 'hdtv', 'aac', 'dts', 'ac3']
+            is_quality = any(kw in name2.lower() for kw in quality_keywords)
+            # Years: "2009", "2024"
+            is_year = bool(re.match(r'^(?:19|20)\d{2}$', name2))
+
+            if is_episode_num or is_episode_marker or is_quality or is_year:
                 return None
 
             if name1 and name2 and len(name1) > 1 and len(name2) > 1:
@@ -533,7 +551,23 @@ def parse_movie_info(filename):
     if match:
         raw_title = match.group(1)
         year = int(match.group(2))
+
+        # Validate title: must have at least 2 alphanumeric chars
+        # Rejects malformed extractions like "(", "13-", "9|"
+        alnum_chars = sum(1 for c in raw_title if c.isalnum())
+        if alnum_chars < 2:
+            return None
+
+        # Validate year is reasonable (not future)
+        if year > datetime.datetime.now().year + 2:
+            return None
+
         clean_title = clean_series_name(raw_title)
+
+        # Reject if cleaned title is too short (likely garbage extraction)
+        if len(clean_title) < 2:
+            return None
+
         dual_names = extract_dual_names(raw_title)
 
         return {

@@ -62,7 +62,7 @@ sys.argv = ['plugin.video.yawsp', '0', '']
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from lib.grouping import group_by_series, group_movies
-from lib.parsing import parse_episode_info, clean_series_name, get_word_set_key
+from lib.parsing import parse_episode_info, parse_movie_info, clean_series_name, get_word_set_key, extract_dual_names
 
 sys.argv = old_argv
 
@@ -271,6 +271,113 @@ class TestAnimeGrouping:
 
 
 # ============================================================================
+# TEST CASES: FALSE POSITIVE REDUCTION
+# ============================================================================
+
+class TestDualNameFalsePositives:
+    """Test that dual-name detection rejects false positives."""
+
+    def test_episode_number_not_dual_name(self):
+        """Episode numbers like '07' should not be detected as dual names."""
+        # "Chainsaw Man - 07" should NOT be detected as dual name
+        result = extract_dual_names('Chainsaw Man - 07')
+        assert result is None, f"Expected None, got {result}"
+
+        result = extract_dual_names('Mashle - 01 CZ')
+        assert result is None, f"Expected None, got {result}"
+
+        result = extract_dual_names('Series - 06.5')
+        assert result is None, f"Expected None, got {result}"
+
+    def test_quality_info_not_dual_name(self):
+        """Quality/codec info should not be detected as dual names."""
+        result = extract_dual_names('Movie - 1080p BluRay')
+        assert result is None, f"Expected None, got {result}"
+
+        result = extract_dual_names('Movie - x264 AAC')
+        assert result is None, f"Expected None, got {result}"
+
+    def test_year_bracket_not_dual_name(self):
+        """Years in brackets should not be detected as dual names."""
+        result = extract_dual_names('Avatar [2009]')
+        assert result is None, f"Expected None, got {result}"
+
+    def test_hex_hash_not_dual_name(self):
+        """Hex hashes like [88C94187] should not be detected as dual names."""
+        result = extract_dual_names('Chainsaw Man - 01 (720p) [88C94187]')
+        # Should return None or at least not include the hash
+        if result is not None:
+            assert '88C94187' not in result[1], f"Hash detected as dual name: {result}"
+
+    def test_valid_dual_name_detected(self):
+        """Valid dual names should still be detected."""
+        result = extract_dual_names('The Penguin - Tučňák')
+        assert result is not None, "Valid dual name not detected"
+        assert 'Penguin' in result[0] or 'Penguin' in result[1]
+
+        result = extract_dual_names('Inception / Počátek')
+        assert result is not None, "Valid dual name not detected"
+
+
+class TestMovieFalsePositives:
+    """Test that movie parsing rejects garbage extractions."""
+
+    def test_short_title_rejected(self):
+        """Single-char titles like '(' should be rejected."""
+        result = parse_movie_info('(2009)Avatar-HD.avi')
+        # Should either be None or have a valid title
+        if result is not None:
+            assert len(result['title']) >= 2, f"Short title accepted: {result['title']}"
+
+    def test_future_year_rejected(self):
+        """Future years like 2046 should be rejected."""
+        result = parse_movie_info('20170919_175892046_Movie.mp4')
+        # Should be None (year 2046 is invalid)
+        if result is not None:
+            assert result['year'] <= 2028, f"Future year accepted: {result['year']}"
+
+    def test_timestamp_not_parsed_as_movie(self):
+        """Timestamps embedded in filenames should not create garbage movies."""
+        result = parse_movie_info('20170919_175892013_South Park.mp4')
+        # Should be None or have a valid title (not "9")
+        if result is not None:
+            assert result['title'] != '9', f"Timestamp digit accepted as title"
+
+
+class TestMovieMergeFalsePositives:
+    """Test that movie merge doesn't over-merge different movies."""
+
+    def test_sequels_not_merged(self):
+        """Movies with same title but different years (sequels) stay separate."""
+        files = [
+            {'name': 'Dune 1984 1080p.mkv', 'ident': 'id1', 'size': '7000000000'},
+            {'name': 'Dune 2021 1080p.mkv', 'ident': 'id2', 'size': '9000000000'}
+        ]
+        result = group_movies(files)
+        assert len(result['movies']) == 2, f"Sequels merged: {list(result['movies'].keys())}"
+
+    def test_different_movies_not_merged(self):
+        """Movies with different meaningful titles stay separate."""
+        files = [
+            {'name': 'Blade Runner 1982.mkv', 'ident': 'id1', 'size': '1000'},
+            {'name': 'Blade Runner Final Cut 1982.mkv', 'ident': 'id2', 'size': '2000'},
+        ]
+        result = group_movies(files)
+        # These should merge (same movie, different cut)
+        assert len(result['movies']) == 1, f"Same movie not merged: {list(result['movies'].keys())}"
+
+    def test_edition_variants_merge(self):
+        """Different editions (Extended, Director's Cut) should merge."""
+        files = [
+            {'name': 'Avatar 2009.mkv', 'ident': 'id1', 'size': '1000'},
+            {'name': 'Avatar Extended 2009.mkv', 'ident': 'id2', 'size': '2000'},
+            {'name': 'Avatar Directors Cut 2009.mkv', 'ident': 'id3', 'size': '3000'},
+        ]
+        result = group_movies(files)
+        assert len(result['movies']) == 1, f"Edition variants not merged: {list(result['movies'].keys())}"
+
+
+# ============================================================================
 # INTEGRATION TEST WITH CACHED API DATA
 # ============================================================================
 
@@ -341,6 +448,9 @@ def run_tests():
         TestMovieGrouping,
         TestCleanSeriesName,
         TestAnimeGrouping,
+        TestDualNameFalsePositives,
+        TestMovieFalsePositives,
+        TestMovieMergeFalsePositives,
     ]
 
     passed = 0
