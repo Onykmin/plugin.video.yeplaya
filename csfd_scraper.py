@@ -263,11 +263,20 @@ def format_display_name(original, czech):
 
 
 def _clean_for_canonical(name):
-    """Clean name for canonical key (normalize, lowercase, unidecode, strip articles)."""
+    """Clean name for canonical key (normalize, lowercase, unidecode, strip articles).
+
+    IMPORTANT: Must normalize separators (dots, hyphens, underscores) to spaces
+    so that 'Penguin.The' matches 'Penguin The' and 'South-Park' matches 'South Park'.
+    """
     if not name:
         return ''
+
+    # Normalize separators (dots, hyphens, underscores) to spaces FIRST
+    # This ensures 'Game.of.Thrones' becomes 'Game of Thrones'
+    cleaned = re.sub(r'[\.\-_]+', ' ', name)
+
     # Remove extra spaces
-    cleaned = re.sub(r'\s+', ' ', name.strip())
+    cleaned = re.sub(r'\s+', ' ', cleaned.strip())
     # Normalize Czech diacritics
     cleaned = unidecode(cleaned)
     # Lowercase

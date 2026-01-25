@@ -1,0 +1,1150 @@
+{
+  "timestamp": "2026-01-25T14:01:59.785822",
+  "test_cases": {
+    "penguin": {
+      "query": "penguin",
+      "total_files": 200,
+      "series_groups": 6,
+      "movie_groups": 7,
+      "non_series": 0,
+      "series_details": {
+        "spravna dvojka": {
+          "display_name": "Správná dvojka",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "batman": {
+          "display_name": "Batman",
+          "seasons": 2,
+          "episodes": 4,
+          "versions": 4
+        },
+        "dragonball": {
+          "display_name": "DragonBall - 055 - Penguin Village [DR][]",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "dirty jobs": {
+          "display_name": "Dirty Jobs",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "wonder pets": {
+          "display_name": "The Wonder Pets",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "penguin": {
+          "display_name": "The Penguin",
+          "seasons": 2,
+          "episodes": 9,
+          "versions": 117
+        }
+      },
+      "movie_details": {
+        "penguin island aka la isla los pinguinos|2017": {
+          "display_name": "Penguin.Island.AKA.La.isla.de.los.pinguinos",
+          "year": 2017,
+          "versions": 1
+        },
+        "penguin bloom|2021": {
+          "display_name": "Penguin.Bloom",
+          "year": 2021,
+          "versions": 2
+        },
+        "penguin bloom|2020": {
+          "display_name": "Penguin Bloom",
+          "year": 2020,
+          "versions": 3
+        },
+        "tucnak bloom penguin bloom|2020": {
+          "display_name": "Tučňák.Bloom.Penguin.Bloom",
+          "year": 2020,
+          "versions": 1
+        },
+        "penguin bloom|tucnak bloom|2020": {
+          "display_name": "Penguin.Bloom / Tucnak.Bloom",
+          "year": 2020,
+          "versions": 1
+        },
+        "kacer donald 18 donalds penguin|1939": {
+          "display_name": "Kačer Donald 18.Donalds.Penguin",
+          "year": 1939,
+          "versions": 1
+        },
+        "s|1938": {
+          "display_name": "S",
+          "year": 1938,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'spravna dvojka'",
+        "Single-ep series (might be movie?): 'dragonball'",
+        "Single-ep series (might be movie?): 'dirty jobs'",
+        "Single-ep series (might be movie?): 'wonder pets'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "The Penguin / Tučňák should merge into one"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "south park": {
+      "query": "south park",
+      "total_files": 200,
+      "series_groups": 1,
+      "movie_groups": 11,
+      "non_series": 0,
+      "series_details": {
+        "mestecko|south park": {
+          "display_name": "South Park",
+          "seasons": 25,
+          "episodes": 147,
+          "versions": 162
+        }
+      },
+      "movie_details": {
+        "south park|stick of truth 04 10|2014": {
+          "display_name": "The Stick of Truth 04.10 / South Park",
+          "year": 2014,
+          "versions": 1
+        },
+        "south park peklo na zemi|1999": {
+          "display_name": "South Park- Peklo na Zemi",
+          "year": 1999,
+          "versions": 1
+        },
+        "park cz peklo na zemi tv fanda|south|2013": {
+          "display_name": "PARK-CZ---Peklo-na-Zemi-TV-Fanda / SOUTH",
+          "year": 2013,
+          "versions": 1
+        },
+        "south park bigger longer and|1999": {
+          "display_name": "South.Park.Bigger.Longer.And",
+          "year": 1999,
+          "versions": 1
+        },
+        "9|2013": {
+          "display_name": "20170919_17589",
+          "year": 2013,
+          "versions": 1
+        },
+        "9|2046": {
+          "display_name": "20170919_17589",
+          "year": 2046,
+          "versions": 1
+        },
+        "south park not suitable for children|2023": {
+          "display_name": "South.Park.Not.Suitable.For.Children",
+          "year": 2023,
+          "versions": 6
+        },
+        "peklo na zemi (prodlouzena verze)|south park|1999": {
+          "display_name": "Peklo na zemi (prodloužená verze) / South Park",
+          "year": 1999,
+          "versions": 1
+        },
+        "peklo na zemi|south park|1999": {
+          "display_name": "Peklo na zemi / South Park",
+          "year": 1999,
+          "versions": 1
+        },
+        "6 days to air making of south park|2011": {
+          "display_name": "6.Days.To.Air.The.Making.Of.South.Park",
+          "year": 2011,
+          "versions": 1
+        },
+        "peklo na zemi|south park film|1999": {
+          "display_name": "Peklo na zemi / South Park Film",
+          "year": 1999,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "South Park, Městečko South Park should merge"
+      },
+      "status": "✓ PASS"
+    },
+    "the office": {
+      "query": "the office",
+      "total_files": 200,
+      "series_groups": 3,
+      "movie_groups": 0,
+      "non_series": 4,
+      "series_details": {
+        "office": {
+          "display_name": "Kancl",
+          "seasons": 9,
+          "episodes": 121,
+          "versions": 193
+        },
+        "mary tyler moore show": {
+          "display_name": "The Mary Tyler Moore Show",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "08 druha prace the office|kancl 04x07": {
+          "display_name": "08 Druha Prace The Office / Kancl",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [
+        "Substring not merged: 'office' vs '08 druha prace the office|kancl 04x07'",
+        "Single-ep series (might be movie?): 'mary tyler moore show'",
+        "Single-ep series (might be movie?): '08 druha prace the office|kancl 04x07'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 2,
+        "notes": "Office US vs Office UK should stay separate"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "pokemon": {
+      "query": "pokemon",
+      "total_files": 200,
+      "series_groups": 1,
+      "movie_groups": 13,
+      "non_series": 0,
+      "series_details": {
+        "pokemon": {
+          "display_name": "Pokemon",
+          "seasons": 15,
+          "episodes": 78,
+          "versions": 141
+        }
+      },
+      "movie_details": {
+        "pokemon detektiv pikachu pokemon detective pikachu|2019": {
+          "display_name": "pokémon.detektív.pikachu-pokemon.detective.pikachu",
+          "year": 2019,
+          "versions": 1
+        },
+        "pokemon detektiv pikachu [pokemon detective pikachu]|2019": {
+          "display_name": "Pokemon.Detektiv.Pikachu.[Pokemon.Detective.Pikachu]",
+          "year": 2019,
+          "versions": 1
+        },
+        "pokemon 2 sila jednotlivce|pokemon film|1999": {
+          "display_name": "Pokémon 2 Síla jednotlivce / Pokémon film",
+          "year": 1999,
+          "versions": 1
+        },
+        "pokemon film|pokemon prvni film|1998": {
+          "display_name": "Pokémon_ První film / Pokémon film",
+          "year": 1998,
+          "versions": 1
+        },
+        "pokemon detective pikachu|pokemon detektiv pikachu|2019": {
+          "display_name": "Pokemon.Detective.Pikachu / Pokémon.Detektív.Pikachu",
+          "year": 2019,
+          "versions": 1
+        },
+        "104 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "104 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "104 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "104 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "121 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "121 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 2
+        },
+        "121 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "121 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "122 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "122 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "122 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "122 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "123 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "123 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        },
+        "123 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
+          "display_name": "123 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
+          "year": 1920,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": null,
+        "notes": "Pokemon has many spin-offs, complex case"
+      },
+      "status": "? (no expectation)"
+    },
+    "chainsaw man": {
+      "query": "chainsaw man",
+      "total_files": 136,
+      "series_groups": 1,
+      "movie_groups": 4,
+      "non_series": 0,
+      "series_details": {
+        "chainsaw man": {
+          "display_name": "Chainsaw Man",
+          "seasons": 1,
+          "episodes": 12,
+          "versions": 116
+        }
+      },
+      "movie_details": {
+        "chainsaw man movie reze arc k gekijo ban chenso man reze hen|2025": {
+          "display_name": "Chainsaw.Man.The.Movie.Reze.Arc.A.K.A.Gekijo-ban.Chenso.Man.Reze-hen",
+          "year": 2025,
+          "versions": 1
+        },
+        "chainsaw man movie reze arc|2025": {
+          "display_name": "Chainsaw Man The Movie Reze Arc",
+          "year": 2025,
+          "versions": 8
+        },
+        "chainsaw man|movie reze arc|2025": {
+          "display_name": "The Movie Reze Arc / Chainsaw Man",
+          "year": 2025,
+          "versions": 1
+        },
+        "[fle] chainsaw man|movie reze arc|2025": {
+          "display_name": "The Movie Reze Arc / [FLE] Chainsaw Man",
+          "year": 2025,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Anime with standard naming"
+      },
+      "status": "✓ PASS"
+    },
+    "mashle": {
+      "query": "mashle",
+      "total_files": 107,
+      "series_groups": 1,
+      "movie_groups": 0,
+      "non_series": 0,
+      "series_details": {
+        "mashle": {
+          "display_name": "Mashle",
+          "seasons": 2,
+          "episodes": 36,
+          "versions": 90
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Mashle, Mashle 2nd Season should merge"
+      },
+      "status": "✓ PASS"
+    },
+    "solo leveling": {
+      "query": "solo leveling",
+      "total_files": 200,
+      "series_groups": 2,
+      "movie_groups": 1,
+      "non_series": 0,
+      "series_details": {
+        "ore dake level up na ken": {
+          "display_name": "Ore dake Level Up na Ken (Solo Leveling) - Season",
+          "seasons": 2,
+          "episodes": 18,
+          "versions": 19
+        },
+        "solo leveling": {
+          "display_name": "Solo Leveling",
+          "seasons": 2,
+          "episodes": 31,
+          "versions": 98
+        }
+      },
+      "movie_details": {
+        "17 (1080p) [4|[subsplease] solo leveling|2075": {
+          "display_name": "17 (1080p) [4 / [SubsPlease] Solo Leveling",
+          "year": 2075,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Korean webtoon anime adaptation"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "suits": {
+      "query": "suits",
+      "total_files": 200,
+      "series_groups": 3,
+      "movie_groups": 0,
+      "non_series": 2,
+      "series_details": {
+        "suits": {
+          "display_name": "Suits",
+          "seasons": 3,
+          "episodes": 37,
+          "versions": 156
+        },
+        "sladky zivot zacka codyho": {
+          "display_name": "Sladký život Zacka a Codyho",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
+        },
+        "scrubs": {
+          "display_name": "Scrubs",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'scrubs'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Suits / Kravataci dual-name"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "breaking bad": {
+      "query": "breaking bad",
+      "total_files": 200,
+      "series_groups": 1,
+      "movie_groups": 1,
+      "non_series": 0,
+      "series_details": {
+        "breaking bad": {
+          "display_name": "Breaking Bad",
+          "seasons": 5,
+          "episodes": 62,
+          "versions": 154
+        }
+      },
+      "movie_details": {
+        "breaking bad season 1|2008": {
+          "display_name": "Breaking Bad Season 1",
+          "year": 2008,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Standard S##E## format"
+      },
+      "status": "✓ PASS"
+    },
+    "game of thrones": {
+      "query": "game of thrones",
+      "total_files": 200,
+      "series_groups": 1,
+      "movie_groups": 4,
+      "non_series": 0,
+      "series_details": {
+        "game of thrones": {
+          "display_name": "Game of Thrones",
+          "seasons": 8,
+          "episodes": 73,
+          "versions": 187
+        }
+      },
+      "movie_details": {
+        "game of thrones: knight of seven kingdoms official trailer|2026": {
+          "display_name": "Game Of Thrones： A Knight Of The Seven Kingdoms Official Trailer",
+          "year": 2026,
+          "versions": 1
+        },
+        "game of thrones greatest moments|2018": {
+          "display_name": "Game of Thrones Greatest Moments",
+          "year": 2018,
+          "versions": 1
+        },
+        "game of thrones, season 5 , episode 10 mother's mercy|usa, united kingdom|2015": {
+          "display_name": "USA, United Kingdom / Game of Thrones, Season 5., Episode 10. Mother's Mercy",
+          "year": 2015,
+          "versions": 1
+        },
+        "game of thrones last watch|2019": {
+          "display_name": "Game.of.Thrones.The.Last.Watch",
+          "year": 2019,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Multi-word title"
+      },
+      "status": "✓ PASS"
+    },
+    "attack on titan": {
+      "query": "attack on titan",
+      "total_files": 200,
+      "series_groups": 1,
+      "movie_groups": 3,
+      "non_series": 0,
+      "series_details": {
+        "attack on titan": {
+          "display_name": "Attack On Titan",
+          "seasons": 4,
+          "episodes": 87,
+          "versions": 171
+        }
+      },
+      "movie_details": {
+        "attack on titan|2015": {
+          "display_name": "Attack on Titan",
+          "year": 2015,
+          "versions": 2
+        },
+        "attack on titan|shingeki no kyojin zenpen|2015": {
+          "display_name": "Shingeki no kyojin Zenpen / Attack on Titan",
+          "year": 2015,
+          "versions": 1
+        },
+        "attack on titan part 2|2015": {
+          "display_name": "Attack.on.Titan.Part.2",
+          "year": 2015,
+          "versions": 2
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "notes": "Attack on Titan / Shingeki no Kyojin"
+      },
+      "status": "✓ PASS"
+    },
+    "inception 2010": {
+      "query": "inception 2010",
+      "total_files": 200,
+      "series_groups": 3,
+      "movie_groups": 94,
+      "non_series": 0,
+      "series_details": {
+        "parenthood": {
+          "display_name": "Parenthood 2010",
+          "seasons": 2,
+          "episodes": 32,
+          "versions": 43
+        },
+        "hawaii five 0": {
+          "display_name": "Hawaii Five-0 2010",
+          "seasons": 2,
+          "episodes": 26,
+          "versions": 27
+        },
+        "dexter": {
+          "display_name": "Dexter",
+          "seasons": 1,
+          "episodes": 2,
+          "versions": 2
+        }
+      },
+      "movie_details": {
+        "inception|2010": {
+          "display_name": "Inception",
+          "year": 2010,
+          "versions": 5
+        },
+        "pocatek inception|2010": {
+          "display_name": "Pocatek---Inception",
+          "year": 2010,
+          "versions": 4
+        },
+        "inception|pocatek|2010": {
+          "display_name": "Inception / Počátek",
+          "year": 2010,
+          "versions": 3
+        },
+        "inception cobol job|2010": {
+          "display_name": "Inception.The.Cobol.Job",
+          "year": 2010,
+          "versions": 1
+        },
+        "inception (dicaprio)|pocatek|2010": {
+          "display_name": "Inception-(DiCaprio) / Pocatek",
+          "year": 2010,
+          "versions": 1
+        },
+        "pocatek|2010": {
+          "display_name": "Počátek (Inception) CZ",
+          "year": 2010,
+          "versions": 1
+        },
+        "detektiv dee zahada smrtiaceho ohna|2010": {
+          "display_name": "Detektiv.Dee.a.zahada.smrtiaceho.ohna",
+          "year": 2010,
+          "versions": 1
+        },
+        "sinners and saints|2010": {
+          "display_name": "Sinners.and.Saints",
+          "year": 2010,
+          "versions": 1
+        },
+        "podivni|2010": {
+          "display_name": "Podivni",
+          "year": 2010,
+          "versions": 1
+        },
+        "des za zdi|2010": {
+          "display_name": "Des.za.zdi",
+          "year": 2010,
+          "versions": 1
+        },
+        "hura do afriky|2010": {
+          "display_name": "Hura.do.Afriky",
+          "year": 2010,
+          "versions": 2
+        },
+        "rallye smrti 2 (death race 2|2010": {
+          "display_name": "Rallye smrti 2 (Death Race 2",
+          "year": 2010,
+          "versions": 1
+        },
+        "hnizdo neresti|2010": {
+          "display_name": "hnizdo-neresti",
+          "year": 2010,
+          "versions": 1
+        },
+        "pohrben zaziva|2010": {
+          "display_name": "pohrben-zaziva",
+          "year": 2010,
+          "versions": 1
+        },
+        "tamara drewe novinky|2010": {
+          "display_name": "tamara-drewe-novinky",
+          "year": 2010,
+          "versions": 2
+        },
+        "zase ona novinky|2010": {
+          "display_name": "zase-ona-novinky",
+          "year": 2010,
+          "versions": 1
+        },
+        "siren|2010": {
+          "display_name": "Siren",
+          "year": 2010,
+          "versions": 1
+        },
+        "divoke srdce afriky great rift|2010": {
+          "display_name": "divoke-srdce-afriky-great-rift-the",
+          "year": 2010,
+          "versions": 1
+        },
+        "13|2010": {
+          "display_name": "13",
+          "year": 2010,
+          "versions": 1
+        },
+        "mardi gras|2010": {
+          "display_name": "mardi.gras",
+          "year": 2010,
+          "versions": 1
+        },
+        "neni zac novinky|2010": {
+          "display_name": "neni-zac-novinky",
+          "year": 2010,
+          "versions": 1
+        },
+        "fotri jsou lotri|2010": {
+          "display_name": "fotri-jsou-lotri",
+          "year": 2010,
+          "versions": 1
+        },
+        "predators|2010": {
+          "display_name": "Predators",
+          "year": 2010,
+          "versions": 2
+        },
+        "plivu na vas hrob|2010": {
+          "display_name": "plivu.na.vas.hrob",
+          "year": 2010,
+          "versions": 1
+        },
+        "cz|secretariat|2010": {
+          "display_name": "CZ / Secretariat",
+          "year": 2010,
+          "versions": 1
+        },
+        "extraordinary measures|2010": {
+          "display_name": "Extraordinary.Measures",
+          "year": 2010,
+          "versions": 1
+        },
+        "town|2010": {
+          "display_name": "The Town",
+          "year": 2010,
+          "versions": 2
+        },
+        "red|2010": {
+          "display_name": "Red",
+          "year": 2010,
+          "versions": 1
+        },
+        "unstoppable|2010": {
+          "display_name": "Unstoppable",
+          "year": 2010,
+          "versions": 1
+        },
+        "fighter|2010": {
+          "display_name": "The.Fighter",
+          "year": 2010,
+          "versions": 3
+        },
+        "resident evil afterlife|2010": {
+          "display_name": "Resident Evil Afterlife",
+          "year": 2010,
+          "versions": 2
+        },
+        "clash of titans|2010": {
+          "display_name": "Clash Of The Titans",
+          "year": 2010,
+          "versions": 1
+        },
+        "a team extended|2010": {
+          "display_name": "The.A.Team.EXTENDED",
+          "year": 2010,
+          "versions": 1
+        },
+        "devil|2010": {
+          "display_name": "Devil",
+          "year": 2010,
+          "versions": 1
+        },
+        "pirana 3d|2010": {
+          "display_name": "Pirana 3D",
+          "year": 2010,
+          "versions": 1
+        },
+        "ward|2010": {
+          "display_name": "The Ward",
+          "year": 2010,
+          "versions": 1
+        },
+        "tucker and dale vs evil|2010": {
+          "display_name": "Tucker.And.Dale.Vs.Evil",
+          "year": 2010,
+          "versions": 1
+        },
+        "salt ugynok|2010": {
+          "display_name": "Salt.Ugynok",
+          "year": 2010,
+          "versions": 1
+        },
+        "charlie st cloud|2010": {
+          "display_name": "Charlie St Cloud",
+          "year": 2010,
+          "versions": 2
+        },
+        "heartless|2010": {
+          "display_name": "Heartless",
+          "year": 2010,
+          "versions": 1
+        },
+        "salt|2010": {
+          "display_name": "SALT",
+          "year": 2010,
+          "versions": 1
+        },
+        "kick ass|2010": {
+          "display_name": "Kick Ass",
+          "year": 2010,
+          "versions": 2
+        },
+        "klamac srdci|2010": {
+          "display_name": "Klamac Srdci",
+          "year": 2010,
+          "versions": 2
+        },
+        "ma me rad nema me rad|2010": {
+          "display_name": "Má mě rád, nemá mě rád",
+          "year": 2010,
+          "versions": 1
+        },
+        "hereafter|2010": {
+          "display_name": "Hereafter",
+          "year": 2010,
+          "versions": 1
+        },
+        "lake placid 3|2010": {
+          "display_name": "Lake.Placid.3",
+          "year": 2010,
+          "versions": 1
+        },
+        "river why|2010": {
+          "display_name": "The.River.Why",
+          "year": 2010,
+          "versions": 1
+        },
+        "dorian gray|2010": {
+          "display_name": "Dorian.Gray",
+          "year": 2010,
+          "versions": 1
+        },
+        "made in dagenham|2010": {
+          "display_name": "Made.in.Dagenham",
+          "year": 2010,
+          "versions": 1
+        },
+        "last airbender|2010": {
+          "display_name": "The.Last.Airbender",
+          "year": 2010,
+          "versions": 1
+        },
+        "rubber|2010": {
+          "display_name": "Rubber",
+          "year": 2010,
+          "versions": 1
+        },
+        "robin hood|2010": {
+          "display_name": "Robin-Hood",
+          "year": 2010,
+          "versions": 1
+        },
+        "o bohoch ludoch|2010": {
+          "display_name": "O-bohoch-a-ludoch",
+          "year": 2010,
+          "versions": 1
+        },
+        "ozbrojeni nebezpecni|2010": {
+          "display_name": "ozbrojeni-a-nebezpecni",
+          "year": 2010,
+          "versions": 1
+        },
+        "way|2010": {
+          "display_name": "The Way",
+          "year": 2010,
+          "versions": 1
+        },
+        "nightmare on elm street|2010": {
+          "display_name": "A.Nightmare.on.Elm.Street",
+          "year": 2010,
+          "versions": 1
+        },
+        "tomorrow when war began|2010": {
+          "display_name": "Tomorrow When The War Began",
+          "year": 2010,
+          "versions": 1
+        },
+        "legie|2010": {
+          "display_name": "Legie",
+          "year": 2010,
+          "versions": 1
+        },
+        "zeleny srsen cz|2010": {
+          "display_name": "Zelený_sršeň_CZ",
+          "year": 2010,
+          "versions": 1
+        },
+        "black swan|2010": {
+          "display_name": "Black Swan",
+          "year": 2010,
+          "versions": 1
+        },
+        "dinosaurus (anim usa|2010": {
+          "display_name": "Dinosaurus (anim.USA",
+          "year": 2010,
+          "versions": 1
+        },
+        "vlkodlak|2010": {
+          "display_name": "Vlkodlak",
+          "year": 2010,
+          "versions": 1
+        },
+        "dabel dabing|2010": {
+          "display_name": "dabel-cz-dabing",
+          "year": 2010,
+          "versions": 1
+        },
+        "legie dabing|2010": {
+          "display_name": "legie-cz-dabing",
+          "year": 2010,
+          "versions": 1
+        },
+        "mesto town|2010": {
+          "display_name": "Mesto---The-Town",
+          "year": 2010,
+          "versions": 1
+        },
+        "eat pray love|2010": {
+          "display_name": "Eat.Pray.Love",
+          "year": 2010,
+          "versions": 1
+        },
+        "easy|2010": {
+          "display_name": "easy.a",
+          "year": 2010,
+          "versions": 1
+        },
+        "life as we know|2010": {
+          "display_name": "Life.As.We.Know.It",
+          "year": 2010,
+          "versions": 1
+        },
+        "love and other drugs|2010": {
+          "display_name": "Love.And.Other.Drugs",
+          "year": 2010,
+          "versions": 1
+        },
+        "sex and city 2|2010": {
+          "display_name": "Sex and the City 2",
+          "year": 2010,
+          "versions": 1
+        },
+        "dont be afraid of dark|2010": {
+          "display_name": "Dont.Be.Afraid.of.the.Dark",
+          "year": 2010,
+          "versions": 1
+        },
+        "doo prokleti prisery z jezera (komedie usa|scooby|2010": {
+          "display_name": "Doo- Prokletí příšery z jezera (komedie USA / Scooby",
+          "year": 2010,
+          "versions": 1
+        },
+        "tekken dabing|2010": {
+          "display_name": "TEKKEN---CZ-DABING",
+          "year": 2010,
+          "versions": 1
+        },
+        "loft|2010": {
+          "display_name": "Loft",
+          "year": 2010,
+          "versions": 1
+        },
+        "cemetery|junction cz|2010": {
+          "display_name": "Junction-CZ / Cemetery",
+          "year": 2010,
+          "versions": 1
+        },
+        "ctyri lvi|2010": {
+          "display_name": "Ctyri-lvi.CZ",
+          "year": 2010,
+          "versions": 1
+        },
+        "last night|2010": {
+          "display_name": "Last Night",
+          "year": 2010,
+          "versions": 1
+        },
+        "krach|2010": {
+          "display_name": "Krach",
+          "year": 2010,
+          "versions": 1
+        },
+        "i spit on your grave|2010": {
+          "display_name": "I.Spit.On.Your.Grave",
+          "year": 2010,
+          "versions": 1
+        },
+        "centurion|2010": {
+          "display_name": "centurion",
+          "year": 2010,
+          "versions": 1
+        },
+        "trader games|2010": {
+          "display_name": "Trader.Games",
+          "year": 2010,
+          "versions": 1
+        },
+        "nanga parbat 3d|2010": {
+          "display_name": "Nanga.Parbat.3D",
+          "year": 2010,
+          "versions": 1
+        },
+        "posledni pisen|2010": {
+          "display_name": "posledni-pisen",
+          "year": 2010,
+          "versions": 1
+        },
+        "fighter dvdrip drama sportovni zivotopisny|2010": {
+          "display_name": "fighter-dvdrip-drama-sportovni-zivotopisny",
+          "year": 2010,
+          "versions": 1
+        },
+        "tekken|2010": {
+          "display_name": "Tekken",
+          "year": 2010,
+          "versions": 2
+        },
+        "icarus|2010": {
+          "display_name": "Icarus",
+          "year": 2010,
+          "versions": 1
+        },
+        "modra hlubina drama usa|2010": {
+          "display_name": "Modra-hlubina-CZ--Drama,-USA,",
+          "year": 2010,
+          "versions": 1
+        },
+        "alien vs ninja|2010": {
+          "display_name": "Alien vs. Ninja",
+          "year": 2010,
+          "versions": 1
+        },
+        "22 vystrelu ☼|2010": {
+          "display_name": "22 vystrelu cz ☼",
+          "year": 2010,
+          "versions": 1
+        },
+        "parchanti|2010": {
+          "display_name": "parchanti",
+          "year": 2010,
+          "versions": 1
+        },
+        "kill speed ☼|2010": {
+          "display_name": "kill speed cz ☼",
+          "year": 2010,
+          "versions": 1
+        },
+        "dopisy pro julii|2010": {
+          "display_name": "Dopisy_pro_Julii",
+          "year": 2010,
+          "versions": 1
+        },
+        "faster cz dabing novinky|2010": {
+          "display_name": "Faster_CZ_Dabing_Novinky",
+          "year": 2010,
+          "versions": 1
+        },
+        "na hrane temnoty ☼|2010": {
+          "display_name": "Na hrane temnoty cz ☼",
+          "year": 2010,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 1,
+        "notes": "Single movie, multiple quality versions"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "avatar 2009": {
+      "query": "avatar 2009",
+      "total_files": 60,
+      "series_groups": 0,
+      "movie_groups": 14,
+      "non_series": 0,
+      "series_details": {},
+      "movie_details": {
+        "avatar|2009": {
+          "display_name": "Avatar",
+          "year": 2009,
+          "versions": 31
+        },
+        "1 avatar|2009": {
+          "display_name": "1.Avatar",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar scifi|2009": {
+          "display_name": "Avatar-Scifi",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar 1 (sam worthington oe saldana michelle rodriguez|2009": {
+          "display_name": "Avatar 1 (Sam Worthington, oe Saldana,Michelle Rodriguez",
+          "year": 2009,
+          "versions": 3
+        },
+        "avatar (r|2009": {
+          "display_name": "Avatar (r",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar r|2009": {
+          "display_name": "Avatar r",
+          "year": 2009,
+          "versions": 1
+        },
+        "3d avatar|sam worthington, zoe saldana|2009": {
+          "display_name": "Sam Worthington, Zoe Saldana / 3D Avatar",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar|sam worthington, zoe saldana|2009": {
+          "display_name": "Sam Worthington, Zoe Saldana / Avatar",
+          "year": 2009,
+          "versions": 1
+        },
+        "(|2009": {
+          "display_name": "(",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar 1|2009": {
+          "display_name": "Avatar 1 Cz",
+          "year": 2009,
+          "versions": 3
+        },
+        "avatar avi|2009": {
+          "display_name": "Avatar CZ avi",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar|extended collector's edition|2009": {
+          "display_name": "Extended Collector's Edition / Avatar",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar dabing|2009": {
+          "display_name": "Avatar CZ-dabing",
+          "year": 2009,
+          "versions": 1
+        },
+        "avatar dc|2009": {
+          "display_name": "Avatar DC",
+          "year": 2009,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 1,
+        "notes": "First Avatar movie"
+      },
+      "status": "✗ UNDER-MERGED"
+    }
+  }
+}
