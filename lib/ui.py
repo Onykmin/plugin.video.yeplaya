@@ -816,6 +816,8 @@ def search(params):
         sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
         limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
         offset = int(params['offset']) if 'offset' in params else 0
+        if offset == 0:
+            storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)
     else:
@@ -824,7 +826,8 @@ def search(params):
         history = loadsearch()
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30205))
         listitem.setArt({'icon': 'DefaultAddSource.png'})
-        xbmcplugin.addDirectoryItem(_handle, get_url(action='search',ask=1), listitem, True)
+        # Use newsearch action to avoid creating navigation history entry
+        xbmcplugin.addDirectoryItem(_handle, 'plugin://plugin.video.yeplaya/?action=newsearch', listitem, False)
         
         #newest
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30208))
@@ -844,6 +847,21 @@ def search(params):
             listitem.addContextMenuItems(commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=search), listitem, True)
     xbmcplugin.endOfDirectory(_handle, updateListing=updateListing)
+
+
+def newsearch(params):
+    """Handle new search - show keyboard and navigate to results without creating history entry."""
+    what = ask(None)
+    if what is not None:
+        storesearch(what)
+        _addon.setSetting('slast', what)
+        clear_cache()
+        category = CATEGORIES[int(_addon.getSetting('scategory'))]
+        sort = SORTS[int(_addon.getSetting('ssort'))]
+        limit = int(_addon.getSetting('slimit'))
+        url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
+        xbmc.executebuiltin("Container.Update({})".format(url))
+    # If cancelled, do nothing - stay on search menu
 
 
 def history(params):
