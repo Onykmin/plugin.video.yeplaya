@@ -12,7 +12,7 @@ import xbmcplugin
 import xbmcaddon
 
 from lib.api import api, parse_xml, is_ok, revalidate, getinfo, getlink, get_url_base, get_session
-from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, infonize, fpsize, get_handle, get_addon, refresh_settings
+from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, infonize, fpsize, get_handle, get_addon, refresh_settings, set_webshare_id
 from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, get_or_fetch_grouped, get_series_cache, cache_set, clear_cache
 from lib.grouping import fetch_and_group_series, deduplicate_versions
 from lib.search import calculate_search_relevance
@@ -287,11 +287,13 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             # Single version: play directly
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
+                set_webshare_id(listitem, versions[0]['ident'])
                 url = get_url(action='play', ident=versions[0]['ident'], name=versions[0]['name'])
                 xbmcplugin.addDirectoryItem(_handle, url, listitem, False)
             else:
                 # Multiple versions: show dialog
                 listitem.setProperty('IsPlayable', 'true')
+                set_webshare_id(listitem, versions[0]['ident'])
                 url = get_url(
                     action='select_movie_version',
                     movie_key=movie_key,
@@ -430,6 +432,7 @@ def browse_season(params):
                     # Use first (best) version for thumbnail
                     listitem = xbmcgui.ListItem(label=label)
                     listitem.setProperty('IsPlayable', 'true')
+                    set_webshare_id(listitem, versions[0]['ident'])
                     if versions[0].get('img'):
                         listitem.setArt({'thumb': versions[0]['img']})
 
@@ -716,11 +719,13 @@ def browse_other(params):
             # Single version: play directly
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
+                set_webshare_id(listitem, versions[0]['ident'])
                 url = get_url(action='play', ident=versions[0]['ident'], name=versions[0]['name'])
                 xbmcplugin.addDirectoryItem(_handle, url, listitem, False)
             else:
                 # Multiple versions: show dialog
                 listitem.setProperty('IsPlayable', 'true')
+                set_webshare_id(listitem, versions[0]['ident'])
                 url = get_url(
                     action='select_movie_version',
                     movie_key=canonical_key,
@@ -816,7 +821,7 @@ def search(params):
         sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
         limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
         offset = int(params['offset']) if 'offset' in params else 0
-        if offset == 0:
+        if offset == 0 and what != NONE_WHAT:
             storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)

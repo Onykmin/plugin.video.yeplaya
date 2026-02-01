@@ -151,12 +151,28 @@ def labelize(file):
     return get_label_format().format(name=file['name'], size=size)
 
 
+def set_webshare_id(listitem, ident):
+    """Set Webshare unique ID for watched status persistence."""
+    if ident:
+        try:
+            infotag = listitem.getVideoInfoTag()
+            infotag.setUniqueIDs({'webshare': ident}, 'webshare')
+        except AttributeError:
+            # Kodi < 20: use deprecated method
+            try:
+                listitem.setUniqueIDs({'webshare': ident}, 'webshare')
+            except Exception:
+                pass
+
+
 def tolistitem(file, addcommands=[]):
     """Create Kodi ListItem from file dict."""
     label = labelize(file)
     listitem = xbmcgui.ListItem(label=label)
     infotag = listitem.getVideoInfoTag()
     infotag.setTitle(label)
+    if 'ident' in file:
+        set_webshare_id(listitem, file['ident'])
     if 'img' in file:
         listitem.setArt({'thumb': file['img']})
     if get_filesize_enabled() and 'size' in file and file['size'].isdigit():
