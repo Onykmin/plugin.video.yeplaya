@@ -49,6 +49,44 @@ class MockListItem:
         self._context = items
 
 
+class MockMonitor:
+    """Mock Kodi Monitor."""
+
+    def waitForAbort(self, timeout=None):
+        return False
+
+
+class MockPlayer:
+    """Mock Kodi Player base class for subclassing."""
+
+    def onAVStarted(self):
+        pass
+
+    def onPlayBackError(self):
+        pass
+
+    def onPlayBackStopped(self):
+        pass
+
+    def onPlayBackEnded(self):
+        pass
+
+    def getAvailableAudioStreams(self):
+        return []
+
+    def getAvailableSubtitleStreams(self):
+        return []
+
+    def setAudioStream(self, idx):
+        pass
+
+    def setSubtitleStream(self, idx):
+        pass
+
+    def showSubtitles(self, visible):
+        pass
+
+
 def setup_kodi_mocks():
     """Setup Kodi module mocks."""
     mock_addon = MockAddon()
@@ -58,6 +96,8 @@ def setup_kodi_mocks():
     xbmc.LOGWARNING = 2
     xbmc.LOGERROR = 3
     xbmc.Keyboard = MagicMock()
+    xbmc.Player = MockPlayer
+    xbmc.Monitor = MockMonitor
 
     xbmcaddon = MagicMock()
     xbmcaddon.Addon.return_value = mock_addon

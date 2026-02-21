@@ -30,6 +30,7 @@ _session = get_session()
 _series_cache = get_series_cache()
 
 from lib.playback import toqueue, play
+from lib.player import YePlayer
 
 # Constants
 NONE_WHAT = '%#NONE#%'
@@ -570,9 +571,11 @@ def show_version_dialog(params):
             if headers:
                 headers.update({'Cookie': 'wst=' + token})
                 link = link + '|' + urlencode(headers)
+            player = YePlayer()
             listitem = xbmcgui.ListItem(label=chosen_file['name'], path=link)
             listitem.setProperty('mimetype', 'application/octet-stream')
             xbmcplugin.setResolvedUrl(_handle, True, listitem)
+            player.wait_for_playback()
         else:
             popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
@@ -664,9 +667,11 @@ def select_movie_version(params):
             if headers:
                 headers.update({'Cookie': 'wst=' + token})
                 link = link + '|' + urlencode(headers)
+            player = YePlayer()
             listitem = xbmcgui.ListItem(label=selected_version['name'], path=link)
             listitem.setProperty('mimetype', 'application/octet-stream')
             xbmcplugin.setResolvedUrl(_handle, True, listitem)
+            player.wait_for_playback()
         else:
             popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())

@@ -349,3 +349,27 @@ msgctxt "#30308"
 msgid "Could not get stream link"
 msgstr ""
 
+msgctxt "#30070"
+msgid "Language preferences"
+msgstr ""
+
+msgctxt "#30071"
+msgid "Preferred audio language"
+msgstr ""
+
+msgctxt "#30072"
+msgid "Fallback audio language"
+msgstr ""
+
+msgctxt "#30073"
+msgid "Preferred subtitle language"
+msgstr ""
+
+msgctxt "#30074"
+msgid "Fallback subtitle language"
+msgstr ""
+
+msgctxt "#30075"
+msgid "Auto-enable subtitles"
+msgstr ""
+

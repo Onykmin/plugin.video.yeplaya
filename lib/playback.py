@@ -14,6 +14,7 @@ import requests
 import xbmcgui
 import xbmcplugin
 from lib.api import revalidate, getlink, api, parse_xml, is_ok, get_session, get_addon, validate_ident, getinfo
+from lib.player import YePlayer
 from lib.utils import popinfo, todict, sizelize, get_handle, get_url, tolistitem
 
 try:
@@ -57,9 +58,11 @@ def play(params):
             if headers:
                 headers.update({'Cookie':'wst='+token})
                 link = link + '|' + urlencode(headers)
+            player = YePlayer()
             listitem = xbmcgui.ListItem(label=params['name'],path=link)
             listitem.setProperty('mimetype', 'application/octet-stream')
             xbmcplugin.setResolvedUrl(_handle, True, listitem)
+            player.wait_for_playback()
         else:
             popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())

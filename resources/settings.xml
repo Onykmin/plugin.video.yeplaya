@@ -26,5 +26,11 @@
         <setting type="lsep" label="30060" />
         <setting label="30061" id="csfd_enabled" type="bool" default="true" />
         <setting label="30062" id="csfd_series_only" type="bool" default="true" enable="eq(-1,true)" />
+        <setting type="lsep" label="30070" />
+        <setting label="30071" id="audio_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
+        <setting label="30072" id="audio_lang2" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
+        <setting label="30073" id="sub_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
+        <setting label="30074" id="sub_lang2" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
+        <setting label="30075" id="sub_auto" type="bool" default="false" />
     </category>
 </settings>
