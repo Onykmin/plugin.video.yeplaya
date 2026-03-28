@@ -14,7 +14,7 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 from lib.api import getlink, revalidate, get_addon, get_session
-from lib.utils import popinfo, get_handle, get_url, tolistitem
+from lib.utils import popinfo, get_handle, get_url, tolistitem, set_video_info
 from lib.playback import toqueue
 
 try:
@@ -24,10 +24,6 @@ except ImportError:
 
 _addon = get_addon()
 _profile = translatePath(_addon.getAddonInfo('profile'))
-try:
-    _profile = _profile.decode("utf-8")
-except (AttributeError, UnicodeDecodeError):
-    pass
 _session = get_session()
 
 from lib.logging import log_warning
@@ -86,7 +82,7 @@ def db(params):
     if not os.path.exists(dbdir):
         link = getlink(BACKUP_DB,token)
         if link is None:
-            popinfo("Failed to get database download link", icon=xbmcgui.NOTIFICATION_ERROR)
+            popinfo(_addon.getLocalizedString(30309), icon=xbmcgui.NOTIFICATION_ERROR)
             return
         dbfile = os.path.join(_profile,'db.zip')
         try:
@@ -98,14 +94,14 @@ def db(params):
                 bf.close()
         except (IOError, OSError, requests.exceptions.RequestException) as e:
             xbmc.log("YAWsP: Failed to download database: " + str(e), xbmc.LOGERROR)
-            popinfo("Failed to download database", icon=xbmcgui.NOTIFICATION_ERROR)
+            popinfo(_addon.getLocalizedString(30310), icon=xbmcgui.NOTIFICATION_ERROR)
             if os.path.exists(dbfile):
                 os.unlink(dbfile)
             return
 
         # Safely extract with validation
         if not safe_extract_zip(dbfile, _profile):
-            popinfo("Failed to extract database", icon=xbmcgui.NOTIFICATION_ERROR)
+            popinfo(_addon.getLocalizedString(30311), icon=xbmcgui.NOTIFICATION_ERROR)
             os.unlink(dbfile)
             return
         os.unlink(dbfile)
@@ -132,7 +128,7 @@ def db(params):
         for item in data:
             listitem = xbmcgui.ListItem(label=item['title'])
             if 'plot' in item:
-                listitem.setInfo('video', {'title': item['title'],'plot': item['plot']})
+                set_video_info(listitem, {'title': item['title'], 'plot': item['plot']})
             xbmcplugin.addDirectoryItem(_handle, get_url(action='db',file=params['file'],key=item['id']), listitem, True)
     else:
         if os.path.exists(dbdir):

@@ -6,6 +6,8 @@
 import datetime
 import re
 
+_CURRENT_YEAR = datetime.datetime.now().year
+
 try:
     from unidecode import unidecode
 except ImportError:
@@ -559,7 +561,7 @@ def parse_movie_info(filename):
             return None
 
         # Validate year is reasonable (not future)
-        if year > datetime.datetime.now().year + 2:
+        if year > _CURRENT_YEAR + 2:
             return None
 
         clean_title = clean_series_name(raw_title)

@@ -9,6 +9,10 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: sk\n"
 
+msgctxt "#30007"
+msgid "Search"
+msgstr "Vyhľadávanie"
+
 msgctxt "#30010"
 msgid "Search"
 msgstr "Vyhľadávanie"
@@ -153,6 +157,10 @@ msgctxt "#30107"
 msgid "An error occurred while communicating with the Webshare API."
 msgstr "Vznikla chyba pri komunikácii s Webshare API."
 
+msgctxt "#30108"
+msgid "No results found."
+msgstr "Neboli nájdené žiadne výsledky."
+
 msgctxt "#30201"
 msgid "Search"
 msgstr "Vyhľadávanie"
@@ -224,6 +232,34 @@ msgstr "Sťahovanie dokončené - "
 msgctxt "#30304"
 msgid "Unknown error - "
 msgstr "Neznáma chyba - "
+
+msgctxt "#30305"
+msgid "Network error - please check connection"
+msgstr "Chyba siete - skontrolujte pripojenie"
+
+msgctxt "#30306"
+msgid "Playback error"
+msgstr "Chyba prehrávania"
+
+msgctxt "#30307"
+msgid "File info unavailable"
+msgstr "Informácie o súbore nie sú dostupné"
+
+msgctxt "#30308"
+msgid "Could not get stream link"
+msgstr "Nepodarilo sa získať odkaz na stream"
+
+msgctxt "#30309"
+msgid "Failed to get database download link"
+msgstr "Nepodarilo sa získať odkaz na stiahnutie databázy"
+
+msgctxt "#30310"
+msgid "Failed to download database"
+msgstr "Nepodarilo sa stiahnuť databázu"
+
+msgctxt "#30311"
+msgid "Failed to extract database"
+msgstr "Nepodarilo sa rozbaliť databázu"
 
 msgctxt "#30220"
 msgid "Default search view"

@@ -3,18 +3,37 @@
 # Author: onykmin
 # License: AGPL v.3 https://www.gnu.org/licenses/agpl-3.0.html
 
+from functools import lru_cache
+
+try:
+    from unidecode import unidecode
+except ImportError:
+    import unicodedata
+    def unidecode(text):
+        normalized = unicodedata.normalize('NFKD', text)
+        return ''.join([c for c in normalized if not unicodedata.combining(c)])
+
+
+@lru_cache(maxsize=2048)
+def _normalize(text):
+    """Lowercase + strip diacritics for accent-insensitive matching (cached)."""
+    return unidecode(text).lower().strip()
+
+
 def calculate_search_relevance(display_name, query, canonical_key=None):
     """Calculate search relevance score (0-1000, higher = better match)."""
     if not query:
         return -1
+    if not display_name:
+        return 0
 
-    q_norm = query.lower().strip()
-    d_norm = display_name.lower().strip()
+    q_norm = _normalize(query)
+    d_norm = _normalize(display_name)
     clean_title = d_norm.split('(')[0].strip()
 
     search_targets = [clean_title]
     if canonical_key:
-        parts = [p.strip() for p in canonical_key.lower().split('|')]
+        parts = [_normalize(p) for p in canonical_key.split('|')]
         search_targets.extend([
             p for i, p in enumerate(parts)
             if p and not (p.isdigit() and len(p) == 4 and i == len(parts) - 1)

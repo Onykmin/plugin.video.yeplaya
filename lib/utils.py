@@ -14,6 +14,23 @@ try:
 except ImportError:
     from urllib import urlencode
 
+def set_video_info(listitem, info_dict):
+    """Set video info on ListItem using Kodi 20+ API with Kodi 19 fallback.
+
+    Args:
+        listitem: xbmcgui.ListItem
+        info_dict: dict with keys like 'plot', 'title', 'size'
+    """
+    try:
+        tag = listitem.getVideoInfoTag()
+        if 'plot' in info_dict:
+            tag.setPlot(info_dict['plot'])
+        if 'title' in info_dict:
+            tag.setTitle(info_dict['title'])
+    except AttributeError:
+        listitem.setInfo('video', info_dict)
+
+
 # Global state
 def _get_handle():
     """Get plugin handle safely, returns -1 if not in Kodi context."""
@@ -100,15 +117,16 @@ def ask(what):
     return None
 
 
-def todict(xml, skip=[]):
+def todict(xml, skip=None):
     """Convert XML element to dictionary."""
+    if skip is None:
+        skip = []
     result = {}
-    # Capture XML attributes (ident, type, etc.)
     if xml.attrib:
         result.update(xml.attrib)
     for e in xml:
         if e.tag not in skip:
-            value = e.text if len(list(e)) == 0 else todict(e, skip)
+            value = todict(e, skip) if len(e) > 0 else e.text
             if e.tag in result:
                 if isinstance(result[e.tag], list):
                     result[e.tag].append(value)

@@ -8,59 +8,15 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
-
-    @staticmethod
-    def log(msg, level=0):
-        pass
-
-
-class MockXBMCGUI:
-    NOTIFICATION_INFO = 1
-    NOTIFICATION_WARNING = 2
-    NOTIFICATION_ERROR = 3
-
-
-class MockSettings:
-    """Mock addon settings with token cache."""
-
-    def __init__(self):
-        self._settings = {}
-
-    def getSetting(self, key):
-        return self._settings.get(key, '')
-
-    def setSetting(self, key, value):
-        self._settings[key] = value
-
-    def getLocalizedString(self, id):
-        return f'String_{id}'
-
-    def getAddonInfo(self, key):
-        return 'TestAddon'
-
-    def openSettings(self):
-        pass
-
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcgui'] = MockXBMCGUI()
-sys.modules['xbmcaddon'] = type('obj', (object,), {'Addon': MockSettings})()
-
-
 def test_token_cache_clearing():
     """Test token cache is cleared on invalidation."""
-    settings = MockSettings()
-    settings.setSetting('token', 'old_stale_token')
+    settings = {}
+    settings['token'] = 'old_stale_token'
 
     # Simulate clear_token_cache
-    settings.setSetting('token', '')
+    settings['token'] = ''
 
-    assert settings.getSetting('token') == '', "Token should be cleared"
+    assert settings['token'] == '', "Token should be cleared"
 
 
 def test_revalidation_retry_logic():
@@ -237,17 +193,17 @@ def test_xml_size_limit():
 
 def test_401_clears_token():
     """Test 401-like response clears token cache."""
-    settings = MockSettings()
-    settings.setSetting('token', 'valid_token')
+    settings = {}
+    settings['token'] = 'valid_token'
 
     # Simulate 401 response (is_ok returns False)
     is_ok = False
 
     if not is_ok:
         # Clear token on auth failure
-        settings.setSetting('token', '')
+        settings['token'] = ''
 
-    assert settings.getSetting('token') == '', "Token should be cleared on 401"
+    assert settings['token'] == '', "Token should be cleared on 401"
 
 
 def test_network_error_specific_message():

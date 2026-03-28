@@ -19,41 +19,7 @@ import unittest
 # Add parent directory for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mock Kodi modules before any imports
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
-
-    @staticmethod
-    def log(msg, level=0):
-        pass
-
-
-class MockXBMCAddon:
-    class Addon:
-        def __init__(self):
-            self._settings = {'shistory': '10'}
-
-        def getSetting(self, key):
-            return self._settings.get(key, '')
-
-        def getAddonInfo(self, key):
-            return '/tmp/test_profile'
-
-
-class MockXBMCVFS:
-    @staticmethod
-    def translatePath(path):
-        return path
-
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcaddon'] = MockXBMCAddon()
-sys.modules['xbmcvfs'] = MockXBMCVFS()
-
-# Now import cache module
+# Import cache module (mocks provided by conftest.py)
 from lib.cache import (
     build_cache_key, cache_set, cache_get, clear_cache,
     _series_cache, _cache_timestamps, _cache_lock, DEFAULT_CACHE_TTL
@@ -195,9 +161,13 @@ class TestCacheThreadSafety(unittest.TestCase):
         # No errors should have occurred
         self.assertEqual(len(errors), 0, "Concurrent writes caused errors: {}".format(errors))
 
-        # Verify some entries exist
-        result = cache_get('thread_0_0', ttl=0)
-        self.assertIsNotNone(result)
+        # Verify cache is not empty (some entries survive eviction)
+        found = 0
+        for t_id in range(5):
+            for i in range(write_count):
+                if cache_get('thread_{}_{}'.format(t_id, i), ttl=0) is not None:
+                    found += 1
+        self.assertGreater(found, 0, "Cache should contain some entries")
 
     def test_concurrent_read_write(self):
         """Concurrent reads and writes should not corrupt cache."""

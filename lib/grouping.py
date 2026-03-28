@@ -6,7 +6,7 @@
 import xbmc
 import xbmcaddon
 from lib.logging import log_debug, log_error
-from lib.parsing import (parse_episode_info, parse_movie_info, parse_quality_metadata,
+from lib.parsing import (parse_episode_info, parse_movie_info,
                          extract_language_tag, extract_dual_names, get_display_name,
                          get_s00e00_pattern, get_0x00_pattern, get_word_set_key)
 from lib.api import api, parse_xml, is_ok
@@ -34,62 +34,66 @@ _PATTERN_0x00 = get_0x00_pattern()
 import re
 _PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
 
+# Compiled patterns for display name cleaning (used in pick_best_display_name_from_list)
+_RE_FILE_EXT = re.compile(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', re.IGNORECASE)
+_RE_QUALITY = re.compile(r'\b(480p|720p|1080p|2160p|4K|UHD|FHD|HD)\b', re.IGNORECASE)
+_RE_SOURCE = re.compile(r'\b(BluRay|Blu-ray|WEB-DL|WEBDL|WEBRip|HDTV|BRRip|DVDRip|REMUX|Theatrical)\b', re.IGNORECASE)
+_RE_CODEC = re.compile(r'\b(x264|x265|H\.?264|H\.?265|HEVC|XviD|AAC|AC3|DTS|DD5\.1|Atmos|TrueHD)\b', re.IGNORECASE)
+_RE_LANG_LABEL = re.compile(r'\b(CZ|EN|SK|MULTi)\s+(DABING|dabing|TITULKY|titulky|sub|dub)\b', re.IGNORECASE)
+_RE_LANG_CODE = re.compile(r'\s+(CZ|EN|SK)\b', re.IGNORECASE)
+_RE_BRACKET_GROUP = re.compile(r'\s*[\(\[][^\)\]]{0,40}[\)\]]$')
+_RE_TRAILING_NUM = re.compile(r'[-\s]+\d{1,3}(?:\.\d+)?(\s+(serie|série|season|sezona|disk))?\s*(dab|BEZ HESLA)?$', re.IGNORECASE)
+_RE_SE_MARKER = re.compile(r'\s*[Ss]\d{1,2}[Ee]\d{1,3}.*$')
+_RE_NxN_MARKER = re.compile(r'\s*\d{1,2}x\d{1,3}.*$')
+_RE_TRAILING_SEP = re.compile(r'[\s\-_\.]+$')
+_RE_MULTI_SPACE = re.compile(r'\s+')
+
 
 def merge_substring_series(grouped):
     """Merge series where one canonical key is substring of another.
 
     Example: "south park" and "mestecko south park" → merge into "south park"
 
-    Merge criteria:
-    - One key is substring of other (word boundaries)
-    - ALL words from shorter key appear in longer key
-    - At least 2 common words (avoids "Lost" vs "Lost Girl")
-
-    Args:
-        grouped: Dict with 'series' and 'non_series' keys
-
-    Returns:
-        Modified grouped dict with merged series
+    Uses precomputed word sets and length-sorted keys for O(N log N) performance.
     """
     series = grouped['series']
-    keys_to_merge = []  # [(shorter_key, longer_key), ...]
-
-    # Find merge candidates
     keys_list = list(series.keys())
-    for i, key1 in enumerate(keys_list):
-        for key2 in keys_list[i+1:]:
-            # Check both directions
-            if key1 in key2:
-                shorter, longer = key1, key2
-            elif key2 in key1:
-                shorter, longer = key2, key1
-            else:
+
+    if len(keys_list) < 2:
+        return grouped
+
+    # Precompute word sets once (avoids O(N²) split/set creation)
+    word_sets = {key: set(key.split()) for key in keys_list}
+
+    # Sort by word count (fewer words first) for directional matching
+    keys_by_words = sorted(keys_list, key=lambda k: len(word_sets[k]))
+
+    keys_to_merge = []
+    for i, short_key in enumerate(keys_by_words):
+        short_words = word_sets[short_key]
+        short_wc = len(short_words)
+
+        for long_key in keys_by_words[i+1:]:
+            long_words = word_sets[long_key]
+
+            # Skip if same word count (can't be proper subset)
+            if len(long_words) == short_wc:
                 continue
 
-            # Validate merge criteria
-            words_short = set(shorter.split())
-            words_long = set(longer.split())
-
-            # Merge if all shorter words in longer (substring match)
-            # Examples: "penguin" ⊂ "tucnak penguin", "office" ⊂ "office us"
-            if words_short.issubset(words_long):
-                keys_to_merge.append((shorter, longer))
+            if short_words.issubset(long_words):
+                keys_to_merge.append((short_key, long_key))
 
     # Perform merges
     for short_key, long_key in keys_to_merge:
         if short_key not in series or long_key not in series:
-            continue  # Already merged
+            continue
 
-        # Merge season data from long into short
         merge_season_data(series[short_key], series[long_key])
 
-        # Pick best display name
         short_display = series[short_key].get('display_name', short_key.title())
         long_display = series[long_key].get('display_name', long_key.title())
-
         series[short_key]['display_name'] = pick_best_display_name(short_display, long_display)
 
-        # Remove long_key series
         del series[long_key]
 
     return grouped
@@ -242,41 +246,24 @@ def pick_best_display_name_from_list(names):
     Returns:
         Best name choice
     """
-    import re
-
     if not names:
         return None
 
     def clean_name(name):
         """Aggressively clean a display name."""
         cleaned = name
-
-        # Remove file extensions
-        cleaned = re.sub(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', '', cleaned, flags=re.IGNORECASE)
-
-        # Remove quality markers
-        cleaned = re.sub(r'\b(480p|720p|1080p|2160p|4K|UHD|FHD|HD)\b', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\b(BluRay|Blu-ray|WEB-DL|WEBDL|WEBRip|HDTV|BRRip|DVDRip|REMUX|Theatrical)\b', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\b(x264|x265|H\.?264|H\.?265|HEVC|XviD|AAC|AC3|DTS|DD5\.1|Atmos|TrueHD)\b', '', cleaned, flags=re.IGNORECASE)
-
-        # Remove language/subtitle markers
-        cleaned = re.sub(r'\b(CZ|EN|SK|MULTi)\s+(DABING|dabing|TITULKY|titulky|sub|dub)\b', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\s+(CZ|EN|SK)\b', '', cleaned, flags=re.IGNORECASE)
-
-        # Remove release groups in brackets/parens at end
-        cleaned = re.sub(r'\s*[\(\[][^\)\]]{0,40}[\)\]]$', '', cleaned)
-
-        # Remove episode/season numbers at end: "- 01", "20 serie", "03. série", etc.
-        cleaned = re.sub(r'[-\s]+\d{1,3}(?:\.\d+)?(\s+(serie|série|season|sezona|disk))?\s*(dab|BEZ HESLA)?$', '', cleaned, flags=re.IGNORECASE)
-
-        # Remove season/episode markers
-        cleaned = re.sub(r'\s*[Ss]\d{1,2}[Ee]\d{1,3}.*$', '', cleaned)
-        cleaned = re.sub(r'\s*\d{1,2}x\d{1,3}.*$', '', cleaned)
-
-        # Remove trailing separators and clean whitespace
-        cleaned = re.sub(r'[\s\-_\.]+$', '', cleaned)
-        cleaned = re.sub(r'\s+', ' ', cleaned)
-
+        cleaned = _RE_FILE_EXT.sub('', cleaned)
+        cleaned = _RE_QUALITY.sub('', cleaned)
+        cleaned = _RE_SOURCE.sub('', cleaned)
+        cleaned = _RE_CODEC.sub('', cleaned)
+        cleaned = _RE_LANG_LABEL.sub('', cleaned)
+        cleaned = _RE_LANG_CODE.sub('', cleaned)
+        cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
+        cleaned = _RE_TRAILING_NUM.sub('', cleaned)
+        cleaned = _RE_SE_MARKER.sub('', cleaned)
+        cleaned = _RE_NxN_MARKER.sub('', cleaned)
+        cleaned = _RE_TRAILING_SEP.sub('', cleaned)
+        cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
         return cleaned.strip()
 
     # Clean all names
@@ -338,22 +325,10 @@ def merge_season_data(target, source):
             # Season exists in both - merge episodes
             for ep_num in source['seasons'][season_num]:
                 if ep_num not in target['seasons'][season_num]:
-                    # New episode - copy versions
                     target['seasons'][season_num][ep_num] = source['seasons'][season_num][ep_num]
                 else:
-                    # Episode exists in both - merge versions
+                    # Just extend — dedup/sort happens once after all merges
                     target['seasons'][season_num][ep_num].extend(source['seasons'][season_num][ep_num])
-
-                    # Deduplicate after merge
-                    target['seasons'][season_num][ep_num] = deduplicate_versions(
-                        target['seasons'][season_num][ep_num]
-                    )
-
-                    # Re-sort by size
-                    target['seasons'][season_num][ep_num].sort(
-                        key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
-                        reverse=True
-                    )
 
     # Recalculate total episodes
     unique_episodes = set()
@@ -530,8 +505,7 @@ def group_by_series(files, token=None, enable_csfd=True):
             file_dict['season'] = season
             file_dict['series_name'] = series
 
-            # Parse quality metadata for ranking
-            file_dict['quality_meta'] = parse_quality_metadata(filename)
+            # Defer quality metadata parsing — computed on demand in version dialogs
 
             # Extract language tag for metadata storage
             file_dict['language'] = extract_language_tag(filename)
@@ -607,10 +581,22 @@ def group_by_series(files, token=None, enable_csfd=True):
     # Merge series with dual canonical names (e.g., "the penguin|tucnak")
     result = merge_dual_canonical_series(result)
 
+    # Single dedup+sort pass after all merges (avoids redundant per-merge dedup)
+    for series_data in result['series'].values():
+        unique_episodes = set()
+        for season_num, episodes in series_data['seasons'].items():
+            for ep_num, versions in episodes.items():
+                episodes[ep_num] = deduplicate_versions(versions)
+                episodes[ep_num].sort(
+                    key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                    reverse=True)
+                unique_episodes.add((season_num, ep_num))
+        series_data['total_episodes'] = len(unique_episodes)
+
     # Group remaining files as movies (if setting enabled)
     try:
         group_movies_enabled = _addon.getSettingBool('group_movies')
-    except:
+    except (ValueError, AttributeError, TypeError):
         group_movies_enabled = True  # Default to enabled
 
     if group_movies_enabled:
@@ -819,7 +805,7 @@ def merge_substring_movies(result):
     return result
 
 
-def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20, cancel_callback=None):
+def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20, cancel_callback=None, first_page_files=None, first_page_total=None):
     """Fetch search results and group by series.
 
     Args:
@@ -830,6 +816,8 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
         limit: Results per page (default 500)
         max_pages: Maximum pages to fetch (default 20, prevents unbounded fetching)
         cancel_callback: Optional callable returning True to cancel fetching
+        first_page_files: Pre-fetched files from first page (avoids double-fetch)
+        first_page_total: Total result count from first page response
 
     Fetches up to max_pages to get episode list.
     """
@@ -837,7 +825,17 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
     offset = 0
     page = 0
 
+    # Use pre-fetched first page if provided
+    if first_page_files is not None:
+        all_files.extend(first_page_files)
+        if first_page_total is not None and len(first_page_files) >= first_page_total:
+            return group_by_series(all_files, token=token, enable_csfd=False) if all_files else None
+        offset = len(first_page_files)
+        page = 1
+
     NONE_WHAT = _get_none_what()
+
+    consecutive_short = 0
 
     while page < max_pages:
         # Check for cancellation
@@ -872,6 +870,15 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
             break
 
         all_files.extend(page_files)
+
+        # Early stopping: if pages are returning very few results, stop
+        if len(page_files) < limit * 0.1:
+            consecutive_short += 1
+            if consecutive_short >= 2:
+                log_debug('fetch_and_group_series: early stop (diminishing results)')
+                break
+        else:
+            consecutive_short = 0
 
         # Check if more pages
         try:

@@ -12,16 +12,18 @@ import xbmcaddon
 from lib.logging import log_warning, log_error, log_debug
 
 try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    _HAS_FCNTL = False
+
+try:
     from xbmcvfs import translatePath
 except ImportError:
     from xbmc import translatePath
 
 _addon = xbmcaddon.Addon()
 _profile = translatePath(_addon.getAddonInfo('profile'))
-try:
-    _profile = _profile.decode("utf-8")
-except (AttributeError, UnicodeDecodeError):
-    pass
 
 SEARCH_HISTORY = 'search_history'
 
@@ -30,11 +32,13 @@ SEARCH_HISTORY = 'search_history'
 # but we use a lock for safety in case of background service threads.
 _series_cache = {}
 _cache_timestamps = {}
+_cache_ttls = {}
 _cache_lock = threading.Lock()
 _csfd_db = None
 
 # Default TTL: 5 minutes (300 seconds)
 DEFAULT_CACHE_TTL = 300
+MAX_CACHE_ENTRIES = 50
 
 
 def get_series_cache():
@@ -45,8 +49,22 @@ def get_series_cache():
 def cache_set(key, value, ttl=None):
     """Thread-safe cache write with optional TTL."""
     with _cache_lock:
+        # Evict oldest entries if cache is full
+        while len(_series_cache) >= MAX_CACHE_ENTRIES and key not in _series_cache:
+            if not _cache_timestamps:
+                break
+            oldest_key = min(_cache_timestamps, key=_cache_timestamps.get)
+            _series_cache.pop(oldest_key, None)
+            _cache_timestamps.pop(oldest_key, None)
+            _cache_ttls.pop(oldest_key, None)
+            log_debug("Cache evicted: {}".format(oldest_key))
+
         _series_cache[key] = value
         _cache_timestamps[key] = time.time()
+        if ttl is not None:
+            _cache_ttls[key] = ttl
+        elif key in _cache_ttls:
+            del _cache_ttls[key]
         log_debug("Cache set: {} (ttl={})".format(key, ttl or 'default'))
 
 
@@ -60,18 +78,21 @@ def cache_get(key, ttl=None):
     Returns:
         Cached value or None if missing/expired
     """
-    effective_ttl = DEFAULT_CACHE_TTL if ttl is None else ttl
     with _cache_lock:
         if key not in _series_cache:
             return None
+
+        # Use per-item TTL if stored, then parameter, then default
+        effective_ttl = _cache_ttls.get(key, DEFAULT_CACHE_TTL if ttl is None else ttl)
 
         # Check TTL if set
         if effective_ttl > 0:
             cached_time = _cache_timestamps.get(key, 0)
             if time.time() - cached_time > effective_ttl:
                 log_debug("Cache expired: {}".format(key))
-                del _series_cache[key]
-                del _cache_timestamps[key]
+                _series_cache.pop(key, None)
+                _cache_timestamps.pop(key, None)
+                _cache_ttls.pop(key, None)
                 return None
 
         return _series_cache[key]
@@ -82,6 +103,7 @@ def clear_cache():
     with _cache_lock:
         _series_cache.clear()
         _cache_timestamps.clear()
+        _cache_ttls.clear()
         log_debug("Cache cleared")
 
 
@@ -114,8 +136,20 @@ def get_or_fetch_grouped(params, token, check_key=None, check_type='series'):
     return cache_key, grouped
 
 
+def _flock(f, exclusive=False):
+    """Acquire file lock if available (Unix). No-op on Windows/Android."""
+    if _HAS_FCNTL:
+        fcntl.flock(f, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+
+
+def _funlock(f):
+    """Release file lock if available."""
+    if _HAS_FCNTL:
+        fcntl.flock(f, fcntl.LOCK_UN)
+
+
 def loadsearch():
-    """Load search history from disk."""
+    """Load search history from disk (with file locking)."""
     history = []
     try:
         if not os.path.exists(_profile):
@@ -124,10 +158,12 @@ def loadsearch():
         log_error("Failed to create profile directory: " + str(e))
 
     try:
-        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'r', encoding='utf8') as file:
-            fdata = file.read()
-            file.close()
-            history = json.loads(fdata)
+        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'r', encoding='utf8') as f:
+            _flock(f)
+            try:
+                history = json.loads(f.read())
+            finally:
+                _funlock(f)
     except (IOError, OSError, ValueError) as e:
         log_warning("Failed to load search history: " + str(e))
 
@@ -135,15 +171,14 @@ def loadsearch():
 
 
 def savesearch(history):
-    """Save search history to disk."""
+    """Save search history to disk (with file locking)."""
     try:
-        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'w', encoding='utf8') as file:
+        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'w', encoding='utf8') as f:
+            _flock(f, exclusive=True)
             try:
-                data = json.dumps(history).decode('utf8')
-            except AttributeError:
-                data = json.dumps(history)
-            file.write(data)
-            file.close()
+                f.write(json.dumps(history))
+            finally:
+                _funlock(f)
     except (IOError, OSError) as e:
         log_error("Failed to save search history: " + str(e))
 

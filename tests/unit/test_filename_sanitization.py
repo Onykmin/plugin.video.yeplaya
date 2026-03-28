@@ -10,75 +10,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mock Kodi modules before any imports
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
-
-    @staticmethod
-    def log(msg, level=0):
-        pass
-
-class MockXBMCAddon:
-    def __init__(self):
-        self._settings = {}
-
-    def getSettingBool(self, key):
-        return True
-
-    def getSetting(self, key):
-        return self._settings.get(key, '')
-
-    def setSetting(self, key, value):
-        self._settings[key] = value
-
-    def getAddonInfo(self, key):
-        return 'test.addon'
-
-    def getLocalizedString(self, id):
-        return 'Localized string {}'.format(id)
-
-class MockXBMCGUI:
-    NOTIFICATION_INFO = 1
-    NOTIFICATION_WARNING = 2
-    NOTIFICATION_ERROR = 3
-
-    class Dialog:
-        def notification(self, *args, **kwargs):
-            pass
-
-    class ListItem:
-        def __init__(self, *args, **kwargs):
-            pass
-
-class MockXBMCPlugin:
-    SORT_METHOD_NONE = 0
-    SORT_METHOD_LABEL = 1
-
-    @staticmethod
-    def setResolvedUrl(*args, **kwargs):
-        pass
-
-class MockXBMCVFS:
-    @staticmethod
-    def exists(path):
-        return True
-
-    class File:
-        def __init__(self, *args, **kwargs):
-            pass
-        def write(self, data):
-            pass
-        def close(self):
-            pass
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcgui'] = MockXBMCGUI()
-sys.modules['xbmcplugin'] = MockXBMCPlugin()
-sys.modules['xbmcaddon'] = type('obj', (object,), {'Addon': MockXBMCAddon})()
-sys.modules['xbmcvfs'] = MockXBMCVFS()
+# Mocks provided by conftest.py
 
 # Mock requests module
 class MockSession:

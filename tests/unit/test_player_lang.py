@@ -176,25 +176,25 @@ class TestYePlayer:
     def test_wait_for_playback_returns_on_error(self):
         """wait_for_playback exits on playback error."""
         player = self._make_player({})
-        player._error = True
+        player._playback_done = True
         player.wait_for_playback(timeout=1)
 
     def test_on_playback_error_sets_flag(self):
         """onPlayBackError should set _error flag."""
         player = self._make_player({})
-        assert player._error is False
+        assert player._playback_done is False
         player.onPlayBackError()
-        assert player._error is True
+        assert player._playback_done is True
 
     def test_on_playback_stopped_sets_flag(self):
         player = self._make_player({})
         player.onPlayBackStopped()
-        assert player._error is True
+        assert player._playback_done is True
 
     def test_on_playback_ended_sets_flag(self):
         player = self._make_player({})
         player.onPlayBackEnded()
-        assert player._error is True
+        assert player._playback_done is True
 
     def test_sub_auto_missing_defaults_off(self):
         """If sub_auto not in settings, subtitles found but not auto-enabled."""

@@ -13,6 +13,10 @@ class MockAddon:
     def getSetting(self, key):
         return self._settings.get(key, '')
 
+    def getSettingBool(self, key):
+        val = self._settings.get(key, 'true')
+        return val == 'true' or val is True
+
     def setSetting(self, key, value):
         self._settings[key] = value
 
@@ -21,6 +25,9 @@ class MockAddon:
 
     def getLocalizedString(self, id):
         return f'String_{id}'
+
+    def openSettings(self):
+        pass
 
 
 class MockListItem:
@@ -92,6 +99,7 @@ def setup_kodi_mocks():
     mock_addon = MockAddon()
 
     xbmc = MagicMock()
+    xbmc.LOGDEBUG = 0
     xbmc.LOGINFO = 1
     xbmc.LOGWARNING = 2
     xbmc.LOGERROR = 3
@@ -109,11 +117,18 @@ def setup_kodi_mocks():
     xbmcgui.NOTIFICATION_ERROR = 3
 
     xbmcplugin = MagicMock()
+    xbmcplugin.SORT_METHOD_NONE = 0
+    xbmcplugin.SORT_METHOD_LABEL = 1
+
+    xbmcvfs = MagicMock()
+    xbmcvfs.translatePath = lambda x: x
+    xbmcvfs.exists = MagicMock(return_value=True)
 
     sys.modules['xbmc'] = xbmc
     sys.modules['xbmcaddon'] = xbmcaddon
     sys.modules['xbmcgui'] = xbmcgui
     sys.modules['xbmcplugin'] = xbmcplugin
+    sys.modules['xbmcvfs'] = xbmcvfs
 
     return mock_addon
 
