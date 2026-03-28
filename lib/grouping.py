@@ -142,6 +142,14 @@ def merge_substring_series(grouped):
                 continue
 
             if short_words.issubset(long_words):
+                # Safety: if both groups have significant episodes and the extra
+                # words are short (likely sequel/spinoff markers like Z, GT, Super),
+                # don't merge — these are different series
+                extra_words = long_words - short_words
+                short_eps = series[short_key]['total_episodes']
+                long_eps = series[long_key]['total_episodes']
+                if min(short_eps, long_eps) >= 3 and all(len(w) <= 5 for w in extra_words):
+                    continue
                 keys_to_merge.append((short_key, long_key))
 
     # Perform merges
@@ -831,9 +839,93 @@ def group_movies(files):
     # Merge movies with identical titles across nearby years (uploader year errors)
     result = merge_crossyear_movies(result)
 
+    # Merge dual-name movie keys with matching simple keys
+    # e.g., "blade 2|blade ii|2002" merges into "blade 2|2002"
+    result = merge_dual_key_movies(result)
+
     # Clean display names (dots→spaces, dashes→spaces, strip artifacts)
     for movie_data in result['movies'].values():
         movie_data['display_name'] = _clean_movie_display_name(movie_data['display_name'])
+
+    return result
+
+
+def merge_dual_key_movies(result):
+    """Merge dual-name movie keys into matching simple keys.
+
+    Handles: "blade 2|blade ii|2002" should merge with "blade 2|2002"
+    because "blade 2" is a pipe-component of the dual key and matches
+    the simple key's title, with same year.
+    """
+    movies = result.get('movies', {})
+    if len(movies) < 2:
+        return result
+
+    # Build lookup: (simple_title, year) → key for non-pipe title keys
+    simple_keys = {}  # (title, year) → key
+    dual_keys = []    # keys with pipes in title part
+    for key, data in movies.items():
+        year = data.get('year', 0)
+        if '|' in key:
+            title_part = key.rsplit('|', 1)[0]
+            if '|' in title_part:
+                dual_keys.append(key)
+            else:
+                simple_keys[(title_part, year)] = key
+        else:
+            simple_keys[(key, year)] = key
+
+    keys_to_delete = set()
+    for dual_key in dual_keys:
+        if dual_key in keys_to_delete:
+            continue
+        year = movies[dual_key].get('year', 0)
+        title_part = dual_key.rsplit('|', 1)[0]  # e.g., "blade 2|blade ii"
+        components = [c.strip() for c in title_part.split('|') if c.strip()]
+
+        # Find a simple key matching any component
+        target = None
+        for comp in components:
+            if (comp, year) in simple_keys:
+                target = simple_keys[(comp, year)]
+                break
+            # Also try without spaces (blade2 → blade 2)
+            comp_spaced = re.sub(r'(\D)(\d)', r'\1 \2', comp)
+            if comp_spaced != comp and (comp_spaced, year) in simple_keys:
+                target = simple_keys[(comp_spaced, year)]
+                break
+
+        if target and target in movies and dual_key in movies:
+            movies[target]['versions'].extend(movies[dual_key]['versions'])
+            movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
+            movies[target]['versions'].sort(
+                key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                reverse=True)
+            log_debug(f'Dual-key movie merge: "{dual_key}" → "{target}"')
+            keys_to_delete.add(dual_key)
+
+    # Also merge spaceless variants (blade2 → blade 2) within same year
+    for key in list(movies.keys()):
+        if key in keys_to_delete or '|' not in key:
+            continue
+        title = key.rsplit('|', 1)[0]
+        year = movies[key].get('year', 0)
+        # Try adding space before digits: "blade2" → "blade 2"
+        spaced = re.sub(r'(\D)(\d)', r'\1 \2', title)
+        if spaced != title and (spaced, year) in simple_keys:
+            target = simple_keys[(spaced, year)]
+            if target in movies and key in movies:
+                movies[target]['versions'].extend(movies[key]['versions'])
+                movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
+                movies[target]['versions'].sort(
+                    key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                    reverse=True)
+                log_debug(f'Spaceless movie merge: "{key}" → "{target}"')
+                keys_to_delete.add(key)
+
+    for key in keys_to_delete:
+        if key in movies:
+            del movies[key]
 
     return result
 
@@ -989,13 +1081,13 @@ def merge_substring_movies(result):
             if key1 in keys_to_delete:
                 continue
             title1 = key_titles[key1]
-            words1 = set(title1.split())
+            words1 = set(title1.replace('|', ' ').split())
 
             for key2 in keys[i+1:]:
                 if key2 in keys_to_delete:
                     continue
                 title2 = key_titles[key2]
-                words2 = set(title2.split())
+                words2 = set(title2.replace('|', ' ').split())
 
                 # Check substring relationship (word-based)
                 # Merge if one title's words are subset of another

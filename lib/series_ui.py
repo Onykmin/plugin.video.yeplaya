@@ -282,7 +282,10 @@ def browse_other(params):
         listitem.setArt({'icon': 'DefaultMovies.png'})
         xbmcplugin.addDirectoryItem(_handle, get_url(action='separator'), listitem, False)
 
-        for canonical_key in sorted(grouped['movies'].keys()):
+        # Sort movies: most versions first (best match), then by year desc
+        for canonical_key in sorted(grouped['movies'].keys(),
+                                    key=lambda k: (-len(grouped['movies'][k].get('versions', [])),
+                                                   -grouped['movies'][k].get('year', 0))):
             movie_data = grouped['movies'][canonical_key]
             versions = movie_data['versions']
             year = movie_data['year']

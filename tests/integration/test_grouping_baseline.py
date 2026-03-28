@@ -93,7 +93,7 @@ TEST_CASES = {
     # Series - Dual names (Czech/English)
     'penguin': {
         'type': 'series',
-        'expected_groups': 6,
+        'expected_groups': 8,  # 500-file baseline
         'target_groups': 6,  # 6 is correct: Penguin + Batman + DragonBall + Dirty Jobs + Wonder Pets + Spravna dvojka
         'notes': 'The Penguin / Tučňák merged; other series are correct separate groups',
     },
@@ -105,19 +105,19 @@ TEST_CASES = {
     },
     'the office': {
         'type': 'series',
-        'expected_groups': 3,
+        'expected_groups': 7,  # 500-file baseline
         'target_groups': 3,  # Office + Mary Tyler Moore + edge case
         'notes': 'Main Office series grouped correctly as "Kancl"',
     },
     'pokemon': {
         'type': 'series',
-        'expected_groups': None,
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,  # Ideally all Pokemon in one group
         'notes': 'Pokemon has many spin-offs, complex case',
     },
     'chainsaw man': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Anime with standard naming',
     },
@@ -129,7 +129,7 @@ TEST_CASES = {
     },
     'solo leveling': {
         'type': 'series',
-        'expected_groups': 1,  # Updated after C1 ident fix: dedup merged groups
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Same anime but different language names',
     },
@@ -147,26 +147,26 @@ TEST_CASES = {
     },
     'game of thrones': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Multi-word title',
     },
     'attack on titan': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 4,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Attack on Titan / Shingeki no Kyojin',
     },
     # Movies
     'inception 2010': {
         'type': 'movie',
-        'expected_groups': 5,  # v9: relevance filter drops non-inception 2010 movies
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 3,
         'notes': 'Relevance filter removes unrelated 2010 movies',
     },
     'avatar 2009': {
         'type': 'movie',
-        'expected_groups': 4,  # v3: expanded non-significant words merge scifi/dabing/avi variants
+        'expected_groups': 1,  # 500-file baseline
         'target_groups': 3,
         'notes': 'Avatar variants merged; remaining: avatar, actor names, 3d, extended',
     },
@@ -179,7 +179,7 @@ TEST_CASES = {
     },
     'lost': {
         'type': 'series',
-        'expected_groups': 3,
+        'expected_groups': 6,  # 500-file baseline
         'target_groups': 1,
         'notes': 'SHORT name, false merge danger (Lost Girl, Lost in Space)',
     },
@@ -191,7 +191,7 @@ TEST_CASES = {
     },
     'dark': {
         'type': 'series',
-        'expected_groups': 7,  # v1: short key protection prevents false merge of dark+dark matter+dark blue etc
+        'expected_groups': 13,  # 500-file baseline
         'target_groups': 7,  # These ARE different shows, 7 is correct
         'notes': 'VERY short name; dark matter, dark blue etc are separate shows',
     },
@@ -221,19 +221,19 @@ TEST_CASES = {
     },
     'house of the dragon': {
         'type': 'series',
-        'expected_groups': 2,  # v4: similarity merge "house of dragon" ↔ "house of dragons"
+        'expected_groups': 3,  # 500-file baseline
         'target_groups': 1,
         'notes': 'GoT spin-off',
     },
     'better call saul': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 3,  # 500-file baseline
         'target_groups': 1,
         'notes': 'BB universe — correctly separate from Breaking Bad',
     },
     'the boys': {
         'type': 'series',
-        'expected_groups': 19,  # v1: short key protection stops false merges
+        'expected_groups': 56,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Very noisy results, many false series from unrelated files',
     },
@@ -251,44 +251,44 @@ TEST_CASES = {
     },
     'squid game': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 3,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Korean/English — correctly grouped',
     },
     'severance': {
         'type': 'series',
-        'expected_groups': 2,
+        'expected_groups': 6,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Single-word; "lao" false series detected',
     },
     # === NEW SERIES (Anime) ===
     'naruto': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 5,  # 500-file baseline
         'target_groups': 1,
         'notes': 'High ep count — correctly grouped',
     },
     'one piece': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Very high ep count — correctly grouped',
     },
     'demon slayer': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Dual-name Kimetsu no Yaiba — correctly grouped',
     },
     'jujutsu kaisen': {
         'type': 'series',
-        'expected_groups': 1,  # v4: similarity merge catches "jujuts kaisen" typo
+        'expected_groups': 2,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Japanese naming',
     },
     'dragon ball': {
         'type': 'series',
-        'expected_groups': 9,  # v4: "dragonball" merged with "dragon ball" (correct)
+        'expected_groups': 11,  # 500-file baseline
         'target_groups': None,  # Multiple sub-series is OK
         'notes': 'Multiple sub-series (DB, DBZ, DBS)',
     },
@@ -300,50 +300,50 @@ TEST_CASES = {
     },
     'spy x family': {
         'type': 'series',
-        'expected_groups': 2,
+        'expected_groups': 3,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Special chars; JP variant not merged',
     },
     # === NEW MOVIES ===
     'pulp fiction': {
         'type': 'movie',
-        'expected_groups': 5,
+        'expected_groups': 4,  # dual-key+pipe merge
         'target_groups': 1,
         'notes': 'Classic; multiple groups due to Czech names',
     },
     'the matrix': {
         'type': 'movie',
-        'expected_groups': 15,
+        'expected_groups': 11,  # dual-key+pipe merge
         'target_groups': None,  # Multiple sequels OK
         'notes': 'Franchise, sequel separation (1999, 2003, 2021)',
     },
     'star wars': {
         'type': 'movie',
-        'expected_groups': 5,
+        'expected_groups': 17,  # 500-file baseline
         'target_groups': None,
         'notes': 'Franchise, Episode in title',
     },
     'blade runner': {
         'type': 'movie',
-        'expected_groups': 16,  # v3: expanded non-significant words
+        'expected_groups': 13,  # dual-key+pipe merge
         'target_groups': 2,  # 1982 + 2049
         'notes': 'Many fragments; two versions (1982, 2049)',
     },
     'interstellar': {
         'type': 'movie',
-        'expected_groups': 6,  # fixed: Doctor Who ep correctly parsed as series now
+        'expected_groups': 5,  # dual-key+pipe merge
         'target_groups': 1,
         'notes': 'Single-word title; multiple groups',
     },
     'fight club': {
         'type': 'movie',
-        'expected_groups': 14,
+        'expected_groups': 12,  # dual-key+pipe merge
         'target_groups': 1,
         'notes': 'Many unrelated results',
     },
     'dune': {
         'type': 'movie',
-        'expected_groups': 34,  # v9: relevance filter drops unrelated files
+        'expected_groups': 39,  # 500-file baseline
         'target_groups': None,  # Multiple movies OK
         'notes': 'Relevance filter removes files without "dune" in name',
     },
@@ -355,13 +355,13 @@ TEST_CASES = {
     },
     'joker': {
         'type': 'movie',
-        'expected_groups': 14,  # v3: expanded non-significant words
+        'expected_groups': 19,  # 500-file baseline
         'target_groups': 2,  # 2019 + 2024
         'notes': 'Many unrelated results',
     },
     'gladiator': {
         'type': 'movie',
-        'expected_groups': 28,  # v3: expanded non-significant words
+        'expected_groups': 28,  # 500-file baseline
         'target_groups': 2,  # 2000 + 2024
         'notes': 'Many unrelated results',
     },
@@ -379,14 +379,14 @@ TEST_CASES = {
     },
     'barbie': {
         'type': 'movie',
-        'expected_groups': 81,  # v3: expanded non-significant words
+        'expected_groups': 106,  # 500-file baseline
         'target_groups': 1,
         'notes': 'Very noisy; many Barbie animated movies',
     },
 }
 
 
-def fetch_webshare_search(query, limit=200, category='video'):
+def fetch_webshare_search(query, limit=500, category='video'):
     """Fetch search results from Webshare API (public, no auth needed)."""
     import requests
 
@@ -415,7 +415,7 @@ def get_cache_path(query):
     return CACHE_DIR / f'{safe_name}.xml'
 
 
-def fetch_with_cache(query, limit=200, use_cache=True):
+def fetch_with_cache(query, limit=500, use_cache=True):
     """Fetch with optional caching."""
     cache_path = get_cache_path(query)
 

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T17:46:35.247986",
+  "timestamp": "2026-03-28T17:40:37.027976",
   "test_cases": {
     "penguin": {
       "query": "penguin",
@@ -114,11 +114,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 8,
+        "expected_groups": 6,
         "target_groups": 6,
         "notes": "The Penguin / Tučňák merged; other series are correct separate groups"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "south park": {
       "query": "south park",
@@ -188,33 +188,15 @@
     "the office": {
       "query": "the office",
       "total_files": 468,
-      "series_groups": 7,
+      "series_groups": 4,
       "movie_groups": 1,
       "non_series": 4,
       "series_details": {
-        "office [1": {
-          "display_name": "The Office [1 01] Pilot",
-          "seasons": 1,
-          "episodes": 6,
-          "versions": 6
-        },
         "office": {
           "display_name": "The Office",
           "seasons": 9,
-          "episodes": 115,
-          "versions": 187
-        },
-        "office uk": {
-          "display_name": "The Office UK",
-          "seasons": 2,
-          "episodes": 14,
-          "versions": 14
-        },
-        "office us": {
-          "display_name": "The Office US",
-          "seasons": 6,
-          "episodes": 97,
-          "versions": 240
+          "episodes": 152,
+          "versions": 447
         },
         "mary tyler moore show": {
           "display_name": "The Mary Tyler Moore Show",
@@ -243,39 +225,30 @@
         }
       },
       "potential_issues": [
-        "Substring not merged: 'office [1' vs 'office'",
-        "Substring not merged: 'office' vs 'office uk'",
-        "Substring not merged: 'office' vs 'office us'",
         "Single-ep series (might be movie?): 'mary tyler moore show'",
         "Single-ep series (might be movie?): 'monk'",
         "Single-ep series (might be movie?): 'name that tune'"
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 7,
+        "expected_groups": 3,
         "target_groups": 3,
         "notes": "Main Office series grouped correctly as \"Kancl\""
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "pokemon": {
       "query": "pokemon",
       "total_files": 500,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 3,
       "non_series": 49,
       "series_details": {
-        "pokemon xy": {
-          "display_name": "Pokemon XY",
-          "seasons": 1,
-          "episodes": 45,
-          "versions": 48
-        },
         "pokemon": {
           "display_name": "Pokemon",
           "seasons": 15,
-          "episodes": 247,
-          "versions": 380
+          "episodes": 291,
+          "versions": 428
         }
       },
       "movie_details": {
@@ -295,21 +268,19 @@
           "versions": 1
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'pokemon xy' vs 'pokemon'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": null,
         "target_groups": 1,
         "notes": "Pokemon has many spin-offs, complex case"
       },
-      "status": "✓ PASS"
+      "status": "? (no expectation)"
     },
     "chainsaw man": {
       "query": "chainsaw man",
       "total_files": 152,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 4,
       "non_series": 8,
       "series_details": {
@@ -317,13 +288,7 @@
           "display_name": "Chainsaw Man",
           "seasons": 1,
           "episodes": 12,
-          "versions": 125
-        },
-        "电锯人 chainsaw man": {
-          "display_name": "电锯人 Chainsaw Man - 02 (B-Global 38",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
+          "versions": 128
         }
       },
       "movie_details": {
@@ -348,12 +313,10 @@
           "versions": 2
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'chainsaw man' vs '电锯人 chainsaw man'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Anime with standard naming"
       },
@@ -386,28 +349,22 @@
     "solo leveling": {
       "query": "solo leveling",
       "total_files": 389,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 0,
       "non_series": 0,
       "series_details": {
-        "solo leveling v2": {
-          "display_name": "Solo Leveling V2",
-          "seasons": 1,
-          "episodes": 10,
-          "versions": 10
-        },
         "ore dake level up na ken": {
           "display_name": "Solo Leveling",
           "seasons": 3,
           "episodes": 39,
-          "versions": 208
+          "versions": 218
         }
       },
       "movie_details": {},
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Same anime but different language names"
       },
@@ -486,7 +443,7 @@
     "game of thrones": {
       "query": "game of thrones",
       "total_files": 500,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 5,
       "non_series": 4,
       "series_details": {
@@ -494,13 +451,7 @@
           "display_name": "Game of Thrones",
           "seasons": 8,
           "episodes": 75,
-          "versions": 412
-        },
-        "game of thrones hra o truny": {
-          "display_name": "Game-of-Thrones-Hra-o-truny",
-          "seasons": 8,
-          "episodes": 72,
-          "versions": 72
+          "versions": 484
         }
       },
       "movie_details": {
@@ -530,12 +481,10 @@
           "versions": 3
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'game of thrones' vs 'game of thrones hra o truny'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Multi-word title"
       },
@@ -544,7 +493,7 @@
     "attack on titan": {
       "query": "attack on titan",
       "total_files": 390,
-      "series_groups": 4,
+      "series_groups": 1,
       "movie_groups": 5,
       "non_series": 11,
       "series_details": {
@@ -552,25 +501,7 @@
           "display_name": "Attack On Titan",
           "seasons": 4,
           "episodes": 94,
-          "versions": 339
-        },
-        "attack on titan oad lost girls": {
-          "display_name": "Attack On Titan OAD - Lost Girls",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
-        },
-        "attack on titan oad": {
-          "display_name": "Attack On Titan OAD",
-          "seasons": 1,
-          "episodes": 5,
-          "versions": 5
-        },
-        "shingeki no kyojin ova": {
-          "display_name": "Shingeki no Kyojin (Attack on Titan) - OVA 1 - ENG SUBS",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
+          "versions": 350
         }
       },
       "movie_details": {
@@ -600,14 +531,10 @@
           "versions": 2
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'attack on titan' vs 'attack on titan oad lost girls'",
-        "Substring not merged: 'attack on titan' vs 'attack on titan oad'",
-        "Substring not merged: 'attack on titan oad lost girls' vs 'attack on titan oad'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 4,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Attack on Titan / Shingeki no Kyojin"
       },
@@ -635,11 +562,11 @@
       "potential_issues": [],
       "expected": {
         "type": "movie",
-        "expected_groups": 2,
+        "expected_groups": 3,
         "target_groups": 3,
         "notes": "Relevance filter removes unrelated 2010 movies"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "avatar 2009": {
       "query": "avatar 2009",
@@ -667,11 +594,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 1,
+        "expected_groups": 2,
         "target_groups": 3,
         "notes": "Avatar variants merged; remaining: avatar, actor names, 3d, extended"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "stranger things": {
       "query": "stranger things",
@@ -798,11 +725,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 6,
+        "expected_groups": 3,
         "target_groups": 1,
         "notes": "SHORT name, false merge danger (Lost Girl, Lost in Space)"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "friends": {
       "query": "friends",
@@ -1181,11 +1108,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 13,
+        "expected_groups": 7,
         "target_groups": 7,
         "notes": "VERY short name; dark matter, dark blue etc are separate shows"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "1883": {
       "query": "1883",
@@ -1384,7 +1311,7 @@
     "house of the dragon": {
       "query": "house of the dragon",
       "total_files": 195,
-      "series_groups": 3,
+      "series_groups": 2,
       "movie_groups": 9,
       "non_series": 0,
       "series_details": {
@@ -1392,19 +1319,13 @@
           "display_name": "House of the Dragon",
           "seasons": 3,
           "episodes": 19,
-          "versions": 128
+          "versions": 135
         },
         "house of the dragon|rod draka": {
           "display_name": "House of the Dragon / Rod Draka",
           "seasons": 2,
           "episodes": 14,
           "versions": 20
-        },
-        "rod draka house of dragon": {
-          "display_name": "Rod Draka House of the Dragon",
-          "seasons": 2,
-          "episodes": 6,
-          "versions": 7
         }
       },
       "movie_details": {
@@ -1454,12 +1375,10 @@
           "versions": 3
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'house of dragon' vs 'rod draka house of dragon'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "GoT spin-off"
       },
@@ -1497,11 +1416,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "BB universe — correctly separate from Breaking Bad"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "the boys": {
       "query": "the boys",
@@ -2257,11 +2176,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 56,
+        "expected_groups": 19,
         "target_groups": 1,
         "notes": "Very noisy results, many false series from unrelated files"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "true detective": {
       "query": "true detective",
@@ -2335,16 +2254,10 @@
     "squid game": {
       "query": "squid game",
       "total_files": 500,
-      "series_groups": 3,
+      "series_groups": 2,
       "movie_groups": 16,
       "non_series": 0,
       "series_details": {
-        "squid game hd tit jizni korea": {
-          "display_name": "Squid Game 2021 tit Jižní Korea",
-          "seasons": 1,
-          "episodes": 9,
-          "versions": 9
-        },
         "squid game꞉ la sfida": {
           "display_name": "Squid Game꞉ La sfida",
           "seasons": 1,
@@ -2355,7 +2268,7 @@
           "display_name": "Squid Game",
           "seasons": 3,
           "episodes": 23,
-          "versions": 395
+          "versions": 404
         }
       },
       "movie_details": {
@@ -2443,11 +2356,11 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Korean/English — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "severance": {
       "query": "severance",
@@ -2518,16 +2431,16 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 6,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "Single-word; \"lao\" false series detected"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "naruto": {
       "query": "naruto",
       "total_files": 500,
-      "series_groups": 5,
+      "series_groups": 4,
       "movie_groups": 0,
       "non_series": 147,
       "series_details": {
@@ -2535,13 +2448,7 @@
           "display_name": "Naruto",
           "seasons": 15,
           "episodes": 294,
-          "versions": 341
-        },
-        "naruto movie": {
-          "display_name": "Naruto Movie 1 by Dyk",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
+          "versions": 344
         },
         "naruto066": {
           "display_name": "Naruto066",
@@ -2564,7 +2471,6 @@
       },
       "movie_details": {},
       "potential_issues": [
-        "Substring not merged: 'naruto' vs 'naruto movie'",
         "Substring not merged: 'naruto' vs 'naruto066'",
         "Substring not merged: 'naruto' vs 'naruto095'",
         "Substring not merged: 'naruto' vs 'naruto127'",
@@ -2573,30 +2479,24 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 5,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "High ep count — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "one piece": {
       "query": "one piece",
       "total_files": 500,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 1,
       "non_series": 22,
       "series_details": {
         "one piece": {
           "display_name": "One Piece",
           "seasons": 8,
-          "episodes": 454,
-          "versions": 468
-        },
-        "one piece movie": {
-          "display_name": "One-Piece-Movie-06-CZ",
-          "seasons": 1,
-          "episodes": 6,
-          "versions": 8
+          "episodes": 458,
+          "versions": 476
         }
       },
       "movie_details": {
@@ -2606,12 +2506,10 @@
           "versions": 1
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'one piece' vs 'one piece movie'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Very high ep count — correctly grouped"
       },
@@ -2682,16 +2580,16 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Dual-name Kimetsu no Yaiba — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "jujutsu kaisen": {
       "query": "jujutsu kaisen",
       "total_files": 500,
-      "series_groups": 2,
+      "series_groups": 1,
       "movie_groups": 2,
       "non_series": 3,
       "series_details": {
@@ -2699,13 +2597,7 @@
           "display_name": "Jujuts Kaisen",
           "seasons": 3,
           "episodes": 62,
-          "versions": 450
-        },
-        "jujutsu kaisen s3": {
-          "display_name": "Jujutsu Kaisen S3",
-          "seasons": 1,
-          "episodes": 10,
-          "versions": 32
+          "versions": 482
         }
       },
       "movie_details": {
@@ -2720,12 +2612,10 @@
           "versions": 1
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'jujutsu kaisen' vs 'jujutsu kaisen s3'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Japanese naming"
       },
@@ -2734,75 +2624,21 @@
     "dragon ball": {
       "query": "dragon ball",
       "total_files": 500,
-      "series_groups": 11,
+      "series_groups": 2,
       "movie_groups": 4,
       "non_series": 0,
       "series_details": {
-        "dragon ball z s08": {
-          "display_name": "Dragon Ball Z - S08 E240 - Revival",
-          "seasons": 1,
-          "episodes": 32,
-          "versions": 32
-        },
-        "dragon ball z s02": {
-          "display_name": "Dragon Ball Z - S02 E048 - The Hunted",
-          "seasons": 1,
-          "episodes": 36,
-          "versions": 36
-        },
-        "dragon ball z s06": {
-          "display_name": "Dragon Ball Z - S06 E177 - Goku vs Cell",
-          "seasons": 1,
-          "episodes": 28,
-          "versions": 28
-        },
         "dragon ball super": {
           "display_name": "Dragon Ball Super",
           "seasons": 1,
           "episodes": 11,
           "versions": 11
         },
-        "dragon ball z s01": {
-          "display_name": "Dragon Ball Z - S01 E007 - Day",
-          "seasons": 1,
-          "episodes": 33,
-          "versions": 33
-        },
-        "dragon ball z s03": {
-          "display_name": "Dragon Ball Z - S03 E081 - Deja Vu",
-          "seasons": 1,
-          "episodes": 29,
-          "versions": 29
-        },
-        "dragon ball z s04": {
-          "display_name": "Dragon Ball Z - S04 E138 - Closing In",
-          "seasons": 1,
-          "episodes": 28,
-          "versions": 28
-        },
-        "dragon ball z s05": {
-          "display_name": "Dragon Ball Z - S05 E149 - He's Here",
-          "seasons": 1,
-          "episodes": 25,
-          "versions": 25
-        },
-        "dragon ball z s07": {
-          "display_name": "Dragon Ball Z - S07 E204 - Blackmail",
-          "seasons": 1,
-          "episodes": 24,
-          "versions": 24
-        },
-        "dragon ball z s09": {
-          "display_name": "Dragon Ball Z - S09 E274 - Mind Trap",
-          "seasons": 1,
-          "episodes": 37,
-          "versions": 37
-        },
         "dragon ball z": {
           "display_name": "Dragon Ball Z",
           "seasons": 8,
-          "episodes": 212,
-          "versions": 212
+          "episodes": 482,
+          "versions": 484
         }
       },
       "movie_details": {
@@ -2827,24 +2663,14 @@
           "versions": 1
         }
       },
-      "potential_issues": [
-        "Substring not merged: 'dragon ball z s08' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s02' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s06' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s01' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s03' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s04' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s05' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s07' vs 'dragon ball z'",
-        "Substring not merged: 'dragon ball z s09' vs 'dragon ball z'"
-      ],
+      "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 11,
+        "expected_groups": 9,
         "target_groups": null,
         "notes": "Multiple sub-series (DB, DBZ, DBS)"
       },
-      "status": "✓ PASS"
+      "status": "⚠ OVER-MERGED"
     },
     "bleach": {
       "query": "bleach",
@@ -2879,16 +2705,10 @@
     "spy x family": {
       "query": "spy x family",
       "total_files": 312,
-      "series_groups": 3,
+      "series_groups": 2,
       "movie_groups": 1,
       "non_series": 3,
       "series_details": {
-        "spy x family s3": {
-          "display_name": "Spy x Family S3",
-          "seasons": 1,
-          "episodes": 13,
-          "versions": 26
-        },
         "[rin] spy x family|スハイファミリー": {
           "display_name": "スパイファミリー / [RIN] Spy x Family",
           "seasons": 1,
@@ -2899,7 +2719,7 @@
           "display_name": "Spy x Family",
           "seasons": 3,
           "episodes": 64,
-          "versions": 272
+          "versions": 298
         }
       },
       "movie_details": {
@@ -2914,7 +2734,7 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "Special chars; JP variant not merged"
       },
@@ -3057,15 +2877,15 @@
     "star wars": {
       "query": "star wars",
       "total_files": 500,
-      "series_groups": 7,
+      "series_groups": 5,
       "movie_groups": 17,
       "non_series": 10,
       "series_details": {
         "povstalci|star wars": {
           "display_name": "Star Wars",
           "seasons": 5,
-          "episodes": 79,
-          "versions": 385
+          "episodes": 82,
+          "versions": 421
         },
         "rebels|star wars povstalci": {
           "display_name": "Rebels / Star Wars Povstalci",
@@ -3078,18 +2898,6 @@
           "seasons": 1,
           "episodes": 1,
           "versions": 1
-        },
-        "star wars s01": {
-          "display_name": "Star Wars (EWOKS) - S01 E13 - Asha",
-          "seasons": 1,
-          "episodes": 13,
-          "versions": 27
-        },
-        "star wars s02": {
-          "display_name": "Star Wars (EWOKS) - S02 E05 - The Raich",
-          "seasons": 1,
-          "episodes": 9,
-          "versions": 9
         },
         "odboj|star wars": {
           "display_name": "Odboj / Star Wars",
@@ -3197,11 +3005,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 17,
+        "expected_groups": 5,
         "target_groups": null,
         "notes": "Franchise, Episode in title"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "blade runner": {
       "query": "blade runner",
@@ -3505,7 +3313,7 @@
     "dune": {
       "query": "dune",
       "total_files": 305,
-      "series_groups": 8,
+      "series_groups": 7,
       "movie_groups": 39,
       "non_series": 23,
       "series_details": {
@@ -3520,12 +3328,6 @@
           "seasons": 1,
           "episodes": 1,
           "versions": 2
-        },
-        "children of dune part": {
-          "display_name": "Children of Dune Part",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
         },
         "trailer dune2 tlr": {
           "display_name": "Trailer Dune2 TLR-8 IMAX 38",
@@ -3546,10 +3348,10 @@
           "versions": 2
         },
         "children of dune": {
-          "display_name": "Children of Dune E01 MULTi -MAJO",
+          "display_name": "Children of Dune Part",
           "seasons": 1,
           "episodes": 3,
-          "versions": 3
+          "versions": 6
         },
         "plimsoll productions tiny world": {
           "display_name": "Plimsoll Productions Tiny world",
@@ -3756,12 +3558,10 @@
         }
       },
       "potential_issues": [
-        "Substring not merged: 'dune' vs 'children of dune part'",
         "Substring not merged: 'dune' vs 'trailer dune2 tlr'",
         "Substring not merged: 'dune' vs 'duna proroctvi|dune prophecy'",
         "Substring not merged: 'dune' vs '7hitmovies moe|dune prophecy 2024'",
         "Substring not merged: 'dune' vs 'children of dune'",
-        "Substring not merged: 'children of dune part' vs 'children of dune'",
         "Single-ep series (might be movie?): 'aladdin'",
         "Single-ep series (might be movie?): 'trailer dune2 tlr'",
         "Single-ep series (might be movie?): '7hitmovies moe|dune prophecy 2024'",
@@ -3769,11 +3569,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 39,
+        "expected_groups": 29,
         "target_groups": null,
         "notes": "Relevance filter removes files without \"dune\" in name"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "oppenheimer": {
       "query": "oppenheimer",
@@ -4007,16 +3807,16 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 19,
+        "expected_groups": 13,
         "target_groups": 2,
         "notes": "Many unrelated results"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "gladiator": {
       "query": "gladiator",
       "total_files": 213,
-      "series_groups": 16,
+      "series_groups": 15,
       "movie_groups": 28,
       "non_series": 42,
       "series_details": {
@@ -4026,17 +3826,11 @@
           "episodes": 5,
           "versions": 9
         },
-        "gladiators uk": {
-          "display_name": "Gladiators UK",
-          "seasons": 1,
-          "episodes": 7,
-          "versions": 43
-        },
         "gladiators": {
           "display_name": "Gladiators",
           "seasons": 2,
-          "episodes": 9,
-          "versions": 14
+          "episodes": 12,
+          "versions": 57
         },
         "smrtici valecnici": {
           "display_name": "Smrtici valecnici",
@@ -4260,9 +4054,7 @@
         }
       },
       "potential_issues": [
-        "Substring not merged: 'gladiator' vs 'gladiators uk'",
         "Substring not merged: 'gladiator' vs 'gladiators'",
-        "Substring not merged: 'gladiators uk' vs 'gladiators'",
         "Single-ep series (might be movie?): 'smrtici valecnici'",
         "Single-ep series (might be movie?): 'uragan'",
         "Single-ep series (might be movie?): 'forged in fire'",
@@ -4279,11 +4071,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 28,
+        "expected_groups": 26,
         "target_groups": 2,
         "notes": "Many unrelated results"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "parasite": {
       "query": "parasite",
@@ -4982,11 +4774,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 106,
+        "expected_groups": 75,
         "target_groups": 1,
         "notes": "Very noisy; many Barbie animated movies"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     }
   }
 }

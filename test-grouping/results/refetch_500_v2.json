@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T17:46:35.247986",
+  "timestamp": "2026-03-28T17:42:48.244157",
   "test_cases": {
     "penguin": {
       "query": "penguin",
@@ -114,11 +114,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 8,
+        "expected_groups": 6,
         "target_groups": 6,
         "notes": "The Penguin / Tučňák merged; other series are correct separate groups"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "south park": {
       "query": "south park",
@@ -252,11 +252,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 7,
+        "expected_groups": 3,
         "target_groups": 3,
         "notes": "Main Office series grouped correctly as \"Kancl\""
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "pokemon": {
       "query": "pokemon",
@@ -300,11 +300,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": null,
         "target_groups": 1,
         "notes": "Pokemon has many spin-offs, complex case"
       },
-      "status": "✓ PASS"
+      "status": "? (no expectation)"
     },
     "chainsaw man": {
       "query": "chainsaw man",
@@ -353,11 +353,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Anime with standard naming"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "mashle": {
       "query": "mashle",
@@ -407,11 +407,11 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Same anime but different language names"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "suits": {
       "query": "suits",
@@ -535,11 +535,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Multi-word title"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "attack on titan": {
       "query": "attack on titan",
@@ -607,11 +607,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 4,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Attack on Titan / Shingeki no Kyojin"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "inception 2010": {
       "query": "inception 2010",
@@ -635,11 +635,11 @@
       "potential_issues": [],
       "expected": {
         "type": "movie",
-        "expected_groups": 2,
+        "expected_groups": 3,
         "target_groups": 3,
         "notes": "Relevance filter removes unrelated 2010 movies"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "avatar 2009": {
       "query": "avatar 2009",
@@ -667,11 +667,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 1,
+        "expected_groups": 2,
         "target_groups": 3,
         "notes": "Avatar variants merged; remaining: avatar, actor names, 3d, extended"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "stranger things": {
       "query": "stranger things",
@@ -798,11 +798,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 6,
+        "expected_groups": 3,
         "target_groups": 1,
         "notes": "SHORT name, false merge danger (Lost Girl, Lost in Space)"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "friends": {
       "query": "friends",
@@ -1181,11 +1181,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 13,
+        "expected_groups": 7,
         "target_groups": 7,
         "notes": "VERY short name; dark matter, dark blue etc are separate shows"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "1883": {
       "query": "1883",
@@ -1459,11 +1459,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "GoT spin-off"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "better call saul": {
       "query": "better call saul",
@@ -1497,11 +1497,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "BB universe — correctly separate from Breaking Bad"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "the boys": {
       "query": "the boys",
@@ -2257,11 +2257,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 56,
+        "expected_groups": 19,
         "target_groups": 1,
         "notes": "Very noisy results, many false series from unrelated files"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "true detective": {
       "query": "true detective",
@@ -2443,11 +2443,11 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Korean/English — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "severance": {
       "query": "severance",
@@ -2518,11 +2518,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 6,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "Single-word; \"lao\" false series detected"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "naruto": {
       "query": "naruto",
@@ -2573,11 +2573,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 5,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "High ep count — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "one piece": {
       "query": "one piece",
@@ -2611,11 +2611,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Very high ep count — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "demon slayer": {
       "query": "demon slayer",
@@ -2682,11 +2682,11 @@
       "potential_issues": [],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Dual-name Kimetsu no Yaiba — correctly grouped"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "jujutsu kaisen": {
       "query": "jujutsu kaisen",
@@ -2725,11 +2725,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 2,
+        "expected_groups": 1,
         "target_groups": 1,
         "notes": "Japanese naming"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "dragon ball": {
       "query": "dragon ball",
@@ -2840,11 +2840,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 11,
+        "expected_groups": 9,
         "target_groups": null,
         "notes": "Multiple sub-series (DB, DBZ, DBS)"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "bleach": {
       "query": "bleach",
@@ -2914,11 +2914,11 @@
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
+        "expected_groups": 2,
         "target_groups": 1,
         "notes": "Special chars; JP variant not merged"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "pulp fiction": {
       "query": "pulp fiction",
@@ -3197,11 +3197,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 17,
+        "expected_groups": 5,
         "target_groups": null,
         "notes": "Franchise, Episode in title"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "blade runner": {
       "query": "blade runner",
@@ -3769,11 +3769,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 39,
+        "expected_groups": 29,
         "target_groups": null,
         "notes": "Relevance filter removes files without \"dune\" in name"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "oppenheimer": {
       "query": "oppenheimer",
@@ -4007,11 +4007,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 19,
+        "expected_groups": 13,
         "target_groups": 2,
         "notes": "Many unrelated results"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "gladiator": {
       "query": "gladiator",
@@ -4279,11 +4279,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 28,
+        "expected_groups": 26,
         "target_groups": 2,
         "notes": "Many unrelated results"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     },
     "parasite": {
       "query": "parasite",
@@ -4982,11 +4982,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 106,
+        "expected_groups": 75,
         "target_groups": 1,
         "notes": "Very noisy; many Barbie animated movies"
       },
-      "status": "✓ PASS"
+      "status": "↓ REGRESSION"
     }
   }
 }
