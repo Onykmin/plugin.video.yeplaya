@@ -160,9 +160,9 @@ TEST_CASES = {
     # Movies
     'inception 2010': {
         'type': 'movie',
-        'expected_groups': 90,  # v3: expanded non-significant words
+        'expected_groups': 5,  # v9: relevance filter drops non-inception 2010 movies
         'target_groups': 3,
-        'notes': 'Search returns all movies from 2010; need relevance filtering',
+        'notes': 'Relevance filter removes unrelated 2010 movies',
     },
     'avatar 2009': {
         'type': 'movie',
@@ -343,9 +343,9 @@ TEST_CASES = {
     },
     'dune': {
         'type': 'movie',
-        'expected_groups': 44,  # v3: expanded non-significant words
+        'expected_groups': 34,  # v9: relevance filter drops unrelated files
         'target_groups': None,  # Multiple movies OK
-        'notes': 'Very noisy; many unrelated results containing "dune"',
+        'notes': 'Relevance filter removes files without "dune" in name',
     },
     'oppenheimer': {
         'type': 'movie',
@@ -367,7 +367,7 @@ TEST_CASES = {
     },
     'parasite': {
         'type': 'movie',
-        'expected_groups': 10,
+        'expected_groups': 9,  # v9: relevance filter
         'target_groups': 1,
         'notes': 'Korean/Czech dual (Parazit)',
     },
@@ -548,8 +548,8 @@ def run_baseline_tests(use_cache=True):
             results['test_cases'][query] = {'error': 'No files found'}
             continue
 
-        # Group
-        grouped = group_by_series(files)
+        # Group (pass query for relevance filtering)
+        grouped = group_by_series(files, search_query=query)
 
         # Calculate metrics
         metrics = calculate_metrics(query, files, grouped)

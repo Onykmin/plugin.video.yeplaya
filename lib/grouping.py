@@ -49,6 +49,51 @@ _RE_TRAILING_SEP = re.compile(r'[\s\-_\.]+$')
 _RE_MULTI_SPACE = re.compile(r'\s+')
 
 
+def _filter_irrelevant(files, query):
+    """Filter out files irrelevant to the search query.
+
+    Uses word-overlap check: keeps files that share at least one significant
+    query word with the filename. This is conservative — only drops files
+    that have ZERO overlap with the query.
+    """
+    try:
+        from unidecode import unidecode as _uni
+    except ImportError:
+        import unicodedata
+        def _uni(text):
+            return ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
+
+    query_words = set(_uni(query).lower().split())
+    # Remove very short words (articles, prepositions) and year-like tokens
+    query_words = {w for w in query_words if len(w) >= 3 and not re.match(r'^\d{4}$', w)}
+
+    if not query_words:
+        return files
+
+    # Also add stems (strip trailing s/es for plural matching)
+    stems = set()
+    for w in query_words:
+        stems.add(w)
+        if w.endswith('es') and len(w) > 4:
+            stems.add(w[:-2])
+        elif w.endswith('s') and len(w) > 3:
+            stems.add(w[:-1])
+
+    filtered = []
+    for f in files:
+        name = f.get('name', '')
+        name_lower = _uni(name).lower()
+        # Keep if any query word/stem appears as substring in filename
+        if any(qw in name_lower for qw in stems):
+            filtered.append(f)
+
+    dropped = len(files) - len(filtered)
+    if dropped > 0:
+        log_debug(f'Relevance filter: dropped {dropped}/{len(files)} files (no query word match)')
+
+    return filtered if filtered else files
+
+
 def merge_substring_series(grouped):
     """Merge series where one canonical key is substring of another.
 
@@ -449,13 +494,14 @@ def deduplicate_versions(versions):
     return result
 
 
-def group_by_series(files, token=None, enable_csfd=True):
+def group_by_series(files, token=None, enable_csfd=True, search_query=None):
     """Group file list by series, movies, and deduplicate.
 
     Args:
         files: List of file dicts
         token: WebShare token for CSFD enrichment
         enable_csfd: Enable CSFD metadata lookup
+        search_query: Original search query for relevance filtering
 
     Returns:
     {
@@ -484,6 +530,17 @@ def group_by_series(files, token=None, enable_csfd=True):
     }
     """
     xbmc.log(f'[YAWsP] group_by_series: Processing {len(files)} files', xbmc.LOGDEBUG)
+
+    # Pre-filter irrelevant results if search query provided and setting enabled
+    if search_query:
+        try:
+            filter_enabled = _addon.getSettingBool('filter_irrelevant')
+        except (ValueError, AttributeError, TypeError):
+            filter_enabled = True
+
+        if filter_enabled:
+            files = _filter_irrelevant(files, search_query)
+
     result = {'series': {}, 'movies': {}, 'non_series': []}
 
     for file_dict in files:
@@ -1008,5 +1065,5 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
         page += 1
 
     # Group by series and movies
-    return group_by_series(all_files, token=token, enable_csfd=False) if all_files else None
+    return group_by_series(all_files, token=token, enable_csfd=False, search_query=what) if all_files else None
 

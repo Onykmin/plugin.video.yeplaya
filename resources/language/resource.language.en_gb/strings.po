@@ -261,6 +261,10 @@ msgctxt "#30260"
 msgid "Group movies by title and year"
 msgstr ""
 
+msgctxt "#30261"
+msgid "Filter irrelevant search results"
+msgstr ""
+
 msgctxt "#30400"
 msgid "Back to search menu"
 msgstr ""

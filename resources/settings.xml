@@ -23,6 +23,7 @@
         <setting type="sep"/>
         <setting label="30051" id="experimental" type="bool" default="false" />
         <setting label="30260" id="group_movies" type="bool" default="true" />
+        <setting label="30261" id="filter_irrelevant" type="bool" default="true" />
         <setting id="duuid" type="text" visible="false" default="" />
         <setting type="lsep" label="30070" />
         <setting label="30071" id="audio_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
