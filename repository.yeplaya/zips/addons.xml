@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.5" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.6" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,11 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.0.6[/B]
+- fix grouping bugs: dedup, orphan merge, cross-year, genre words, ep marker
+- refactor UI into search_ui and series_ui modules
+- sort movies by version count, merge dual-key movies
+- improve cache re-fetch at 500 limit
 [B]1.0.5[/B]
 - add preferred audio/subtitle language selection with fallback
 [B]1.0.4[/B]
