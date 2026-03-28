@@ -160,15 +160,15 @@ TEST_CASES = {
     # Movies
     'inception 2010': {
         'type': 'movie',
-        'expected_groups': 93,  # Updated after C1 ident fix
-        'target_groups': 3,  # Inception + Inception/Pocatek + Cobol Job (rest are unrelated 2010 movies)
+        'expected_groups': 90,  # v3: expanded non-significant words
+        'target_groups': 3,
         'notes': 'Search returns all movies from 2010; need relevance filtering',
     },
     'avatar 2009': {
         'type': 'movie',
-        'expected_groups': 10,
-        'target_groups': 3,  # Avatar + Avatar extended + maybe 1 edge case
-        'notes': 'Avatar variants should merge; actor names/metadata in titles',
+        'expected_groups': 4,  # v3: expanded non-significant words merge scifi/dabing/avi variants
+        'target_groups': 3,
+        'notes': 'Avatar variants merged; remaining: avatar, actor names, 3d, extended',
     },
     # === NEW SERIES (Western) ===
     'stranger things': {
@@ -325,7 +325,7 @@ TEST_CASES = {
     },
     'blade runner': {
         'type': 'movie',
-        'expected_groups': 18,
+        'expected_groups': 16,  # v3: expanded non-significant words
         'target_groups': 2,  # 1982 + 2049
         'notes': 'Many fragments; two versions (1982, 2049)',
     },
@@ -343,7 +343,7 @@ TEST_CASES = {
     },
     'dune': {
         'type': 'movie',
-        'expected_groups': 45,
+        'expected_groups': 44,  # v3: expanded non-significant words
         'target_groups': None,  # Multiple movies OK
         'notes': 'Very noisy; many unrelated results containing "dune"',
     },
@@ -355,13 +355,13 @@ TEST_CASES = {
     },
     'joker': {
         'type': 'movie',
-        'expected_groups': 15,  # v2: resolution lookahead fix
+        'expected_groups': 14,  # v3: expanded non-significant words
         'target_groups': 2,  # 2019 + 2024
         'notes': 'Many unrelated results',
     },
     'gladiator': {
         'type': 'movie',
-        'expected_groups': 29,
+        'expected_groups': 28,  # v3: expanded non-significant words
         'target_groups': 2,  # 2000 + 2024
         'notes': 'Many unrelated results',
     },
@@ -373,13 +373,13 @@ TEST_CASES = {
     },
     'tenet': {
         'type': 'movie',
-        'expected_groups': 4,
+        'expected_groups': 3,  # v3: expanded non-significant words
         'target_groups': 1,
         'notes': 'Short name',
     },
     'barbie': {
         'type': 'movie',
-        'expected_groups': 84,
+        'expected_groups': 81,  # v3: expanded non-significant words
         'target_groups': 1,
         'notes': 'Very noisy; many Barbie animated movies',
     },

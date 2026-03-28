@@ -732,9 +732,24 @@ def merge_substring_movies(result):
     # Non-significant words for merging same-year edition variants
     # Year grouping already separates different-year releases; this handles
     # same-year variants like "Avatar" vs "Avatar Extended" (both 2009)
-    non_significant = {'1', '2', '3', '4', '5', 'i', 'ii', 'iii', 'iv', 'v',
-                       'extended', 'directors', 'cut', 'theatrical', 'remastered',
-                       'unrated', 'special', 'edition', 'final', 'ultimate', 'dc'}
+    non_significant = {
+        # Edition/release variants
+        'extended', 'directors', 'cut', 'theatrical', 'remastered',
+        'unrated', 'special', 'edition', 'final', 'ultimate', 'dc',
+        'collectors', 'anniversary', 'definitive', 'deluxe',
+        # Numbering (parts/sequels within same year)
+        '1', '2', '3', '4', '5', 'i', 'ii', 'iii', 'iv', 'v',
+        # Language/format tags
+        'dabing', 'cz', 'sk', 'en', 'de', 'fr', 'titulky', 'sub', 'dub',
+        'dubbed', 'subbed', 'multi',
+        # Format/container tags (often in Czech file names)
+        'avi', 'mkv', 'mp4', '3d', 'hd', 'uhd',
+        # Genre tags
+        'scifi', 'horror', 'drama', 'comedy', 'action', 'thriller',
+        'komedie', 'sportovni', 'zivotopisny', 'novinky',
+        # Misc metadata
+        'r', '(r', 'dvdrip',
+    }
 
     for year, keys in by_year.items():
         if len(keys) < 2:
