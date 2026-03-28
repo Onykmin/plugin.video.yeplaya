@@ -31,8 +31,9 @@ _PATTERN_S00E00 = get_s00e00_pattern()
 _PATTERN_0x00 = get_0x00_pattern()
 
 # Pattern to detect S##E## markers for movie vs series disambiguation
+# Use [\b_] boundaries to also match underscore-separated markers like _S01E06_
 import re
-_PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
+_PATTERN_EPISODE_MARKER = re.compile(r'(?:^|[\b_\s.\-])[Ss]\d{1,2}[Ee]\d{1,3}(?:[\b_\s.\-]|$)')
 
 # Compiled patterns for display name cleaning (used in pick_best_display_name_from_list)
 _RE_FILE_EXT = re.compile(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', re.IGNORECASE)

@@ -302,7 +302,11 @@ def clean_series_name(name):
     name = _PATTERN_CODEC.sub('', name)
     name = _PATTERN_AUDIO.sub('', name)
     name = _PATTERN_LANG.sub('', name)
+    # Strip years, but preserve if the name IS a year (e.g., series "1883")
+    name_before_year_strip = name
     name = _PATTERN_YEAR.sub('', name)
+    if not name.strip():
+        name = name_before_year_strip  # Restore — name was entirely a year
     name = _PATTERN_SEPARATORS.sub(' ', name)
     name = ' '.join(name.split())
     name = re.sub(r'\([^)]*\)', '', name)

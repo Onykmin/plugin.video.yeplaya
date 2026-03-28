@@ -331,7 +331,7 @@ TEST_CASES = {
     },
     'interstellar': {
         'type': 'movie',
-        'expected_groups': 7,
+        'expected_groups': 6,  # fixed: Doctor Who ep correctly parsed as series now
         'target_groups': 1,
         'notes': 'Single-word title; multiple groups',
     },
