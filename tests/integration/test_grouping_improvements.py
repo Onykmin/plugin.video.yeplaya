@@ -397,7 +397,8 @@ class TestRealAPIData:
                 for file_elem in xml.iter('file'):
                     name = file_elem.find('name')
                     size = file_elem.find('size')
-                    ident = file_elem.get('ident')
+                    ident_elem = file_elem.find('ident')
+                    ident = ident_elem.text if ident_elem is not None else 'unknown'
                     if name is not None and name.text:
                         files.append({
                             'name': name.text,
