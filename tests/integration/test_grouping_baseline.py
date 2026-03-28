@@ -355,7 +355,7 @@ TEST_CASES = {
     },
     'joker': {
         'type': 'movie',
-        'expected_groups': 16,
+        'expected_groups': 15,  # v2: resolution lookahead fix
         'target_groups': 2,  # 2019 + 2024
         'notes': 'Many unrelated results',
     },

@@ -31,7 +31,7 @@ _PATTERN_YEAR = re.compile(r'\[?\d{4}\]?')
 _PATTERN_LANG = re.compile(r'\b(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)\b|[\(\[](?:CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)[\)\]]', re.IGNORECASE)
 _PATTERN_SEPARATORS = re.compile(r'[\-_\.\,\:\;]+')
 _PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
-_PATTERN_MOVIE_YEAR = re.compile(r'^(.+?)[\s_\.\-]*[\(\[]?((?:19|20)\d{2})[\)\]]?')
+_PATTERN_MOVIE_YEAR = re.compile(r'^(.+?)[\s_\.\-]*[\(\[]?((?:19|20)\d{2})(?!x\d{3,4})[\)\]]?')
 
 
 # ============================================================================
@@ -566,9 +566,14 @@ def parse_movie_info(filename):
 
         clean_title = clean_series_name(raw_title)
 
-        # Reject if cleaned title is too short (likely garbage extraction)
+        # Handle year-as-name edge case (e.g., movie "2012", series "1883")
+        # If cleaning removed everything and raw title IS a 4-digit year, preserve it
         if len(clean_title) < 2:
-            return None
+            raw_stripped = raw_title.strip().replace('.', ' ').replace('-', ' ').strip()
+            if re.match(r'^\d{4}$', raw_stripped):
+                clean_title = raw_stripped
+            else:
+                return None
 
         dual_names = extract_dual_names(raw_title)
 
