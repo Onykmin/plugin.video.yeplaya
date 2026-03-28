@@ -312,6 +312,10 @@ def pick_best_display_name_from_list(names):
         """Aggressively clean a display name."""
         cleaned = name
         cleaned = _RE_FILE_EXT.sub('', cleaned)
+        # Replace dots and underscores with spaces (scene naming: "Movie.Name.2010")
+        cleaned = cleaned.replace('.', ' ').replace('_', ' ')
+        # Normalize multiple dashes/hyphens to single space
+        cleaned = re.sub(r'-{2,}', ' ', cleaned)
         cleaned = _RE_QUALITY.sub('', cleaned)
         cleaned = _RE_SOURCE.sub('', cleaned)
         cleaned = _RE_CODEC.sub('', cleaned)
@@ -756,7 +760,42 @@ def group_movies(files):
     # Merge movies with substring title relationships (same year)
     result = merge_substring_movies(result)
 
+    # Clean display names (dots→spaces, dashes→spaces, strip artifacts)
+    for movie_data in result['movies'].values():
+        movie_data['display_name'] = _clean_movie_display_name(movie_data['display_name'])
+
     return result
+
+
+def _clean_movie_display_name(name):
+    """Clean a movie display name: dots→spaces, dashes→spaces, strip artifacts."""
+    cleaned = name
+    cleaned = cleaned.replace('.', ' ').replace('_', ' ')
+    cleaned = re.sub(r'-{2,}', ' ', cleaned)  # Multiple dashes → space
+    cleaned = re.sub(r'(?<=[a-zA-Z])-(?=[a-zA-Z])', ' ', cleaned)  # Single dash between words → space
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
+
+def _pick_cleaner_movie_name(name1, name2):
+    """Pick the cleaner movie display name from two candidates."""
+    def artifact_score(name):
+        """Lower = cleaner."""
+        score = 0
+        score += name.count('.') * 2
+        score += name.count('---') * 3
+        score += name.count('_') * 2
+        if name.isupper():
+            score += 5
+        if '|' in name or '/' in name:
+            score += 3
+        return score
+
+    s1 = artifact_score(name1)
+    s2 = artifact_score(name2)
+    if s1 <= s2:
+        return name1
+    return name2
 
 
 def merge_substring_movies(result):
@@ -869,8 +908,7 @@ def merge_substring_movies(result):
         # Pick shorter/cleaner display name
         target_display = movies[target_key].get('display_name', target_key)
         source_display = movies[source_key].get('display_name', source_key)
-        if len(source_display) < len(target_display) and not any(c in source_display for c in '|/'):
-            movies[target_key]['display_name'] = source_display
+        movies[target_key]['display_name'] = _pick_cleaner_movie_name(target_display, source_display)
 
         log_debug(f'Movie merge: "{source_key}" → "{target_key}"')
 
