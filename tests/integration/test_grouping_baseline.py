@@ -191,9 +191,9 @@ TEST_CASES = {
     },
     'dark': {
         'type': 'series',
-        'expected_groups': 1,
-        'target_groups': 1,
-        'notes': 'VERY short name — correctly grouped',
+        'expected_groups': 7,  # v1: short key protection prevents false merge of dark+dark matter+dark blue etc
+        'target_groups': 7,  # These ARE different shows, 7 is correct
+        'notes': 'VERY short name; dark matter, dark blue etc are separate shows',
     },
     '1883': {
         'type': 'series',
@@ -233,7 +233,7 @@ TEST_CASES = {
     },
     'the boys': {
         'type': 'series',
-        'expected_groups': 17,
+        'expected_groups': 19,  # v1: short key protection stops false merges
         'target_groups': 1,
         'notes': 'Very noisy results, many false series from unrelated files',
     },

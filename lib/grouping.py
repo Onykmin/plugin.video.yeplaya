@@ -73,6 +73,11 @@ def merge_substring_series(grouped):
         short_words = word_sets[short_key]
         short_wc = len(short_words)
 
+        # Safety: don't merge very short keys (single short words like "lost", "dark")
+        # Require >=2 words OR single word with >=6 chars for substring merging
+        if short_wc == 1 and len(short_key) < 6:
+            continue
+
         for long_key in keys_by_words[i+1:]:
             long_words = word_sets[long_key]
 
