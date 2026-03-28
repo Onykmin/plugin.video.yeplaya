@@ -12,42 +12,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mock Kodi modules before any imports
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
-
-    @staticmethod
-    def log(msg, level=0):
-        pass  # Suppress logs during tests
-
-class MockXBMCAddon:
-    def __init__(self):
-        pass
-
-    def getSettingBool(self, key):
-        return True
-
-    def getSetting(self, key):
-        return ''
-
-class MockXBMCGUI:
-    NOTIFICATION_INFO = 1
-    NOTIFICATION_WARNING = 2
-    NOTIFICATION_ERROR = 3
-
-class MockXBMCPlugin:
-    SORT_METHOD_NONE = 0
-    SORT_METHOD_LABEL = 1
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcgui'] = MockXBMCGUI()
-sys.modules['xbmcplugin'] = MockXBMCPlugin()
-sys.modules['xbmcaddon'] = type('obj', (object,), {'Addon': MockXBMCAddon})()
-
-# Import from new lib structure
+# Import from new lib structure (mocks provided by conftest.py)
 from lib.parsing import (
     parse_quality_metadata,
     parse_episode_info,
@@ -313,25 +278,22 @@ class TestDeduplicationLogic:
         # Two non-series files (movies grouped separately if movie grouping enabled)
         assert len(result['non_series']) >= 1
 
-    def test_quality_meta_added_to_all_files(self):
-        """Test that quality_meta is added to every file dict."""
+    def test_quality_meta_lazy_not_in_grouping(self):
+        """Quality metadata is deferred (lazy) — not computed during grouping."""
         files = [
             {'name': 'Show.S01E01.1080p.BluRay.mkv', 'ident': 'id1', 'size': '1000000000'},
             {'name': 'Show.S01E02.mkv', 'ident': 'id2', 'size': '500000000'},
         ]
 
         result = group_by_series(files)
-
         series = result['series']['show']
 
-        # Check quality_meta exists
         ep1 = series['seasons'][1][1][0]
         ep2 = series['seasons'][1][2][0]
 
-        assert 'quality_meta' in ep1
-        assert 'quality_meta' in ep2
-        assert 'quality_score' in ep1['quality_meta']
-        assert 'quality_score' in ep2['quality_meta']
+        # quality_meta is NOT pre-computed (lazy — parsed on demand in version dialogs)
+        assert 'quality_meta' not in ep1
+        assert 'quality_meta' not in ep2
 
 
 class TestAggressiveNormalization:

@@ -9,42 +9,11 @@ import os
 # Add parent directory for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mock Kodi modules before any imports
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
+# Setup mocks if running standalone (pytest loads conftest.py automatically)
+if 'xbmc' not in sys.modules:
+    from tests.conftest import setup_kodi_mocks
+    setup_kodi_mocks()
 
-    @staticmethod
-    def log(msg, level=0):
-        pass  # Suppress logs during tests
-
-class MockXBMCAddon:
-    def __init__(self):
-        pass
-
-    def getSettingBool(self, key):
-        return True
-
-    def getSetting(self, key):
-        return ''
-
-class MockXBMCGUI:
-    NOTIFICATION_INFO = 1
-    NOTIFICATION_WARNING = 2
-    NOTIFICATION_ERROR = 3
-
-class MockXBMCPlugin:
-    SORT_METHOD_NONE = 0
-    SORT_METHOD_LABEL = 1
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcgui'] = MockXBMCGUI()
-sys.modules['xbmcplugin'] = MockXBMCPlugin()
-sys.modules['xbmcaddon'] = type('obj', (object,), {'Addon': MockXBMCAddon})()
-
-# Import from lib/ architecture
 from lib.parsing import parse_episode_info, clean_series_name
 from lib.grouping import group_by_series
 

@@ -83,7 +83,7 @@ def parse_xml(content):
     except ET.ParseError as e:
         xbmc.log("YAWsP: XML parsing error: " + str(e), xbmc.LOGERROR)
         return None
-    except Exception as e:
+    except (TypeError, ValueError) as e:
         xbmc.log("YAWsP: Unexpected error parsing XML: " + str(e), xbmc.LOGERROR)
         return None
 
@@ -231,6 +231,12 @@ def get_session():
 def get_addon():
     """Get global addon object."""
     return _addon
+
+
+def refresh_addon():
+    """Refresh global addon object after settings change."""
+    global _addon
+    _addon = xbmcaddon.Addon()
 
 
 def get_url_base():

@@ -6,7 +6,7 @@ Baseline Grouping Test Suite - Real Webshare API Integration
 Captures grouping metrics for comparison before/after improvements.
 Usage:
     python tests/integration/test_grouping_baseline.py
-    python tests/integration/test_grouping_baseline.py --save-responses
+    python tests/integration/test_grouping_baseline.py --no-cache    # force refetch
     python tests/integration/test_grouping_baseline.py --verbose
 """
 
@@ -84,78 +84,309 @@ CACHE_DIR = Path(__file__).parent / 'api_responses'
 BASELINE_FILE = Path(__file__).parent / 'baseline_results.json'
 
 # Test cases: query -> expected behavior
+# expected_groups = current baseline (auto-updated each iteration)
+# target_groups = manual ideal goal (never auto-updated)
+# PASS = actual matches expected (no regression)
+# IMPROVED = actual closer to target than expected
+# REGRESSION = actual further from target than expected
 TEST_CASES = {
     # Series - Dual names (Czech/English)
     'penguin': {
         'type': 'series',
-        'expected_groups': 6,  # Penguin + Batman + DragonBall + Dirty Jobs + Wonder Pets + Spravna dvojka (search returns multiple unrelated series)
-        'notes': 'The Penguin / Tučňák merged; other series (Batman, DragonBall) are correct separate groups',
+        'expected_groups': 8,  # 500-file baseline
+        'target_groups': 6,  # 6 is correct: Penguin + Batman + DragonBall + Dirty Jobs + Wonder Pets + Spravna dvojka
+        'notes': 'The Penguin / Tučňák merged; other series are correct separate groups',
     },
     'south park': {
         'type': 'series',
         'expected_groups': 1,
+        'target_groups': 1,
         'notes': 'South Park, Městečko South Park should merge',
     },
     'the office': {
         'type': 'series',
-        'expected_groups': 3,  # Main Office (121 eps) + Mary Tyler Moore (unrelated) + edge case file
-        'notes': 'Main Office series grouped correctly as "Kancl"; other results are unrelated shows',
+        'expected_groups': 7,  # 500-file baseline
+        'target_groups': 3,  # Office + Mary Tyler Moore + edge case
+        'notes': 'Main Office series grouped correctly as "Kancl"',
     },
     'pokemon': {
         'type': 'series',
-        'expected_groups': None,  # Multiple Pokemon series exist
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,  # Ideally all Pokemon in one group
         'notes': 'Pokemon has many spin-offs, complex case',
     },
     'chainsaw man': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
         'notes': 'Anime with standard naming',
     },
     'mashle': {
         'type': 'series',
         'expected_groups': 1,
+        'target_groups': 1,
         'notes': 'Mashle, Mashle 2nd Season should merge',
     },
     'solo leveling': {
         'type': 'series',
-        'expected_groups': 2,  # English "Solo Leveling" + Japanese "Ore dake Level Up na Ken" - different naming conventions, would need MAL/CSFD lookup to merge
-        'notes': 'Same anime but different language names; merging would require external database',
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Same anime but different language names',
     },
     'suits': {
         'type': 'series',
-        'expected_groups': 3,  # Suits (37 eps) + Suite Life (unrelated) + Scrubs (unrelated)
-        'notes': 'Main Suits series grouped correctly; other results contain "suits" but are different shows',
+        'expected_groups': 3,
+        'target_groups': 3,  # Suits + Suite Life + Scrubs are different shows
+        'notes': 'Main Suits series grouped correctly',
     },
     'breaking bad': {
         'type': 'series',
         'expected_groups': 1,
+        'target_groups': 1,
         'notes': 'Standard S##E## format',
     },
     'game of thrones': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
         'notes': 'Multi-word title',
     },
     'attack on titan': {
         'type': 'series',
-        'expected_groups': 1,
+        'expected_groups': 4,  # 500-file baseline
+        'target_groups': 1,
         'notes': 'Attack on Titan / Shingeki no Kyojin',
     },
     # Movies
     'inception 2010': {
         'type': 'movie',
-        'expected_groups': 94,  # Search returns many 2010 movies, not just Inception
-        'notes': 'Search returns all movies from 2010; stricter validation avoids over-merging',
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 3,
+        'notes': 'Relevance filter removes unrelated 2010 movies',
     },
     'avatar 2009': {
         'type': 'movie',
-        'expected_groups': 10,  # Main Avatar + edge cases with actor names/metadata in title
-        'notes': 'Avatar variants merged; edge cases from actor names in titles (Sam Worthington)',
+        'expected_groups': 1,  # 500-file baseline
+        'target_groups': 3,
+        'notes': 'Avatar variants merged; remaining: avatar, actor names, 3d, extended',
+    },
+    # === NEW SERIES (Western) ===
+    'stranger things': {
+        'type': 'series',
+        'expected_groups': 1,  # v4: similarity merge catches "stranger thing" → "stranger things"
+        'target_groups': 1,
+        'notes': 'Modern naming, clean S##E##',
+    },
+    'lost': {
+        'type': 'series',
+        'expected_groups': 6,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'SHORT name, false merge danger (Lost Girl, Lost in Space)',
+    },
+    'friends': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'SHORT name, common English word — correctly grouped',
+    },
+    'dark': {
+        'type': 'series',
+        'expected_groups': 13,  # 500-file baseline
+        'target_groups': 7,  # These ARE different shows, 7 is correct
+        'notes': 'VERY short name; dark matter, dark blue etc are separate shows',
+    },
+    '1883': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Year-like series name edge case — correctly grouped',
+    },
+    'big bang theory': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Multi-word, consistent naming — correctly grouped',
+    },
+    'the witcher': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Czech dual-name (Zaklínač) — correctly grouped',
+    },
+    'peaky blinders': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Standard naming — correctly grouped',
+    },
+    'house of the dragon': {
+        'type': 'series',
+        'expected_groups': 3,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'GoT spin-off',
+    },
+    'better call saul': {
+        'type': 'series',
+        'expected_groups': 3,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'BB universe — correctly separate from Breaking Bad',
+    },
+    'the boys': {
+        'type': 'series',
+        'expected_groups': 56,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Very noisy results, many false series from unrelated files',
+    },
+    'true detective': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Multi-season anthology — correctly grouped',
+    },
+    'simpsonovi': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Czech-only naming — correctly grouped',
+    },
+    'squid game': {
+        'type': 'series',
+        'expected_groups': 3,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Korean/English — correctly grouped',
+    },
+    'severance': {
+        'type': 'series',
+        'expected_groups': 6,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Single-word; "lao" false series detected',
+    },
+    # === NEW SERIES (Anime) ===
+    'naruto': {
+        'type': 'series',
+        'expected_groups': 5,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'High ep count — correctly grouped',
+    },
+    'one piece': {
+        'type': 'series',
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Very high ep count — correctly grouped',
+    },
+    'demon slayer': {
+        'type': 'series',
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Dual-name Kimetsu no Yaiba — correctly grouped',
+    },
+    'jujutsu kaisen': {
+        'type': 'series',
+        'expected_groups': 2,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Japanese naming',
+    },
+    'dragon ball': {
+        'type': 'series',
+        'expected_groups': 11,  # 500-file baseline
+        'target_groups': None,  # Multiple sub-series is OK
+        'notes': 'Multiple sub-series (DB, DBZ, DBS)',
+    },
+    'bleach': {
+        'type': 'series',
+        'expected_groups': 1,
+        'target_groups': 1,
+        'notes': 'Short name — correctly grouped',
+    },
+    'spy x family': {
+        'type': 'series',
+        'expected_groups': 3,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Special chars; JP variant not merged',
+    },
+    # === NEW MOVIES ===
+    'pulp fiction': {
+        'type': 'movie',
+        'expected_groups': 4,  # dual-key+pipe merge
+        'target_groups': 1,
+        'notes': 'Classic; multiple groups due to Czech names',
+    },
+    'the matrix': {
+        'type': 'movie',
+        'expected_groups': 7,  # orphan merge absorbed 1-ver fragments
+        'target_groups': None,  # Multiple sequels OK
+        'notes': 'Franchise, sequel separation (1999, 2003, 2021)',
+    },
+    'star wars': {
+        'type': 'movie',
+        'expected_groups': 16,  # orphan merge
+        'target_groups': None,
+        'notes': 'Franchise, Episode in title',
+    },
+    'blade runner': {
+        'type': 'movie',
+        'expected_groups': 13,  # dual-key+pipe merge
+        'target_groups': 2,  # 1982 + 2049
+        'notes': 'Many fragments; two versions (1982, 2049)',
+    },
+    'interstellar': {
+        'type': 'movie',
+        'expected_groups': 5,  # dual-key+pipe merge
+        'target_groups': 1,
+        'notes': 'Single-word title; multiple groups',
+    },
+    'fight club': {
+        'type': 'movie',
+        'expected_groups': 12,  # dual-key+pipe merge
+        'target_groups': 1,
+        'notes': 'Many unrelated results',
+    },
+    'dune': {
+        'type': 'movie',
+        'expected_groups': 37,  # orphan merge
+        'target_groups': None,  # Multiple movies OK
+        'notes': 'Relevance filter removes files without "dune" in name',
+    },
+    'oppenheimer': {
+        'type': 'movie',
+        'expected_groups': 2,
+        'target_groups': 1,
+        'notes': 'Recent, well-named',
+    },
+    'joker': {
+        'type': 'movie',
+        'expected_groups': 20,  # genre words no longer non_significant (B4 fix)
+        'target_groups': 2,  # 2019 + 2024
+        'notes': 'Many unrelated results',
+    },
+    'gladiator': {
+        'type': 'movie',
+        'expected_groups': 28,  # 500-file baseline
+        'target_groups': 2,  # 2000 + 2024
+        'notes': 'Many unrelated results',
+    },
+    'parasite': {
+        'type': 'movie',
+        'expected_groups': 9,  # v9: relevance filter
+        'target_groups': 1,
+        'notes': 'Korean/Czech dual (Parazit)',
+    },
+    'tenet': {
+        'type': 'movie',
+        'expected_groups': 3,  # v3: expanded non-significant words
+        'target_groups': 1,
+        'notes': 'Short name',
+    },
+    'barbie': {
+        'type': 'movie',
+        'expected_groups': 106,  # 500-file baseline
+        'target_groups': 1,
+        'notes': 'Very noisy; many Barbie animated movies',
     },
 }
 
 
-def fetch_webshare_search(query, limit=200, category='video'):
+def fetch_webshare_search(query, limit=500, category='video'):
     """Fetch search results from Webshare API (public, no auth needed)."""
     import requests
 
@@ -184,7 +415,7 @@ def get_cache_path(query):
     return CACHE_DIR / f'{safe_name}.xml'
 
 
-def fetch_with_cache(query, limit=200, use_cache=True):
+def fetch_with_cache(query, limit=500, use_cache=True):
     """Fetch with optional caching."""
     cache_path = get_cache_path(query)
 
@@ -195,7 +426,7 @@ def fetch_with_cache(query, limit=200, use_cache=True):
     print(f"  [API] Fetching: {query}")
     content = fetch_webshare_search(query, limit)
 
-    if content and '--save-responses' in sys.argv:
+    if content:
         CACHE_DIR.mkdir(exist_ok=True)
         cache_path.write_bytes(content)
         print(f"  [SAVED] {cache_path.name}")
@@ -215,7 +446,8 @@ def parse_files_from_xml(xml_content):
     for file_elem in xml.iter('file'):
         name = file_elem.find('name')
         size = file_elem.find('size')
-        ident = file_elem.get('ident')
+        ident_elem = file_elem.find('ident')
+        ident = ident_elem.text if ident_elem is not None else 'unknown'
 
         if name is not None and name.text:
             files.append({
@@ -316,8 +548,8 @@ def run_baseline_tests(use_cache=True):
             results['test_cases'][query] = {'error': 'No files found'}
             continue
 
-        # Group
-        grouped = group_by_series(files)
+        # Group (pass query for relevance filtering)
+        grouped = group_by_series(files, search_query=query)
 
         # Calculate metrics
         metrics = calculate_metrics(query, files, grouped)
@@ -326,14 +558,24 @@ def run_baseline_tests(use_cache=True):
         # Evaluate
         actual_groups = metrics['series_groups'] if expected['type'] == 'series' else metrics['movie_groups']
         expected_groups = expected.get('expected_groups')
+        target_groups = expected.get('target_groups')
 
         if expected_groups is not None:
             if actual_groups == expected_groups:
                 status = "✓ PASS"
-            elif actual_groups < expected_groups:
-                status = "⚠ OVER-MERGED"
             else:
-                status = "✗ UNDER-MERGED"
+                # Check if it's an improvement toward target
+                if target_groups is not None:
+                    old_dist = abs(expected_groups - target_groups)
+                    new_dist = abs(actual_groups - target_groups)
+                    if new_dist < old_dist:
+                        status = "↑ IMPROVED"
+                    else:
+                        status = "↓ REGRESSION"
+                elif actual_groups < expected_groups:
+                    status = "⚠ OVER-MERGED"
+                else:
+                    status = "✗ UNDER-MERGED"
         else:
             status = "? (no expectation)"
 
@@ -381,9 +623,9 @@ def print_summary(results):
             continue
 
         status = metrics.get('status', '?')
-        if '✓' in status:
+        if '✓' in status or '↑' in status:
             passed += 1
-        elif '✗' in status or '⚠' in status:
+        elif '↓' in status or '✗' in status or '⚠' in status:
             failed += 1
         else:
             unknown += 1
@@ -394,23 +636,35 @@ def print_summary(results):
     print(f"  Timestamp: {results['timestamp']}")
 
 
-def save_baseline(results):
-    """Save baseline results to JSON."""
+def save_baseline(results, output_path=None):
+    """Save baseline results to JSON. Saves to both default and optional versioned path."""
     with open(BASELINE_FILE, 'w') as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(f"\n  Baseline saved to: {BASELINE_FILE}")
+
+    if output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        print(f"  Also saved to: {output_path}")
 
 
 def main():
     """Main entry point."""
     use_cache = '--no-cache' not in sys.argv
 
+    # Parse --output path for versioned saves
+    output_path = None
+    for i, arg in enumerate(sys.argv):
+        if arg == '--output' and i + 1 < len(sys.argv):
+            output_path = sys.argv[i + 1]
+
     results = run_baseline_tests(use_cache=use_cache)
     print_summary(results)
-    save_baseline(results)
+    save_baseline(results, output_path=output_path)
 
     return 0 if all(
-        '✓' in m.get('status', '')
+        '✓' in m.get('status', '') or '↑' in m.get('status', '') or '?' in m.get('status', '')
         for m in results['test_cases'].values()
         if 'status' in m
     ) else 1

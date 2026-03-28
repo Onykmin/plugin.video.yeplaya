@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-01-25T14:21:37.720631",
+  "timestamp": "2026-03-28T18:31:11.873535",
   "test_cases": {
     "penguin": {
       "query": "penguin",
-      "total_files": 200,
-      "series_groups": 6,
-      "movie_groups": 6,
-      "non_series": 0,
+      "total_files": 221,
+      "series_groups": 8,
+      "movie_groups": 9,
+      "non_series": 32,
       "series_details": {
         "spravna dvojka": {
           "display_name": "Správná dvojka",
@@ -21,10 +21,10 @@
           "versions": 4
         },
         "dragonball": {
-          "display_name": "DragonBall - 055 - Penguin Village [DR][]",
+          "display_name": "Dragonball 055 - Penguin Village",
           "seasons": 1,
           "episodes": 1,
-          "versions": 1
+          "versions": 2
         },
         "dirty jobs": {
           "display_name": "Dirty Jobs",
@@ -36,44 +36,71 @@
           "display_name": "The Wonder Pets",
           "seasons": 1,
           "episodes": 1,
-          "versions": 2
+          "versions": 3
         },
         "penguin": {
           "display_name": "The Penguin",
           "seasons": 2,
           "episodes": 9,
-          "versions": 117
+          "versions": 123
+        },
+        "leftovers": {
+          "display_name": "The Leftovers",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "tom & jerry kids": {
+          "display_name": "Tom & Jerry Kids 119c Perky the Fish Pinching Penguin",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
         }
       },
       "movie_details": {
         "penguin island aka la isla los pinguinos|2017": {
-          "display_name": "Penguin.Island.AKA.La.isla.de.los.pinguinos",
+          "display_name": "Penguin Island AKA La isla de los pinguinos",
           "year": 2017,
           "versions": 1
-        },
-        "penguin bloom|2021": {
-          "display_name": "Penguin.Bloom",
-          "year": 2021,
-          "versions": 2
         },
         "penguin bloom|2020": {
           "display_name": "Penguin Bloom",
           "year": 2020,
-          "versions": 3
+          "versions": 5
+        },
+        "penguin highway|2018": {
+          "display_name": "Penguin Highway",
+          "year": 2018,
+          "versions": 1
         },
         "tucnak bloom penguin bloom|2020": {
-          "display_name": "Tučňák.Bloom.Penguin.Bloom",
+          "display_name": "Tučňák Bloom Penguin Bloom",
           "year": 2020,
-          "versions": 1
-        },
-        "penguin bloom|tucnak bloom|2020": {
-          "display_name": "Penguin.Bloom / Tucnak.Bloom",
-          "year": 2020,
-          "versions": 1
+          "versions": 3
         },
         "kacer donald 18 donalds penguin|1939": {
-          "display_name": "Kačer Donald 18.Donalds.Penguin",
+          "display_name": "Kačer Donald 18 Donalds Penguin",
           "year": 1939,
+          "versions": 1
+        },
+        "disney animated shorts|donald's penguin|1939": {
+          "display_name": "Donald's Penguin / Disney Animated Shorts",
+          "year": 1939,
+          "versions": 1
+        },
+        "pebble and penguin|1995": {
+          "display_name": "The Pebble and the Penguin",
+          "year": 1995,
+          "versions": 1
+        },
+        "batman|1966": {
+          "display_name": "Batman",
+          "year": 1966,
+          "versions": 2
+        },
+        "penguin lessons|2024": {
+          "display_name": "The Penguin Lessons",
+          "year": 2024,
           "versions": 1
         }
       },
@@ -81,73 +108,71 @@
         "Single-ep series (might be movie?): 'spravna dvojka'",
         "Single-ep series (might be movie?): 'dragonball'",
         "Single-ep series (might be movie?): 'dirty jobs'",
-        "Single-ep series (might be movie?): 'wonder pets'"
+        "Single-ep series (might be movie?): 'wonder pets'",
+        "Single-ep series (might be movie?): 'leftovers'",
+        "Single-ep series (might be movie?): 'tom & jerry kids'"
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 6,
-        "notes": "The Penguin / Tučňák merged; other series (Batman, DragonBall) are correct separate groups"
+        "expected_groups": 8,
+        "target_groups": 6,
+        "notes": "The Penguin / Tučňák merged; other series are correct separate groups"
       },
       "status": "✓ PASS"
     },
     "south park": {
       "query": "south park",
-      "total_files": 200,
+      "total_files": 500,
       "series_groups": 1,
-      "movie_groups": 9,
-      "non_series": 0,
+      "movie_groups": 8,
+      "non_series": 13,
       "series_details": {
-        "mestecko|south park": {
+        "south park": {
           "display_name": "South Park",
-          "seasons": 25,
-          "episodes": 147,
-          "versions": 162
+          "seasons": 27,
+          "episodes": 283,
+          "versions": 462
         }
       },
       "movie_details": {
         "south park|stick of truth 04 10|2014": {
-          "display_name": "The Stick of Truth 04.10 / South Park",
+          "display_name": "The Stick of Truth 04 10 / South Park",
           "year": 2014,
           "versions": 1
         },
         "south park peklo na zemi|1999": {
           "display_name": "South Park- Peklo na Zemi",
           "year": 1999,
-          "versions": 1
+          "versions": 5
         },
         "park cz peklo na zemi tv fanda|south|2013": {
-          "display_name": "PARK-CZ---Peklo-na-Zemi-TV-Fanda / SOUTH",
+          "display_name": "PARK-CZ Peklo-na-Zemi-TV-Fanda / SOUTH",
           "year": 2013,
           "versions": 1
         },
         "south park bigger longer and|1999": {
-          "display_name": "South.Park.Bigger.Longer.And",
+          "display_name": "South Park Bigger Longer And",
           "year": 1999,
           "versions": 1
         },
         "south park not suitable for children|2023": {
-          "display_name": "South.Park.Not.Suitable.For.Children",
+          "display_name": "South Park Not Suitable For Children",
           "year": 2023,
           "versions": 6
-        },
-        "peklo na zemi (prodlouzena verze)|south park|1999": {
-          "display_name": "Peklo na zemi (prodloužená verze) / South Park",
-          "year": 1999,
-          "versions": 1
-        },
-        "peklo na zemi|south park|1999": {
-          "display_name": "Peklo na zemi / South Park",
-          "year": 1999,
-          "versions": 1
-        },
-        "6 days to air making of south park|2011": {
-          "display_name": "6.Days.To.Air.The.Making.Of.South.Park",
-          "year": 2011,
-          "versions": 1
         },
         "peklo na zemi|south park film|1999": {
           "display_name": "Peklo na zemi / South Park Film",
           "year": 1999,
+          "versions": 1
+        },
+        "pekna na zemi|south park|1999": {
+          "display_name": "Pekna na Zemi / South Park",
+          "year": 1999,
+          "versions": 1
+        },
+        "south park|2024": {
+          "display_name": "South Park",
+          "year": 2024,
           "versions": 1
         }
       },
@@ -155,22 +180,41 @@
       "expected": {
         "type": "series",
         "expected_groups": 1,
+        "target_groups": 1,
         "notes": "South Park, Městečko South Park should merge"
       },
       "status": "✓ PASS"
     },
     "the office": {
       "query": "the office",
-      "total_files": 200,
-      "series_groups": 3,
-      "movie_groups": 0,
+      "total_files": 468,
+      "series_groups": 7,
+      "movie_groups": 1,
       "non_series": 4,
       "series_details": {
+        "office [1": {
+          "display_name": "The Office [1 01] Pilot",
+          "seasons": 1,
+          "episodes": 6,
+          "versions": 6
+        },
         "office": {
-          "display_name": "Kancl",
+          "display_name": "The Office",
           "seasons": 9,
-          "episodes": 121,
-          "versions": 193
+          "episodes": 115,
+          "versions": 187
+        },
+        "office uk": {
+          "display_name": "The Office UK",
+          "seasons": 2,
+          "episodes": 14,
+          "versions": 14
+        },
+        "office us": {
+          "display_name": "The Office US",
+          "seasons": 6,
+          "episodes": 97,
+          "versions": 240
         },
         "mary tyler moore show": {
           "display_name": "The Mary Tyler Moore Show",
@@ -178,50 +222,67 @@
           "episodes": 1,
           "versions": 1
         },
-        "08 druha prace the office|kancl 04x07": {
-          "display_name": "08 Druha Prace The Office / Kancl",
+        "monk": {
+          "display_name": "Monk",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "name that tune": {
+          "display_name": "Name That Tune",
           "seasons": 1,
           "episodes": 1,
           "versions": 1
         }
       },
-      "movie_details": {},
+      "movie_details": {
+        "office games|2022": {
+          "display_name": "The Office Games",
+          "year": 2022,
+          "versions": 1
+        }
+      },
       "potential_issues": [
-        "Substring not merged: 'office' vs '08 druha prace the office|kancl 04x07'",
+        "Substring not merged: 'office [1' vs 'office'",
+        "Substring not merged: 'office' vs 'office uk'",
+        "Substring not merged: 'office' vs 'office us'",
         "Single-ep series (might be movie?): 'mary tyler moore show'",
-        "Single-ep series (might be movie?): '08 druha prace the office|kancl 04x07'"
+        "Single-ep series (might be movie?): 'monk'",
+        "Single-ep series (might be movie?): 'name that tune'"
       ],
       "expected": {
         "type": "series",
-        "expected_groups": 3,
-        "notes": "Main Office series grouped correctly as \"Kancl\"; other results are unrelated shows"
+        "expected_groups": 7,
+        "target_groups": 3,
+        "notes": "Main Office series grouped correctly as \"Kancl\""
       },
       "status": "✓ PASS"
     },
     "pokemon": {
       "query": "pokemon",
-      "total_files": 200,
-      "series_groups": 1,
-      "movie_groups": 13,
-      "non_series": 0,
+      "total_files": 500,
+      "series_groups": 2,
+      "movie_groups": 3,
+      "non_series": 49,
       "series_details": {
+        "pokemon xy": {
+          "display_name": "Pokemon XY",
+          "seasons": 1,
+          "episodes": 45,
+          "versions": 48
+        },
         "pokemon": {
           "display_name": "Pokemon",
           "seasons": 15,
-          "episodes": 78,
-          "versions": 141
+          "episodes": 247,
+          "versions": 380
         }
       },
       "movie_details": {
         "pokemon detektiv pikachu pokemon detective pikachu|2019": {
-          "display_name": "pokémon.detektív.pikachu-pokemon.detective.pikachu",
+          "display_name": "pokémon detektív pikachu-pokemon detective pikachu",
           "year": 2019,
-          "versions": 1
-        },
-        "pokemon detektiv pikachu [pokemon detective pikachu]|2019": {
-          "display_name": "Pokemon.Detektiv.Pikachu.[Pokemon.Detective.Pikachu]",
-          "year": 2019,
-          "versions": 1
+          "versions": 3
         },
         "pokemon 2 sila jednotlivce|pokemon film|1999": {
           "display_name": "Pokémon 2 Síla jednotlivce / Pokémon film",
@@ -229,120 +290,87 @@
           "versions": 1
         },
         "pokemon film|pokemon prvni film|1998": {
-          "display_name": "Pokémon_ První film / Pokémon film",
+          "display_name": "Pokémon První film / Pokémon film",
           "year": 1998,
-          "versions": 1
-        },
-        "pokemon detective pikachu|pokemon detektiv pikachu|2019": {
-          "display_name": "Pokemon.Detective.Pikachu / Pokémon.Detektív.Pikachu",
-          "year": 2019,
-          "versions": 1
-        },
-        "104 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "104 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "104 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "104 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "121 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "121 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 2
-        },
-        "121 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "121 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "122 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "122 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "122 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "122 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "123 (vostfr fr|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "123 (VOSTFR-FR / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
-          "versions": 1
-        },
-        "123 (vostfr jap|[pokemon fansub] pokemon horizons|1920": {
-          "display_name": "123 (VOSTFR-JAP / [Pokémon Fansub] Pokémon Horizons",
-          "year": 1920,
           "versions": 1
         }
       },
-      "potential_issues": [],
+      "potential_issues": [
+        "Substring not merged: 'pokemon xy' vs 'pokemon'"
+      ],
       "expected": {
         "type": "series",
-        "expected_groups": null,
+        "expected_groups": 2,
+        "target_groups": 1,
         "notes": "Pokemon has many spin-offs, complex case"
       },
-      "status": "? (no expectation)"
+      "status": "✓ PASS"
     },
     "chainsaw man": {
       "query": "chainsaw man",
-      "total_files": 136,
-      "series_groups": 1,
+      "total_files": 152,
+      "series_groups": 2,
       "movie_groups": 4,
-      "non_series": 0,
+      "non_series": 8,
       "series_details": {
         "chainsaw man": {
           "display_name": "Chainsaw Man",
           "seasons": 1,
           "episodes": 12,
-          "versions": 116
+          "versions": 125
+        },
+        "电锯人 chainsaw man": {
+          "display_name": "电锯人 Chainsaw Man - 02 (B-Global 38",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
         }
       },
       "movie_details": {
         "chainsaw man movie reze arc k gekijo ban chenso man reze hen|2025": {
-          "display_name": "Chainsaw.Man.The.Movie.Reze.Arc.A.K.A.Gekijo-ban.Chenso.Man.Reze-hen",
+          "display_name": "Chainsaw Man The Movie Reze Arc A K A Gekijo-ban Chenso Man Reze-hen",
           "year": 2025,
           "versions": 1
         },
         "chainsaw man movie reze arc|2025": {
           "display_name": "Chainsaw Man The Movie Reze Arc",
           "year": 2025,
-          "versions": 8
-        },
-        "chainsaw man|movie reze arc|2025": {
-          "display_name": "The Movie Reze Arc / Chainsaw Man",
-          "year": 2025,
-          "versions": 1
+          "versions": 9
         },
         "[fle] chainsaw man|movie reze arc|2025": {
           "display_name": "The Movie Reze Arc / [FLE] Chainsaw Man",
           "year": 2025,
           "versions": 1
+        },
+        "[chasa] chainsaw man|movie reze arc|2025": {
+          "display_name": "The Movie Reze Arc / [chasa] Chainsaw Man",
+          "year": 2025,
+          "versions": 2
         }
       },
-      "potential_issues": [],
+      "potential_issues": [
+        "Substring not merged: 'chainsaw man' vs '电锯人 chainsaw man'"
+      ],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
+        "expected_groups": 2,
+        "target_groups": 1,
         "notes": "Anime with standard naming"
       },
       "status": "✓ PASS"
     },
     "mashle": {
       "query": "mashle",
-      "total_files": 107,
+      "total_files": 143,
       "series_groups": 1,
       "movie_groups": 0,
       "non_series": 0,
       "series_details": {
-        "mashle": {
+        "magic and muscles|mashle": {
           "display_name": "Mashle",
           "seasons": 2,
           "episodes": 36,
-          "versions": 90
+          "versions": 126
         }
       },
       "movie_details": {},
@@ -350,28 +378,29 @@
       "expected": {
         "type": "series",
         "expected_groups": 1,
+        "target_groups": 1,
         "notes": "Mashle, Mashle 2nd Season should merge"
       },
       "status": "✓ PASS"
     },
     "solo leveling": {
       "query": "solo leveling",
-      "total_files": 200,
+      "total_files": 389,
       "series_groups": 2,
       "movie_groups": 0,
       "non_series": 0,
       "series_details": {
-        "ore dake level up na ken": {
-          "display_name": "Ore dake Level Up na Ken (Solo Leveling) - Season",
-          "seasons": 2,
-          "episodes": 18,
-          "versions": 19
+        "solo leveling v2": {
+          "display_name": "Solo Leveling V2",
+          "seasons": 1,
+          "episodes": 10,
+          "versions": 10
         },
-        "solo leveling": {
+        "ore dake level up na ken": {
           "display_name": "Solo Leveling",
-          "seasons": 2,
-          "episodes": 31,
-          "versions": 99
+          "seasons": 3,
+          "episodes": 39,
+          "versions": 208
         }
       },
       "movie_details": {},
@@ -379,31 +408,32 @@
       "expected": {
         "type": "series",
         "expected_groups": 2,
-        "notes": "Same anime but different language names; merging would require external database"
+        "target_groups": 1,
+        "notes": "Same anime but different language names"
       },
       "status": "✓ PASS"
     },
     "suits": {
       "query": "suits",
-      "total_files": 200,
+      "total_files": 500,
       "series_groups": 3,
       "movie_groups": 0,
-      "non_series": 2,
+      "non_series": 0,
       "series_details": {
         "suits": {
           "display_name": "Suits",
-          "seasons": 3,
-          "episodes": 37,
-          "versions": 156
+          "seasons": 5,
+          "episodes": 69,
+          "versions": 377
         },
-        "sladky zivot zacka codyho": {
-          "display_name": "Sladký život Zacka a Codyho",
-          "seasons": 1,
-          "episodes": 3,
-          "versions": 3
+        "suits kravataci": {
+          "display_name": "Suits Kravaťáci",
+          "seasons": 2,
+          "episodes": 18,
+          "versions": 28
         },
-        "scrubs": {
-          "display_name": "Scrubs",
+        "suits s03": {
+          "display_name": "Suits S03 E13 Moot Point WEB DL TTL",
           "seasons": 1,
           "episodes": 1,
           "versions": 1
@@ -411,27 +441,30 @@
       },
       "movie_details": {},
       "potential_issues": [
-        "Single-ep series (might be movie?): 'scrubs'"
+        "Substring not merged: 'suits' vs 'suits kravataci'",
+        "Substring not merged: 'suits' vs 'suits s03'",
+        "Single-ep series (might be movie?): 'suits s03'"
       ],
       "expected": {
         "type": "series",
         "expected_groups": 3,
-        "notes": "Main Suits series grouped correctly; other results contain \"suits\" but are different shows"
+        "target_groups": 3,
+        "notes": "Main Suits series grouped correctly"
       },
       "status": "✓ PASS"
     },
     "breaking bad": {
       "query": "breaking bad",
-      "total_files": 200,
+      "total_files": 500,
       "series_groups": 1,
       "movie_groups": 1,
-      "non_series": 0,
+      "non_series": 99,
       "series_details": {
         "breaking bad": {
           "display_name": "Breaking Bad",
           "seasons": 5,
           "episodes": 62,
-          "versions": 154
+          "versions": 354
         }
       },
       "movie_details": {
@@ -445,22 +478,29 @@
       "expected": {
         "type": "series",
         "expected_groups": 1,
+        "target_groups": 1,
         "notes": "Standard S##E## format"
       },
       "status": "✓ PASS"
     },
     "game of thrones": {
       "query": "game of thrones",
-      "total_files": 200,
-      "series_groups": 1,
-      "movie_groups": 4,
-      "non_series": 0,
+      "total_files": 500,
+      "series_groups": 2,
+      "movie_groups": 5,
+      "non_series": 4,
       "series_details": {
         "game of thrones": {
           "display_name": "Game of Thrones",
           "seasons": 8,
-          "episodes": 73,
-          "versions": 187
+          "episodes": 75,
+          "versions": 412
+        },
+        "game of thrones hra o truny": {
+          "display_name": "Game-of-Thrones-Hra-o-truny",
+          "seasons": 8,
+          "episodes": 72,
+          "versions": 72
         }
       },
       "movie_details": {
@@ -475,635 +515,4453 @@
           "versions": 1
         },
         "game of thrones, season 5 , episode 10 mother's mercy|usa, united kingdom|2015": {
-          "display_name": "USA, United Kingdom / Game of Thrones, Season 5., Episode 10. Mother's Mercy",
+          "display_name": "USA, United Kingdom",
           "year": 2015,
           "versions": 1
         },
         "game of thrones last watch|2019": {
-          "display_name": "Game.of.Thrones.The.Last.Watch",
+          "display_name": "Game of Thrones The Last Watch",
           "year": 2019,
           "versions": 1
+        },
+        "game of thrones|1950": {
+          "display_name": "GAME OF THRONES",
+          "year": 1950,
+          "versions": 3
         }
       },
-      "potential_issues": [],
+      "potential_issues": [
+        "Substring not merged: 'game of thrones' vs 'game of thrones hra o truny'"
+      ],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
+        "expected_groups": 2,
+        "target_groups": 1,
         "notes": "Multi-word title"
       },
       "status": "✓ PASS"
     },
     "attack on titan": {
       "query": "attack on titan",
-      "total_files": 200,
-      "series_groups": 1,
-      "movie_groups": 3,
-      "non_series": 0,
+      "total_files": 390,
+      "series_groups": 4,
+      "movie_groups": 5,
+      "non_series": 11,
       "series_details": {
         "attack on titan": {
           "display_name": "Attack On Titan",
           "seasons": 4,
-          "episodes": 87,
-          "versions": 171
+          "episodes": 94,
+          "versions": 339
+        },
+        "attack on titan oad lost girls": {
+          "display_name": "Attack On Titan OAD - Lost Girls",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
+        },
+        "attack on titan oad": {
+          "display_name": "Attack On Titan OAD",
+          "seasons": 1,
+          "episodes": 5,
+          "versions": 5
+        },
+        "shingeki no kyojin ova": {
+          "display_name": "Shingeki no Kyojin (Attack on Titan) - OVA 1 - ENG SUBS",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
         }
       },
       "movie_details": {
         "attack on titan|2015": {
           "display_name": "Attack on Titan",
           "year": 2015,
+          "versions": 7
+        },
+        "attack on titan part 2|2015": {
+          "display_name": "Attack on Titan Part 2",
+          "year": 2015,
           "versions": 2
         },
-        "attack on titan|shingeki no kyojin zenpen|2015": {
-          "display_name": "Shingeki no kyojin Zenpen / Attack on Titan",
+        "attack on titan 2 end of world|2015": {
+          "display_name": "Attack On Titan II End Of The World",
           "year": 2015,
           "versions": 1
         },
-        "attack on titan part 2|2015": {
-          "display_name": "Attack.on.Titan.Part.2",
+        "attack on titan|2022": {
+          "display_name": "Attack On Titan",
+          "year": 2022,
+          "versions": 3
+        },
+        "endo obu za warudo|singeki no kjodzin attack on titan|2015": {
+          "display_name": "Šingeki no kjodžin ATTACK ON TITAN",
           "year": 2015,
           "versions": 2
         }
       },
-      "potential_issues": [],
+      "potential_issues": [
+        "Substring not merged: 'attack on titan' vs 'attack on titan oad lost girls'",
+        "Substring not merged: 'attack on titan' vs 'attack on titan oad'",
+        "Substring not merged: 'attack on titan oad lost girls' vs 'attack on titan oad'"
+      ],
       "expected": {
         "type": "series",
-        "expected_groups": 1,
+        "expected_groups": 4,
+        "target_groups": 1,
         "notes": "Attack on Titan / Shingeki no Kyojin"
       },
       "status": "✓ PASS"
     },
     "inception 2010": {
       "query": "inception 2010",
-      "total_files": 200,
-      "series_groups": 3,
-      "movie_groups": 94,
+      "total_files": 500,
+      "series_groups": 0,
+      "movie_groups": 2,
+      "non_series": 5,
+      "series_details": {},
+      "movie_details": {
+        "inception|2010": {
+          "display_name": "Inception",
+          "year": 2010,
+          "versions": 4
+        },
+        "pocatek inception|2010": {
+          "display_name": "Pocatek Inception",
+          "year": 2010,
+          "versions": 7
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 2,
+        "target_groups": 3,
+        "notes": "Relevance filter removes unrelated 2010 movies"
+      },
+      "status": "✓ PASS"
+    },
+    "avatar 2009": {
+      "query": "avatar 2009",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 1,
+      "non_series": 11,
+      "series_details": {
+        "x files": {
+          "display_name": "X Files",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "avatar|2009": {
+          "display_name": "Avatar",
+          "year": 2009,
+          "versions": 34
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'x files'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 1,
+        "target_groups": 3,
+        "notes": "Avatar variants merged; remaining: avatar, actor names, 3d, extended"
+      },
+      "status": "✓ PASS"
+    },
+    "stranger things": {
+      "query": "stranger things",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 0,
       "non_series": 0,
       "series_details": {
-        "parenthood": {
-          "display_name": "Parenthood 2010",
-          "seasons": 2,
-          "episodes": 32,
-          "versions": 43
+        "stranger things": {
+          "display_name": "Stranger-Thing",
+          "seasons": 4,
+          "episodes": 34,
+          "versions": 439
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Modern naming, clean S##E##"
+      },
+      "status": "✓ PASS"
+    },
+    "lost": {
+      "query": "lost",
+      "total_files": 500,
+      "series_groups": 6,
+      "movie_groups": 9,
+      "non_series": 8,
+      "series_details": {
+        "lost girl": {
+          "display_name": "Lost Girl",
+          "seasons": 5,
+          "episodes": 76,
+          "versions": 197
         },
-        "hawaii five 0": {
-          "display_name": "Hawaii Five-0 2010",
-          "seasons": 2,
-          "episodes": 26,
-          "versions": 27
+        "lost in austen": {
+          "display_name": "Lost-in-Austen",
+          "seasons": 1,
+          "episodes": 4,
+          "versions": 4
         },
-        "dexter": {
-          "display_name": "Dexter",
+        "lost s04xe13e14 there's no place like home part": {
+          "display_name": "Lost S04xE13E14 - There's No Place Like Home Part",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "lost world": {
+          "display_name": "Lost World",
+          "seasons": 3,
+          "episodes": 16,
+          "versions": 16
+        },
+        "lost": {
+          "display_name": "Lost",
+          "seasons": 6,
+          "episodes": 119,
+          "versions": 227
+        },
+        "lost in oz": {
+          "display_name": "Lost in Oz",
+          "seasons": 1,
+          "episodes": 13,
+          "versions": 13
+        }
+      },
+      "movie_details": {
+        "lost in translation|2003": {
+          "display_name": "Lost in Translation",
+          "year": 2003,
+          "versions": 5
+        },
+        "lost boys tribe|2008": {
+          "display_name": "Lost Boys The Tribe",
+          "year": 2008,
+          "versions": 1
+        },
+        "highway cz dabing drama mysteriozni, francie usa,|lost|1997": {
+          "display_name": "Highway-CZ-dabing Drama Mysteriózní,-Francie USA, / Lost",
+          "year": 1997,
+          "versions": 1
+        },
+        "lost in space|1998": {
+          "display_name": "Lost in Space",
+          "year": 1998,
+          "versions": 2
+        },
+        "lost highway|1997": {
+          "display_name": "Lost Highway",
+          "year": 1997,
+          "versions": 1
+        },
+        "after dark cz tit v obraze horor|lost|2015": {
+          "display_name": "After-Dark-cz-tit v-obraze horor / Lost",
+          "year": 2015,
+          "versions": 1
+        },
+        "lost after dark|2015": {
+          "display_name": "Lost After Dark",
+          "year": 2015,
+          "versions": 1
+        },
+        "lost horizon|1937": {
+          "display_name": "Lost Horizon",
+          "year": 1937,
+          "versions": 1
+        },
+        "lost in florence|2017": {
+          "display_name": "Lost-in-Florence",
+          "year": 2017,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'lost girl' vs 'lost'",
+        "Substring not merged: 'lost in austen' vs 'lost'",
+        "Substring not merged: 'lost s04xe13e14 there's no place like home part' vs 'lost'",
+        "Substring not merged: 'lost world' vs 'lost'",
+        "Substring not merged: 'lost' vs 'lost in oz'",
+        "Single-ep series (might be movie?): 'lost s04xe13e14 there's no place like home part'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 6,
+        "target_groups": 1,
+        "notes": "SHORT name, false merge danger (Lost Girl, Lost in Space)"
+      },
+      "status": "✓ PASS"
+    },
+    "friends": {
+      "query": "friends",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 0,
+      "non_series": 0,
+      "series_details": {
+        "friends": {
+          "display_name": "Friends",
+          "seasons": 10,
+          "episodes": 231,
+          "versions": 496
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "SHORT name, common English word — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "dark": {
+      "query": "dark",
+      "total_files": 500,
+      "series_groups": 13,
+      "movie_groups": 50,
+      "non_series": 20,
+      "series_details": {
+        "dark blue": {
+          "display_name": "Dark Blue",
+          "seasons": 2,
+          "episodes": 20,
+          "versions": 20
+        },
+        "dark winds": {
+          "display_name": "Dark Winds",
+          "seasons": 2,
+          "episodes": 7,
+          "versions": 7
+        },
+        "dark skies": {
+          "display_name": "Dark Skies - E05 - Dark Days Night",
+          "seasons": 1,
+          "episodes": 2,
+          "versions": 2
+        },
+        "dark": {
+          "display_name": "Dark",
+          "seasons": 3,
+          "episodes": 25,
+          "versions": 74
+        },
+        "dark matter": {
+          "display_name": "Dark Matter",
+          "seasons": 3,
+          "episodes": 39,
+          "versions": 147
+        },
+        "dark net": {
+          "display_name": "Dark Net",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "dark city": {
+          "display_name": "Dark City 5 1 Judas",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "dark synthwave egyptian night club": {
+          "display_name": "Dark-Synthwave-Egyptian-Night-Club-128k",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "darkness|those who kill": {
+          "display_name": "Those Who Kill / Darkness",
+          "seasons": 1,
+          "episodes": 7,
+          "versions": 7
+        },
+        "dark heart": {
+          "display_name": "Dark Heart",
+          "seasons": 1,
+          "episodes": 6,
+          "versions": 10
+        },
+        "dark fhd": {
+          "display_name": "Dark 2019",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "dark desire": {
+          "display_name": "Dark Desire",
+          "seasons": 1,
+          "episodes": 18,
+          "versions": 36
+        },
+        "darkness those who kill": {
+          "display_name": "Darkness Those Who Kill",
           "seasons": 1,
           "episodes": 2,
           "versions": 2
         }
       },
       "movie_details": {
-        "inception|2010": {
-          "display_name": "Inception",
-          "year": 2010,
-          "versions": 5
+        "darkness light darkness|tma, svetlo, tma|1989": {
+          "display_name": "Darkness-Light-Darkness",
+          "year": 1989,
+          "versions": 1
         },
-        "pocatek inception|2010": {
-          "display_name": "Pocatek---Inception",
-          "year": 2010,
+        "dark circles|2013": {
+          "display_name": "Dark Circles",
+          "year": 2013,
+          "versions": 2
+        },
+        "dark shadows|2012": {
+          "display_name": "Dark-Shadows",
+          "year": 2012,
+          "versions": 2
+        },
+        "dark feed|2013": {
+          "display_name": "Dark Feed",
+          "year": 2013,
           "versions": 4
         },
-        "inception|pocatek|2010": {
-          "display_name": "Inception / Počátek",
-          "year": 2010,
+        "dark places|2015": {
+          "display_name": "Dark Places",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark summer tit v obraze thriller|2015": {
+          "display_name": "Dark-Summer-cz-tit v-obraze-thriller",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark summer tit v obraze|2015": {
+          "display_name": "Dark-Summer-cz-tit v-obraze",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 01|2015": {
+          "display_name": "Dark Matter 1-01",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 02|2015": {
+          "display_name": "Dark Matter 1-02",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 04|2015": {
+          "display_name": "Dark Matter 1-04",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 05|2015": {
+          "display_name": "Dark Matter 1-05",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 06|2015": {
+          "display_name": "Dark Matter 1-06",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 07|2015": {
+          "display_name": "Dark Matter 1-07",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 08|2015": {
+          "display_name": "Dark Matter 1-08",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 09|2015": {
+          "display_name": "Dark Matter 1-09",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 10|2015": {
+          "display_name": "Dark Matter 1-10",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 11|2015": {
+          "display_name": "Dark Matter 1-11",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 12|2015": {
+          "display_name": "Dark Matter 1-12",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark matter 1 13|2015": {
+          "display_name": "Dark Matter 1-13",
+          "year": 2015,
+          "versions": 1
+        },
+        "dark days|2000": {
+          "display_name": "Dark Days",
+          "year": 2000,
+          "versions": 1
+        },
+        "dark city|1998": {
+          "display_name": "Dark City",
+          "year": 1998,
+          "versions": 6
+        },
+        "dark star|1974": {
+          "display_name": "Dark Star",
+          "year": 1974,
+          "versions": 1
+        },
+        "darkness rising|2017": {
+          "display_name": "Darkness Rising",
+          "year": 2017,
           "versions": 3
         },
-        "inception cobol job|2010": {
-          "display_name": "Inception.The.Cobol.Job",
-          "year": 2010,
+        "dark blue|2002": {
+          "display_name": "Dark Blue",
+          "year": 2002,
+          "versions": 4
+        },
+        "dark tales of japan|2004": {
+          "display_name": "Dark Tales of Japan",
+          "year": 2004,
           "versions": 1
         },
-        "inception (dicaprio)|pocatek|2010": {
-          "display_name": "Inception-(DiCaprio) / Pocatek",
-          "year": 2010,
+        "dark touch (marina van|2013": {
+          "display_name": "Dark Touch (Marina de Van,",
+          "year": 2013,
           "versions": 1
         },
-        "pocatek|2010": {
-          "display_name": "Počátek (Inception) CZ",
-          "year": 2010,
+        "dark money|2018": {
+          "display_name": "Dark Money",
+          "year": 2018,
           "versions": 1
         },
-        "detektiv dee zahada smrtiaceho ohna|2010": {
-          "display_name": "Detektiv.Dee.a.zahada.smrtiaceho.ohna",
-          "year": 2010,
+        "dark star h r gigers world|2014": {
+          "display_name": "dark star h r gigers world",
+          "year": 2014,
           "versions": 1
         },
-        "sinners and saints|2010": {
-          "display_name": "Sinners.and.Saints",
-          "year": 2010,
-          "versions": 1
-        },
-        "podivni|2010": {
-          "display_name": "Podivni",
-          "year": 2010,
-          "versions": 1
-        },
-        "des za zdi|2010": {
-          "display_name": "Des.za.zdi",
-          "year": 2010,
-          "versions": 1
-        },
-        "hura do afriky|2010": {
-          "display_name": "Hura.do.Afriky",
-          "year": 2010,
-          "versions": 2
-        },
-        "rallye smrti 2 (death race 2|2010": {
-          "display_name": "Rallye smrti 2 (Death Race 2",
-          "year": 2010,
-          "versions": 1
-        },
-        "hnizdo neresti|2010": {
-          "display_name": "hnizdo-neresti",
-          "year": 2010,
-          "versions": 1
-        },
-        "pohrben zaziva|2010": {
-          "display_name": "pohrben-zaziva",
-          "year": 2010,
-          "versions": 1
-        },
-        "tamara drewe novinky|2010": {
-          "display_name": "tamara-drewe-novinky",
-          "year": 2010,
-          "versions": 2
-        },
-        "zase ona novinky|2010": {
-          "display_name": "zase-ona-novinky",
-          "year": 2010,
-          "versions": 1
-        },
-        "siren|2010": {
-          "display_name": "Siren",
-          "year": 2010,
-          "versions": 1
-        },
-        "divoke srdce afriky great rift|2010": {
-          "display_name": "divoke-srdce-afriky-great-rift-the",
-          "year": 2010,
-          "versions": 1
-        },
-        "13|2010": {
-          "display_name": "13",
-          "year": 2010,
-          "versions": 1
-        },
-        "mardi gras|2010": {
-          "display_name": "mardi.gras",
-          "year": 2010,
-          "versions": 1
-        },
-        "neni zac novinky|2010": {
-          "display_name": "neni-zac-novinky",
-          "year": 2010,
-          "versions": 1
-        },
-        "fotri jsou lotri|2010": {
-          "display_name": "fotri-jsou-lotri",
-          "year": 2010,
-          "versions": 1
-        },
-        "predators|2010": {
-          "display_name": "Predators",
-          "year": 2010,
-          "versions": 2
-        },
-        "plivu na vas hrob|2010": {
-          "display_name": "plivu.na.vas.hrob",
-          "year": 2010,
-          "versions": 1
-        },
-        "cz|secretariat|2010": {
-          "display_name": "CZ / Secretariat",
-          "year": 2010,
-          "versions": 1
-        },
-        "extraordinary measures|2010": {
-          "display_name": "Extraordinary.Measures",
-          "year": 2010,
-          "versions": 1
-        },
-        "town|2010": {
-          "display_name": "The Town",
-          "year": 2010,
-          "versions": 2
-        },
-        "red|2010": {
-          "display_name": "Red",
-          "year": 2010,
-          "versions": 1
-        },
-        "unstoppable|2010": {
-          "display_name": "Unstoppable",
-          "year": 2010,
-          "versions": 1
-        },
-        "fighter|2010": {
-          "display_name": "The.Fighter",
-          "year": 2010,
+        "dark crimes|2016": {
+          "display_name": "Dark Crimes",
+          "year": 2016,
           "versions": 3
         },
-        "resident evil afterlife|2010": {
-          "display_name": "Resident Evil Afterlife",
-          "year": 2010,
+        "dark figure of crime|2018": {
+          "display_name": "Dark Figure of Crime",
+          "year": 2018,
+          "versions": 3
+        },
+        "dark angel|2019": {
+          "display_name": "Dark Angel",
+          "year": 2019,
+          "versions": 1
+        },
+        "dark almost night|2019": {
+          "display_name": "Dark almost night",
+          "year": 2019,
+          "versions": 1
+        },
+        "dark deadly & dreadful|2018": {
+          "display_name": "Dark, Deadly & Dreadful",
+          "year": 2018,
           "versions": 2
         },
-        "clash of titans|2010": {
-          "display_name": "Clash Of The Titans",
-          "year": 2010,
+        "dark encounter|2019": {
+          "display_name": "Dark Encounter",
+          "year": 2019,
           "versions": 1
         },
-        "a team extended|2010": {
-          "display_name": "The.A.Team.EXTENDED",
-          "year": 2010,
+        "dark light temne svetlo|horor|2019": {
+          "display_name": "Dark-Light-Temne-svetlo",
+          "year": 2019,
           "versions": 1
         },
-        "devil|2010": {
-          "display_name": "Devil",
-          "year": 2010,
+        "dark waters|2019": {
+          "display_name": "Dark Waters",
+          "year": 2019,
+          "versions": 8
+        },
+        "dark ride en|vlozene titulky|2006": {
+          "display_name": "Dark Ride EN",
+          "year": 2006,
           "versions": 1
         },
-        "pirana 3d|2010": {
-          "display_name": "Pirana 3D",
-          "year": 2010,
+        "dark hours, the en|vlozene titulky|2005": {
+          "display_name": "Dark Hours, The EN",
+          "year": 2005,
           "versions": 1
         },
-        "ward|2010": {
-          "display_name": "The Ward",
-          "year": 2010,
-          "versions": 1
-        },
-        "tucker and dale vs evil|2010": {
-          "display_name": "Tucker.And.Dale.Vs.Evil",
-          "year": 2010,
-          "versions": 1
-        },
-        "salt ugynok|2010": {
-          "display_name": "Salt.Ugynok",
-          "year": 2010,
-          "versions": 1
-        },
-        "charlie st cloud|2010": {
-          "display_name": "Charlie St Cloud",
-          "year": 2010,
+        "dark skies|2013": {
+          "display_name": "Dark Skies",
+          "year": 2013,
           "versions": 2
         },
-        "heartless|2010": {
-          "display_name": "Heartless",
-          "year": 2010,
+        "dark waters|1993": {
+          "display_name": "Dark Waters EN",
+          "year": 1993,
           "versions": 1
         },
-        "salt|2010": {
-          "display_name": "SALT",
-          "year": 2010,
+        "dark angel|temny andel|1990": {
+          "display_name": "Dark Angel",
+          "year": 1990,
           "versions": 1
         },
-        "kick ass|2010": {
-          "display_name": "Kick Ass",
-          "year": 2010,
-          "versions": 2
-        },
-        "klamac srdci|2010": {
-          "display_name": "Klamac Srdci",
-          "year": 2010,
-          "versions": 2
-        },
-        "ma me rad nema me rad|2010": {
-          "display_name": "Má mě rád, nemá mě rád",
-          "year": 2010,
+        "dark star hr gigers welt|2014": {
+          "display_name": "Dark Star HR Gigers Welt",
+          "year": 2014,
           "versions": 1
         },
-        "hereafter|2010": {
-          "display_name": "Hereafter",
-          "year": 2010,
+        "dark sense|2019": {
+          "display_name": "Dark Sense",
+          "year": 2019,
           "versions": 1
         },
-        "lake placid 3|2010": {
-          "display_name": "Lake.Placid.3",
-          "year": 2010,
+        "dark web cicada|2021": {
+          "display_name": "Dark Web Cicada 3301",
+          "year": 2021,
+          "versions": 5
+        },
+        "darkness|2013": {
+          "display_name": "Darkness",
+          "year": 2013,
           "versions": 1
         },
-        "river why|2010": {
-          "display_name": "The.River.Why",
-          "year": 2010,
+        "darkness falls|2003": {
+          "display_name": "Darkness Falls",
+          "year": 2003,
           "versions": 1
         },
-        "dorian gray|2010": {
-          "display_name": "Dorian.Gray",
-          "year": 2010,
+        "dark spell|2021": {
+          "display_name": "Dark Spell",
+          "year": 2021,
           "versions": 1
         },
-        "made in dagenham|2010": {
-          "display_name": "Made.in.Dagenham",
-          "year": 2010,
+        "afterlife|dark age|2013": {
+          "display_name": "Afterlife / DARK AGE",
+          "year": 2013,
           "versions": 1
         },
-        "last airbender|2010": {
-          "display_name": "The.Last.Airbender",
-          "year": 2010,
+        "darkness|2002": {
+          "display_name": "Darkness",
+          "year": 2002,
           "versions": 1
         },
-        "rubber|2010": {
-          "display_name": "Rubber",
-          "year": 2010,
-          "versions": 1
-        },
-        "robin hood|2010": {
-          "display_name": "Robin-Hood",
-          "year": 2010,
-          "versions": 1
-        },
-        "o bohoch ludoch|2010": {
-          "display_name": "O-bohoch-a-ludoch",
-          "year": 2010,
-          "versions": 1
-        },
-        "ozbrojeni nebezpecni|2010": {
-          "display_name": "ozbrojeni-a-nebezpecni",
-          "year": 2010,
-          "versions": 1
-        },
-        "way|2010": {
-          "display_name": "The Way",
-          "year": 2010,
-          "versions": 1
-        },
-        "nightmare on elm street|2010": {
-          "display_name": "A.Nightmare.on.Elm.Street",
-          "year": 2010,
-          "versions": 1
-        },
-        "tomorrow when war began|2010": {
-          "display_name": "Tomorrow When The War Began",
-          "year": 2010,
-          "versions": 1
-        },
-        "legie|2010": {
-          "display_name": "Legie",
-          "year": 2010,
-          "versions": 1
-        },
-        "zeleny srsen cz|2010": {
-          "display_name": "Zelený_sršeň_CZ",
-          "year": 2010,
-          "versions": 1
-        },
-        "black swan|2010": {
-          "display_name": "Black Swan",
-          "year": 2010,
-          "versions": 1
-        },
-        "dinosaurus (anim usa|2010": {
-          "display_name": "Dinosaurus (anim.USA",
-          "year": 2010,
-          "versions": 1
-        },
-        "vlkodlak|2010": {
-          "display_name": "Vlkodlak",
-          "year": 2010,
-          "versions": 1
-        },
-        "dabel dabing|2010": {
-          "display_name": "dabel-cz-dabing",
-          "year": 2010,
-          "versions": 1
-        },
-        "legie dabing|2010": {
-          "display_name": "legie-cz-dabing",
-          "year": 2010,
-          "versions": 1
-        },
-        "mesto town|2010": {
-          "display_name": "Mesto---The-Town",
-          "year": 2010,
-          "versions": 1
-        },
-        "eat pray love|2010": {
-          "display_name": "Eat.Pray.Love",
-          "year": 2010,
-          "versions": 1
-        },
-        "easy|2010": {
-          "display_name": "easy.a",
-          "year": 2010,
-          "versions": 1
-        },
-        "life as we know|2010": {
-          "display_name": "Life.As.We.Know.It",
-          "year": 2010,
-          "versions": 1
-        },
-        "love and other drugs|2010": {
-          "display_name": "Love.And.Other.Drugs",
-          "year": 2010,
-          "versions": 1
-        },
-        "sex and city 2|2010": {
-          "display_name": "Sex and the City 2",
-          "year": 2010,
-          "versions": 1
-        },
-        "dont be afraid of dark|2010": {
-          "display_name": "Dont.Be.Afraid.of.the.Dark",
-          "year": 2010,
-          "versions": 1
-        },
-        "doo prokleti prisery z jezera (komedie usa|scooby|2010": {
-          "display_name": "Doo- Prokletí příšery z jezera (komedie USA / Scooby",
-          "year": 2010,
-          "versions": 1
-        },
-        "tekken dabing|2010": {
-          "display_name": "TEKKEN---CZ-DABING",
-          "year": 2010,
-          "versions": 1
-        },
-        "loft|2010": {
-          "display_name": "Loft",
-          "year": 2010,
-          "versions": 1
-        },
-        "cemetery|junction cz|2010": {
-          "display_name": "Junction-CZ / Cemetery",
-          "year": 2010,
-          "versions": 1
-        },
-        "ctyri lvi|2010": {
-          "display_name": "Ctyri-lvi.CZ",
-          "year": 2010,
-          "versions": 1
-        },
-        "last night|2010": {
-          "display_name": "Last Night",
-          "year": 2010,
-          "versions": 1
-        },
-        "krach|2010": {
-          "display_name": "Krach",
-          "year": 2010,
-          "versions": 1
-        },
-        "i spit on your grave|2010": {
-          "display_name": "I.Spit.On.Your.Grave",
-          "year": 2010,
-          "versions": 1
-        },
-        "centurion|2010": {
-          "display_name": "centurion",
-          "year": 2010,
-          "versions": 1
-        },
-        "trader games|2010": {
-          "display_name": "Trader.Games",
-          "year": 2010,
-          "versions": 1
-        },
-        "nanga parbat 3d|2010": {
-          "display_name": "Nanga.Parbat.3D",
-          "year": 2010,
-          "versions": 1
-        },
-        "posledni pisen|2010": {
-          "display_name": "posledni-pisen",
-          "year": 2010,
-          "versions": 1
-        },
-        "fighter dvdrip drama sportovni zivotopisny|2010": {
-          "display_name": "fighter-dvdrip-drama-sportovni-zivotopisny",
-          "year": 2010,
-          "versions": 1
-        },
-        "tekken|2010": {
-          "display_name": "Tekken",
-          "year": 2010,
-          "versions": 2
-        },
-        "icarus|2010": {
-          "display_name": "Icarus",
-          "year": 2010,
-          "versions": 1
-        },
-        "modra hlubina drama usa|2010": {
-          "display_name": "Modra-hlubina-CZ--Drama,-USA,",
-          "year": 2010,
-          "versions": 1
-        },
-        "alien vs ninja|2010": {
-          "display_name": "Alien vs. Ninja",
-          "year": 2010,
-          "versions": 1
-        },
-        "22 vystrelu ☼|2010": {
-          "display_name": "22 vystrelu cz ☼",
-          "year": 2010,
-          "versions": 1
-        },
-        "parchanti|2010": {
-          "display_name": "parchanti",
-          "year": 2010,
-          "versions": 1
-        },
-        "kill speed ☼|2010": {
-          "display_name": "kill speed cz ☼",
-          "year": 2010,
-          "versions": 1
-        },
-        "dopisy pro julii|2010": {
-          "display_name": "Dopisy_pro_Julii",
-          "year": 2010,
-          "versions": 1
-        },
-        "faster cz dabing novinky|2010": {
-          "display_name": "Faster_CZ_Dabing_Novinky",
-          "year": 2010,
-          "versions": 1
-        },
-        "na hrane temnoty ☼|2010": {
-          "display_name": "Na hrane temnoty cz ☼",
-          "year": 2010,
+        "dark phoenix|2019": {
+          "display_name": "Dark Phoenix",
+          "year": 2019,
           "versions": 1
         }
       },
-      "potential_issues": [],
+      "potential_issues": [
+        "Substring not merged: 'dark blue' vs 'dark'",
+        "Substring not merged: 'dark winds' vs 'dark'",
+        "Substring not merged: 'dark skies' vs 'dark'",
+        "Substring not merged: 'dark' vs 'dark matter'",
+        "Substring not merged: 'dark' vs 'dark net'",
+        "Substring not merged: 'dark' vs 'dark city'",
+        "Substring not merged: 'dark' vs 'dark synthwave egyptian night club'",
+        "Substring not merged: 'dark' vs 'darkness|those who kill'",
+        "Substring not merged: 'dark' vs 'dark heart'",
+        "Substring not merged: 'dark' vs 'dark fhd'",
+        "Substring not merged: 'dark' vs 'dark desire'",
+        "Substring not merged: 'dark' vs 'darkness those who kill'",
+        "Single-ep series (might be movie?): 'dark net'",
+        "Single-ep series (might be movie?): 'dark city'",
+        "Single-ep series (might be movie?): 'dark synthwave egyptian night club'",
+        "Single-ep series (might be movie?): 'dark fhd'"
+      ],
       "expected": {
-        "type": "movie",
-        "expected_groups": 94,
-        "notes": "Search returns all movies from 2010; stricter validation avoids over-merging"
+        "type": "series",
+        "expected_groups": 13,
+        "target_groups": 7,
+        "notes": "VERY short name; dark matter, dark blue etc are separate shows"
       },
       "status": "✓ PASS"
     },
-    "avatar 2009": {
-      "query": "avatar 2009",
-      "total_files": 60,
-      "series_groups": 0,
-      "movie_groups": 10,
-      "non_series": 0,
-      "series_details": {},
+    "1883": {
+      "query": "1883",
+      "total_files": 221,
+      "series_groups": 1,
+      "movie_groups": 13,
+      "non_series": 10,
+      "series_details": {
+        "1883": {
+          "display_name": "1883",
+          "seasons": 1,
+          "episodes": 12,
+          "versions": 159
+        }
+      },
       "movie_details": {
-        "avatar|2009": {
-          "display_name": "Avatar",
-          "year": 2009,
-          "versions": 36
-        },
-        "avatar scifi|2009": {
-          "display_name": "Avatar-Scifi",
-          "year": 2009,
-          "versions": 1
-        },
-        "avatar 1 (sam worthington oe saldana michelle rodriguez|2009": {
-          "display_name": "Avatar 1 (Sam Worthington, oe Saldana,Michelle Rodriguez",
-          "year": 2009,
+        "road west|2022": {
+          "display_name": "1883 The Road West",
+          "year": 2022,
           "versions": 3
         },
-        "avatar (r|2009": {
-          "display_name": "Avatar (r",
-          "year": 2009,
+        "1 sam elliott, tim mcgraw|1883|2021": {
+          "display_name": "1 - Sam Elliott, Tim McGraw / 1883",
+          "year": 2021,
           "versions": 1
         },
-        "avatar r|2009": {
-          "display_name": "Avatar r",
-          "year": 2009,
+        "1883|4 brod sam elliott, tim mcgraw|2022": {
+          "display_name": "4 Brod - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
           "versions": 1
         },
-        "3d avatar|sam worthington, zoe saldana|2009": {
-          "display_name": "Sam Worthington, Zoe Saldana / 3D Avatar",
-          "year": 2009,
+        "1883|5 uskali svobody sam elliott, tim mcgraw|2022": {
+          "display_name": "5 Úskalí svobody - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
           "versions": 1
         },
-        "avatar|sam worthington, zoe saldana|2009": {
-          "display_name": "Sam Worthington, Zoe Saldana / Avatar",
-          "year": 2009,
+        "1883|7 jako blesk zlute vlasy sam elliott, tim mcgraw|2022": {
+          "display_name": "7 Jako blesk žluté vlasy - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
           "versions": 1
         },
-        "avatar avi|2009": {
-          "display_name": "Avatar CZ avi",
-          "year": 2009,
+        "1883|8 plac odevzdanosti sam elliott, tim mcgraw|2022": {
+          "display_name": "8 Pláč odevzdanosti - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
           "versions": 1
         },
-        "avatar|extended collector's edition|2009": {
-          "display_name": "Extended Collector's Edition / Avatar",
-          "year": 2009,
+        "1883|9 spechajici mraky sam elliott, tim mcgraw|2022": {
+          "display_name": "9 Spěchající mraky - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
           "versions": 1
         },
-        "avatar dabing|2009": {
-          "display_name": "Avatar CZ-dabing",
-          "year": 2009,
+        "1883|2 utes za nami sam elliott, tim mcgraw|2021": {
+          "display_name": "2 Útes za námi - Sam Elliott, Tim McGraw / 1883",
+          "year": 2021,
+          "versions": 1
+        },
+        "1883|3 reka sam elliott, tim mcgraw|2021": {
+          "display_name": "3 Řeka - Sam Elliott, Tim McGraw / 1883",
+          "year": 2021,
+          "versions": 1
+        },
+        "10 toto neni vase nebe sam elliott, tim mcgraw|1883|2022": {
+          "display_name": "10 Toto není vaše nebe - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
+          "versions": 1
+        },
+        "1883|6 unudit dabla sam elliott, tim mcgraw|2022": {
+          "display_name": "6 Unudit ďábla - Sam Elliott, Tim McGraw / 1883",
+          "year": 2022,
+          "versions": 1
+        },
+        "spiknuti|1997": {
+          "display_name": "Spiknutí",
+          "year": 1997,
+          "versions": 1
+        },
+        "vikingove|1999": {
+          "display_name": "Vikingové",
+          "year": 1999,
           "versions": 1
         }
       },
       "potential_issues": [],
       "expected": {
-        "type": "movie",
-        "expected_groups": 10,
-        "notes": "Avatar variants merged; edge cases from actor names in titles (Sam Worthington)"
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Year-like series name edge case — correctly grouped"
       },
       "status": "✓ PASS"
+    },
+    "big bang theory": {
+      "query": "big bang theory",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 0,
+      "non_series": 4,
+      "series_details": {
+        "big bang theory": {
+          "display_name": "Big Bang Theory",
+          "seasons": 12,
+          "episodes": 229,
+          "versions": 467
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Multi-word, consistent naming — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "the witcher": {
+      "query": "the witcher",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 4,
+      "non_series": 4,
+      "series_details": {
+        "witcher": {
+          "display_name": "The Witcher",
+          "seasons": 4,
+          "episodes": 33,
+          "versions": 369
+        }
+      },
+      "movie_details": {
+        "witcher|1980": {
+          "display_name": "The Witcher",
+          "year": 1980,
+          "versions": 1
+        },
+        "witcher nightmare of wolf|2021": {
+          "display_name": "The Witcher Nightmare of the Wolf",
+          "year": 2021,
+          "versions": 4
+        },
+        "nightmare of the wolf|witcher|2021": {
+          "display_name": "Nightmare of the Wolf / The Witcher",
+          "year": 2021,
+          "versions": 1
+        },
+        "witcher sirens of deep|2025": {
+          "display_name": "The Witcher Sirens of the Deep",
+          "year": 2025,
+          "versions": 7
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Czech dual-name (Zaklínač) — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "peaky blinders": {
+      "query": "peaky blinders",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 2,
+      "non_series": 1,
+      "series_details": {
+        "gangy z birminghamu|peaky blinders": {
+          "display_name": "Peaky Blinders",
+          "seasons": 6,
+          "episodes": 36,
+          "versions": 425
+        }
+      },
+      "movie_details": {
+        "peaky blinders – gangy z birminghamu 06x01|2022": {
+          "display_name": "Peaky Blinders – Gangy z Birminghamu 06x01",
+          "year": 2022,
+          "versions": 1
+        },
+        "peaky blinders immortal man|2026": {
+          "display_name": "Peaky Blinders The Immortal Man",
+          "year": 2026,
+          "versions": 9
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Standard naming — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "house of the dragon": {
+      "query": "house of the dragon",
+      "total_files": 195,
+      "series_groups": 3,
+      "movie_groups": 8,
+      "non_series": 0,
+      "series_details": {
+        "house of dragon": {
+          "display_name": "House of the Dragon",
+          "seasons": 3,
+          "episodes": 19,
+          "versions": 128
+        },
+        "house of the dragon|rod draka": {
+          "display_name": "House of the Dragon / Rod Draka",
+          "seasons": 2,
+          "episodes": 14,
+          "versions": 20
+        },
+        "rod draka house of dragon": {
+          "display_name": "Rod Draka House of the Dragon",
+          "seasons": 2,
+          "episodes": 7,
+          "versions": 8
+        }
+      },
+      "movie_details": {
+        "rod draka house of dragon 01x07|2022": {
+          "display_name": "Rod Draka House of the Dragon 01x07",
+          "year": 2022,
+          "versions": 1
+        },
+        "rod draka ''house of dragon '' ''zdabing ''|2022": {
+          "display_name": "Rod Draka ''House of the Dragon ''S01E07 ''Zdabing ''",
+          "year": 2022,
+          "versions": 1
+        },
+        "7hitmovies dad|house of the dragon|2024": {
+          "display_name": "House of the Dragon / 7HitMovies dad",
+          "year": 2024,
+          "versions": 3
+        },
+        "rod draka house of dragon s02 e01 syn za syna|2024": {
+          "display_name": "Rod Draka House of the Dragon S02 E01 Syn za syna",
+          "year": 2024,
+          "versions": 1
+        },
+        "7hitmovies forum|house of the dragon|2024": {
+          "display_name": "House of the Dragon / 7HitMovies forum",
+          "year": 2024,
+          "versions": 3
+        },
+        "7hitmovies buzz|house of the dragon|2024": {
+          "display_name": "House of the Dragon / 7HitMovies buzz",
+          "year": 2024,
+          "versions": 9
+        },
+        "7hitmovies diy|house of the dragon|2024": {
+          "display_name": "House of the Dragon / 7HitMovies diy",
+          "year": 2024,
+          "versions": 3
+        },
+        "7hitmovies best|house of the dragon|2024": {
+          "display_name": "House of the Dragon / 7HitMovies best",
+          "year": 2024,
+          "versions": 3
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'house of dragon' vs 'rod draka house of dragon'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 3,
+        "target_groups": 1,
+        "notes": "GoT spin-off"
+      },
+      "status": "✓ PASS"
+    },
+    "better call saul": {
+      "query": "better call saul",
+      "total_files": 382,
+      "series_groups": 3,
+      "movie_groups": 0,
+      "non_series": 4,
+      "series_details": {
+        "better call saul": {
+          "display_name": "Better Call Saul",
+          "seasons": 6,
+          "episodes": 63,
+          "versions": 363
+        },
+        "breaking bad": {
+          "display_name": "Breaking Bad",
+          "seasons": 2,
+          "episodes": 2,
+          "versions": 4
+        },
+        "homeland": {
+          "display_name": "Homeland",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'homeland'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 3,
+        "target_groups": 1,
+        "notes": "BB universe — correctly separate from Breaking Bad"
+      },
+      "status": "✓ PASS"
+    },
+    "the boys": {
+      "query": "the boys",
+      "total_files": 407,
+      "series_groups": 56,
+      "movie_groups": 68,
+      "non_series": 76,
+      "series_details": {
+        "boys word blood on asphalt": {
+          "display_name": "The Boys Word Blood on the Asphalt",
+          "seasons": 1,
+          "episodes": 8,
+          "versions": 8
+        },
+        "boys presents diabolical": {
+          "display_name": "The Boys Presents Diabolical",
+          "seasons": 1,
+          "episodes": 8,
+          "versions": 14
+        },
+        "boy next door & kevin lyttle resistance [official music video] (p 24fps h264": {
+          "display_name": "The Boy Next Door & Kevin Lyttle - Resistance (feat $hirak) [Official Music Video]",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "boy next door fresh coast feat jody bernal la colegiala (p 25fps h264": {
+          "display_name": "The Boy Next Door, Fresh Coast feat Jody Bernal - La Colegiala (Official Music Video)",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "forensics catching killer": {
+          "display_name": "Forensics Catching the Killer",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "waltons": {
+          "display_name": "The Waltons",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "alienist": {
+          "display_name": "The Alienist",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "nirvanna band show": {
+          "display_name": "Nirvanna the Band the Show",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "avatar last airbender": {
+          "display_name": "Avatar The Last Airbender",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "adventures of galaxy rangers": {
+          "display_name": "The Adventures of the Galaxy Rangers",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "last tycoon": {
+          "display_name": "The Last Tycoon 104 Burying the Boy Genius",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "male voices episode": {
+          "display_name": "Male Voices, Episode 3 Tights and More featuring the boys of the Gold School",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "step by step": {
+          "display_name": "Step By Step",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "krok za krokem": {
+          "display_name": "Krok za krokem",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "ep": {
+          "display_name": "Ep 01 - The Boy in the Iceberg",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "fairly oddparents": {
+          "display_name": "The Fairly OddParents",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "alexander making of god": {
+          "display_name": "Alexander The Making of a God",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "retrolectro comedy xviii (360p h": {
+          "display_name": "Retrolectro Comedy XVIII (Ship Dance with Minimatic - The Boy in the Boat)",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "institute": {
+          "display_name": "The Institute",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "courtship of eddie's father": {
+          "display_name": "The Courtship of Eddie's Father",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "gold": {
+          "display_name": "The Gold",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "starcom": {
+          "display_name": "STARCOM (The U S Space Force) - E07 - The Boys Who Cried Dark",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "bbc ai confidential": {
+          "display_name": "BBC AI Confidential 1of3 The Boy Who Tried to Kill the Queen MVGroup org",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "ai confidential with hannah fry": {
+          "display_name": "AI Confidential with Hannah Fry",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 4
+        },
+        "sabrina teenage witch": {
+          "display_name": "Sabrina, The Teenage Witch",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "ring ni kakero": {
+          "display_name": "Ring ni Kakero 1 Nichibei Kessen Hen 12 - And the Boy Flaps Towards the World",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "ranch": {
+          "display_name": "The Ranch",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "frasier": {
+          "display_name": "frasier",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "earth 2": {
+          "display_name": "Earth",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "cristiano ronaldo chlapec ktery mel sen boy that had dream [hd": {
+          "display_name": "Cristiano Ronaldo chlapec který měl sen-The boy that had a dream",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "yes minister": {
+          "display_name": "Yes Minister",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 3
+        },
+        "hrncnmznhfrng": {
+          "display_name": "HrncnmznhFrng",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "dragon ball z s07": {
+          "display_name": "Dragon Ball Z - S07 E212 - Best of The Boys",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "tom clancy's jack ryan": {
+          "display_name": "Tom Clancy's Jack Ryan",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "y2mate com roasted": {
+          "display_name": "y2mate com - ROASTED 14 The Boy alebo prečo sa radšej snažiť o dcérku",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "arcane": {
+          "display_name": "Arcane",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 8
+        },
+        "game of thrones": {
+          "display_name": "Game of Thrones",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "yellowstone": {
+          "display_name": "Yellowstone",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 3
+        },
+        "dexter": {
+          "display_name": "Dexter",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "hra o truny": {
+          "display_name": "Hra o trůny",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "naruto": {
+          "display_name": "Naruto",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "alfred hitchcock presents": {
+          "display_name": "Alfred Hitchcock Presents",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "bull sudny specialista": {
+          "display_name": "Bull Súdny špecialista",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "goosebumps": {
+          "display_name": "Goosebumps 2023",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "01x07 kluk z": {
+          "display_name": "01x07 Kluk z 6B-The boy from 6B.mkv",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "kill boy h265": {
+          "display_name": "S05E05_Kill_the_Boy_h265.mkv",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "and just like that": {
+          "display_name": "And Just Like That",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 4
+        },
+        "banda|boys": {
+          "display_name": "The Boys",
+          "seasons": 4,
+          "episodes": 32,
+          "versions": 43
+        },
+        "fringe": {
+          "display_name": "Fringe",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 3
+        },
+        "banda dabelske historky|boys diabolical": {
+          "display_name": "The Boys - Diabolical / Banda - Ďábelské historky",
+          "seasons": 1,
+          "episodes": 8,
+          "versions": 8
+        },
+        "brilliant minds": {
+          "display_name": "Brilliant Minds",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 11
+        },
+        "big wolf on campus": {
+          "display_name": "Big Wolf On Campus",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "miracle": {
+          "display_name": "Miracle",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "rambo": {
+          "display_name": "Rambo - Ep 21 - Reign of the Boy King",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "cheers": {
+          "display_name": "Cheers",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "i love lucy": {
+          "display_name": "I Love Lucy",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "boy mole fox and horse|2022": {
+          "display_name": "The Boy the Mole the Fox and the Horse",
+          "year": 2022,
+          "versions": 2
+        },
+        "boy and heron|2023": {
+          "display_name": "The Boy and the Heron",
+          "year": 2023,
+          "versions": 3
+        },
+        "boys in band (william friedkin|1970": {
+          "display_name": "The Boys in the Band (William Friedkin,",
+          "year": 1970,
+          "versions": 1
+        },
+        "boy who harnessed wind|2019": {
+          "display_name": "The Boy Who Harnessed the Wind",
+          "year": 2019,
+          "versions": 4
+        },
+        "boys in band|2020": {
+          "display_name": "The Boys in the Band",
+          "year": 2020,
+          "versions": 3
+        },
+        "boys in band|1970": {
+          "display_name": "The Boys in the Band",
+          "year": 1970,
+          "versions": 2
+        },
+        "boy behind door|2020": {
+          "display_name": "The Boy Behind The Door",
+          "year": 2020,
+          "versions": 3
+        },
+        "boy and beast|2015": {
+          "display_name": "The Boy and the Beast",
+          "year": 2015,
+          "versions": 1
+        },
+        "boys in boat|2023": {
+          "display_name": "The Boys in The Boat",
+          "year": 2023,
+          "versions": 5
+        },
+        "boy in woods|2023": {
+          "display_name": "The Boy In The Woods",
+          "year": 2023,
+          "versions": 5
+        },
+        "boy and kite|1962": {
+          "display_name": "The Boy and the Kite",
+          "year": 1962,
+          "versions": 1
+        },
+        "boy in dress|2014": {
+          "display_name": "The Boy In The Dress",
+          "year": 2014,
+          "versions": 1
+        },
+        "boy with green hair (joseph losey|1948": {
+          "display_name": "The Boy with Green Hair (Joseph Losey,",
+          "year": 1948,
+          "versions": 1
+        },
+        "boys from brazil|1978": {
+          "display_name": "The Boys From Brazil",
+          "year": 1978,
+          "versions": 2
+        },
+        "boy|2016": {
+          "display_name": "The Boy",
+          "year": 2016,
+          "versions": 14
+        },
+        "boy downstairs|2017": {
+          "display_name": "The Boy Downstairs",
+          "year": 2017,
+          "versions": 1
+        },
+        "boy inside|2012": {
+          "display_name": "The Boy Inside",
+          "year": 2012,
+          "versions": 1
+        },
+        "boy who smells like fish|2013": {
+          "display_name": "The Boy Who Smells Like Fish",
+          "year": 2013,
+          "versions": 1
+        },
+        "boys next door|1985": {
+          "display_name": "The Boys Next Door",
+          "year": 1985,
+          "versions": 1
+        },
+        "boy next door|2017": {
+          "display_name": "The Boy Next Door",
+          "year": 2017,
+          "versions": 31
+        },
+        "boy soldier|1981": {
+          "display_name": "The Boy Soldier",
+          "year": 1981,
+          "versions": 1
+        },
+        "boy from oklahoma|1954": {
+          "display_name": "The Boy From Oklahoma",
+          "year": 1954,
+          "versions": 1
+        },
+        "boys of st vincent|1992": {
+          "display_name": "The Boys Of St Vincent",
+          "year": 1992,
+          "versions": 1
+        },
+        "boys|1962": {
+          "display_name": "The Boys",
+          "year": 1962,
+          "versions": 2
+        },
+        "boy who turned yellow|1972": {
+          "display_name": "The Boy Who Turned Yellow",
+          "year": 1972,
+          "versions": 2
+        },
+        "fall out boy boys of zummer tour live in chicago|2016": {
+          "display_name": "Fall Out Boy The Boys Of Zummer Tour Live In Chicago",
+          "year": 2016,
+          "versions": 3
+        },
+        "chlapec krtek liska kun boy mole fox and horse|2022": {
+          "display_name": "Chlapec, krtek, liška a kůň The Boy the Mole the Fox and the Horse",
+          "year": 2022,
+          "versions": 1
+        },
+        "legend of boy and eagle|1967": {
+          "display_name": "The Legend of the Boy and the Eagle",
+          "year": 1967,
+          "versions": 1
+        },
+        "bakemono no ko|boy and the beast|2015": {
+          "display_name": "The Boy and The Beast / Bakemono no Ko",
+          "year": 2015,
+          "versions": 1
+        },
+        "boy in the striped pyjamas|chlapec v pruhovanem pyzamu|2008": {
+          "display_name": "The Boy in the Striped Pyjamas / Chlapec v pruhovanem pyzamu",
+          "year": 2008,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e03|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E03",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e01|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E01",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e07|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E07",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e08|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E08",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e06|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E06",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e04|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E04",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e05|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E05",
+          "year": 2023,
+          "versions": 1
+        },
+        "slovo pacana boy's word blood on asphalt s01 e02|2023": {
+          "display_name": "Slovo pacana The Boy's Word Blood on the Asphalt S01 E02",
+          "year": 2023,
+          "versions": 1
+        },
+        "to all boys ive loved before|2018": {
+          "display_name": "To All the Boys Ive Loved Before",
+          "year": 2018,
+          "versions": 9
+        },
+        "to all boys i've loved before|2018": {
+          "display_name": "To All The Boys I've Loved Before",
+          "year": 2018,
+          "versions": 2
+        },
+        "condor|to all the boys ive loved before|2018": {
+          "display_name": "Condor / To-All-the-Boys-Ive-Loved-Before",
+          "year": 2018,
+          "versions": 1
+        },
+        "day with boys (clu gulager|1969": {
+          "display_name": "A Day with the Boys (Clu Gulager,",
+          "year": 1969,
+          "versions": 1
+        },
+        "to all the boys p s i still love you|vsem klukum p s stale te miluju|2020": {
+          "display_name": "To All the Boys P S I Still Love You / Všem klukům P S Stále tě miluju",
+          "year": 2020,
+          "versions": 3
+        },
+        "vsem klukum ktere jsem milovalato all boys ive loved before|2018": {
+          "display_name": "Všem klukům, které jsem milovalaTo All the Boys Ive Loved Before",
+          "year": 2018,
+          "versions": 1
+        },
+        "to all boys p s i still love you|2020": {
+          "display_name": "To All the Boys P S I Still Love You",
+          "year": 2020,
+          "versions": 2
+        },
+        "to all boys i ve loved before|2018": {
+          "display_name": "To All the Boys I ve Loved Before",
+          "year": 2018,
+          "versions": 3
+        },
+        "h vsem klukum ktere jsem milovala|to all the boys i've loved before|2018": {
+          "display_name": "To All the Boys I've Loved Before / -H- Všem klukům které jsem milovala",
+          "year": 2018,
+          "versions": 1
+        },
+        "to all the boys p s i still love you drama romanticky komedie usa,|vsem klukum p s stale te miluju|2020": {
+          "display_name": "To All the Boys P S I Still Love You-Drama Romantický Komedie-USA, / Všem klukům P S Stále tě miluju",
+          "year": 2020,
+          "versions": 1
+        },
+        "brahms boy 2|2020": {
+          "display_name": "Brahms The Boy II",
+          "year": 2020,
+          "versions": 3
+        },
+        "boy online film|chlapec|2016": {
+          "display_name": "The Boy online film / Chlapec",
+          "year": 2016,
+          "versions": 1
+        },
+        "brahms the boy 2|horor|2020": {
+          "display_name": "Brahms-The-Boy-2",
+          "year": 2020,
+          "versions": 1
+        },
+        "boys of abu ghraib|hosi z abu ghraib|2014": {
+          "display_name": "The Boys of Abu Ghraib / Hosi z Abu Ghraib",
+          "year": 2014,
+          "versions": 1
+        },
+        "worried about boy|2010": {
+          "display_name": "Worried About the Boy",
+          "year": 2010,
+          "versions": 1
+        },
+        "where boys are (henry levin|1960": {
+          "display_name": "Where the Boys Are (Henry Levin,",
+          "year": 1960,
+          "versions": 1
+        },
+        "manolo boy who made shoes for lizards|2017": {
+          "display_name": "Manolo The Boy Who Made Shoes for Lizards",
+          "year": 2017,
+          "versions": 2
+        },
+        "alesha dixon boy does nothing|2008": {
+          "display_name": "Alesha Dixon The Boy Does Nothing X264",
+          "year": 2008,
+          "versions": 1
+        },
+        "brahms chlapec 2|brahms the boy ii|2020": {
+          "display_name": "Brahms The Boy II / Brahms Chlapec 2",
+          "year": 2020,
+          "versions": 5
+        },
+        "boys are back|kluci jsou zpet|2009": {
+          "display_name": "The Boys Are Back / Kluci jsou zpet",
+          "year": 2009,
+          "versions": 2
+        },
+        "to all the boys p s i still love you|vsetkym chlapcom ps stale ta milujem vsem klukum ps stale te miluju|2020": {
+          "display_name": "To All the Boys P S I Still Love You / Všetkým chlapcom PS Stále Ťa milujem Všem klukům PS Stále tě miluju",
+          "year": 2020,
+          "versions": 1
+        },
+        "hosi z brazilie boys from brazil|1978": {
+          "display_name": "Hoši z Brazílie The Boys from Brazil",
+          "year": 1978,
+          "versions": 1
+        },
+        "to all the boys i've loved before|vsem klukum, ktere jsem milovala|2018": {
+          "display_name": "To All the Boys I've Loved Before / Vsem klukum, ktere jsem milovala",
+          "year": 2018,
+          "versions": 1
+        },
+        "like the boys|rina sawayama comme des garcons|2020": {
+          "display_name": "Like the Boys / Rina Sawayama - Comme Des Garcons",
+          "year": 2020,
+          "versions": 2
+        },
+        "brahms chlapec 2|brahms the boy ii usa,|2020": {
+          "display_name": "Brahms- The Boy II - USA, / Brahms- Chlapec 2",
+          "year": 2020,
+          "versions": 2
+        },
+        "where boys are|1984": {
+          "display_name": "Where the Boys Are",
+          "year": 1984,
+          "versions": 3
+        },
+        "boys of paul street|pal utcai fiuk|1969": {
+          "display_name": "The Boys of Paul Street / A Pál utcai fiúk",
+          "year": 1969,
+          "versions": 1
+        },
+        "miracle boys of 80|2026": {
+          "display_name": "Miracle The Boys Of 80",
+          "year": 2026,
+          "versions": 5
+        },
+        "miracle the boys of 80|zazrak v lake placid|2026": {
+          "display_name": "Miracle The Boys Of 80 / Zázrak v Lake Placid",
+          "year": 2026,
+          "versions": 1
+        },
+        "meet boy friend|1937": {
+          "display_name": "Meet The Boy Friend",
+          "year": 1937,
+          "versions": 2
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'male voices episode' vs 'ep'",
+        "Substring not merged: 'step by step' vs 'ep'",
+        "Single-ep series (might be movie?): 'boy next door & kevin lyttle resistance [official music video] (p 24fps h264'",
+        "Single-ep series (might be movie?): 'boy next door fresh coast feat jody bernal la colegiala (p 25fps h264'",
+        "Single-ep series (might be movie?): 'forensics catching killer'",
+        "Single-ep series (might be movie?): 'waltons'",
+        "Single-ep series (might be movie?): 'alienist'",
+        "Single-ep series (might be movie?): 'nirvanna band show'",
+        "Single-ep series (might be movie?): 'avatar last airbender'",
+        "Single-ep series (might be movie?): 'adventures of galaxy rangers'",
+        "Single-ep series (might be movie?): 'last tycoon'",
+        "Single-ep series (might be movie?): 'male voices episode'",
+        "Single-ep series (might be movie?): 'step by step'",
+        "Single-ep series (might be movie?): 'krok za krokem'",
+        "Single-ep series (might be movie?): 'ep'",
+        "Single-ep series (might be movie?): 'fairly oddparents'",
+        "Single-ep series (might be movie?): 'alexander making of god'",
+        "Single-ep series (might be movie?): 'retrolectro comedy xviii (360p h'",
+        "Single-ep series (might be movie?): 'institute'",
+        "Single-ep series (might be movie?): 'courtship of eddie's father'",
+        "Single-ep series (might be movie?): 'gold'",
+        "Single-ep series (might be movie?): 'starcom'",
+        "Single-ep series (might be movie?): 'bbc ai confidential'",
+        "Single-ep series (might be movie?): 'ai confidential with hannah fry'",
+        "Single-ep series (might be movie?): 'sabrina teenage witch'",
+        "Single-ep series (might be movie?): 'ring ni kakero'",
+        "Single-ep series (might be movie?): 'ranch'",
+        "Single-ep series (might be movie?): 'frasier'",
+        "Single-ep series (might be movie?): 'earth 2'",
+        "Single-ep series (might be movie?): 'cristiano ronaldo chlapec ktery mel sen boy that had dream [hd'",
+        "Single-ep series (might be movie?): 'yes minister'",
+        "Single-ep series (might be movie?): 'hrncnmznhfrng'",
+        "Single-ep series (might be movie?): 'dragon ball z s07'",
+        "Single-ep series (might be movie?): 'tom clancy's jack ryan'",
+        "Single-ep series (might be movie?): 'y2mate com roasted'",
+        "Single-ep series (might be movie?): 'arcane'",
+        "Single-ep series (might be movie?): 'game of thrones'",
+        "Single-ep series (might be movie?): 'yellowstone'",
+        "Single-ep series (might be movie?): 'dexter'",
+        "Single-ep series (might be movie?): 'hra o truny'",
+        "Single-ep series (might be movie?): 'naruto'",
+        "Single-ep series (might be movie?): 'alfred hitchcock presents'",
+        "Single-ep series (might be movie?): 'bull sudny specialista'",
+        "Single-ep series (might be movie?): 'goosebumps'",
+        "Single-ep series (might be movie?): '01x07 kluk z'",
+        "Single-ep series (might be movie?): 'kill boy h265'",
+        "Single-ep series (might be movie?): 'and just like that'",
+        "Single-ep series (might be movie?): 'fringe'",
+        "Single-ep series (might be movie?): 'brilliant minds'",
+        "Single-ep series (might be movie?): 'big wolf on campus'",
+        "Single-ep series (might be movie?): 'miracle'",
+        "Single-ep series (might be movie?): 'rambo'",
+        "Single-ep series (might be movie?): 'cheers'",
+        "Single-ep series (might be movie?): 'i love lucy'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 56,
+        "target_groups": 1,
+        "notes": "Very noisy results, many false series from unrelated files"
+      },
+      "status": "✓ PASS"
+    },
+    "true detective": {
+      "query": "true detective",
+      "total_files": 240,
+      "series_groups": 1,
+      "movie_groups": 0,
+      "non_series": 1,
+      "series_details": {
+        "temny pripad|true detective": {
+          "display_name": "True Detective",
+          "seasons": 4,
+          "episodes": 30,
+          "versions": 233
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Multi-season anthology — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "simpsonovi": {
+      "query": "simpsonovi",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 4,
+      "non_series": 21,
+      "series_details": {
+        "simpsonovi": {
+          "display_name": "Simpsonovi",
+          "seasons": 25,
+          "episodes": 463,
+          "versions": 464
+        }
+      },
+      "movie_details": {
+        "simpsonovi ve filmu|2007": {
+          "display_name": "Simpsonovi ve filmu",
+          "year": 2007,
+          "versions": 12
+        },
+        "simpsonovi ve filmu (anim|2007": {
+          "display_name": "Simpsonovi ve filmu (anim",
+          "year": 2007,
+          "versions": 1
+        },
+        "simpsonovi ve filmu [the simpsons movie|2007": {
+          "display_name": "Simpsonovi ve filmu [The Simpsons Movie",
+          "year": 2007,
+          "versions": 1
+        },
+        "simpsonovi|to jsme my|2010": {
+          "display_name": "To jsme my / Simpsonovi",
+          "year": 2010,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Czech-only naming — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "squid game": {
+      "query": "squid game",
+      "total_files": 500,
+      "series_groups": 3,
+      "movie_groups": 16,
+      "non_series": 0,
+      "series_details": {
+        "squid game hd tit jizni korea": {
+          "display_name": "Squid Game 2021 tit Jižní Korea",
+          "seasons": 1,
+          "episodes": 9,
+          "versions": 9
+        },
+        "squid game꞉ la sfida": {
+          "display_name": "Squid Game꞉ La sfida",
+          "seasons": 1,
+          "episodes": 9,
+          "versions": 9
+        },
+        "hra na olihen": {
+          "display_name": "Squid Game",
+          "seasons": 3,
+          "episodes": 23,
+          "versions": 401
+        }
+      },
+      "movie_details": {
+        "squid game hra na olihen (1 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (1 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game hra na olihen (2 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (2 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game hra na olihen (3 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (3 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game hra na olihen (4 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (4 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game hra na olihen (5 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (5 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game hra na olihen (6 dil|2021": {
+          "display_name": "Squid Game Hra na oliheň (6 díl",
+          "year": 2021,
+          "versions": 1
+        },
+        "squid game s03 e01|2025": {
+          "display_name": "Squid Game S03 E01",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game s03 e02|2025": {
+          "display_name": "Squid Game S03 E02",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game s03 e03|2025": {
+          "display_name": "Squid Game S03 E03",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game s03 e04|2025": {
+          "display_name": "Squid Game S03 E04",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game s03 e05|2025": {
+          "display_name": "Squid Game S03 E05",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game s03 e06|2025": {
+          "display_name": "Squid Game S03 E06",
+          "year": 2025,
+          "versions": 1
+        },
+        "squid game making season 2|2025": {
+          "display_name": "Squid Game Making Season 2",
+          "year": 2025,
+          "versions": 1
+        },
+        "7hitmovies moe|squid game|2024": {
+          "display_name": "Squid Game / 7HitMovies moe",
+          "year": 2024,
+          "versions": 3
+        },
+        "7hitmovies moe|squid game|2021": {
+          "display_name": "Squid Game / 7HitMovies moe",
+          "year": 2021,
+          "versions": 3
+        },
+        "making squid game challenge|2023": {
+          "display_name": "Making Squid Game The Challenge",
+          "year": 2023,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 3,
+        "target_groups": 1,
+        "notes": "Korean/English — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "severance": {
+      "query": "severance",
+      "total_files": 215,
+      "series_groups": 6,
+      "movie_groups": 3,
+      "non_series": 2,
+      "series_details": {
+        "odlouceni oddelenie|severance": {
+          "display_name": "Severance",
+          "seasons": 2,
+          "episodes": 19,
+          "versions": 181
+        },
+        "lao": {
+          "display_name": "LaO",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "odlouceni|severance": {
+          "display_name": "Severance / Odloučení",
+          "seasons": 1,
+          "episodes": 9,
+          "versions": 9
+        },
+        "mad men": {
+          "display_name": "Mad Men",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "toilet bound hanako kun": {
+          "display_name": "Toilet bound Hanako kun",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "airwolf": {
+          "display_name": "Airwolf",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "severance|2006": {
+          "display_name": "Severance",
+          "year": 2006,
+          "versions": 4
+        },
+        "severance mountain|2024": {
+          "display_name": "Severance Mountain",
+          "year": 2024,
+          "versions": 1
+        },
+        "horror comedy izolace|severance velka britanie nemecko,|2006": {
+          "display_name": "Severance - Velká Británie - Německo, / Horror Comedy-Izolace",
+          "year": 2006,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'lao'",
+        "Single-ep series (might be movie?): 'mad men'",
+        "Single-ep series (might be movie?): 'toilet bound hanako kun'",
+        "Single-ep series (might be movie?): 'airwolf'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 6,
+        "target_groups": 1,
+        "notes": "Single-word; \"lao\" false series detected"
+      },
+      "status": "✓ PASS"
+    },
+    "naruto": {
+      "query": "naruto",
+      "total_files": 500,
+      "series_groups": 5,
+      "movie_groups": 0,
+      "non_series": 147,
+      "series_details": {
+        "naruto": {
+          "display_name": "Naruto",
+          "seasons": 15,
+          "episodes": 294,
+          "versions": 341
+        },
+        "naruto movie": {
+          "display_name": "Naruto Movie 1 by Dyk",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
+        },
+        "naruto066": {
+          "display_name": "Naruto066",
+          "seasons": 1,
+          "episodes": 2,
+          "versions": 2
+        },
+        "naruto095": {
+          "display_name": "Naruto095",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "naruto127": {
+          "display_name": "Naruto127",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {},
+      "potential_issues": [
+        "Substring not merged: 'naruto' vs 'naruto movie'",
+        "Substring not merged: 'naruto' vs 'naruto066'",
+        "Substring not merged: 'naruto' vs 'naruto095'",
+        "Substring not merged: 'naruto' vs 'naruto127'",
+        "Single-ep series (might be movie?): 'naruto095'",
+        "Single-ep series (might be movie?): 'naruto127'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 5,
+        "target_groups": 1,
+        "notes": "High ep count — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "one piece": {
+      "query": "one piece",
+      "total_files": 500,
+      "series_groups": 2,
+      "movie_groups": 1,
+      "non_series": 22,
+      "series_details": {
+        "one piece": {
+          "display_name": "One Piece",
+          "seasons": 8,
+          "episodes": 454,
+          "versions": 468
+        },
+        "one piece movie": {
+          "display_name": "One-Piece-Movie-06-CZ",
+          "seasons": 1,
+          "episodes": 6,
+          "versions": 8
+        }
+      },
+      "movie_details": {
+        "one piece|2015": {
+          "display_name": "One Piece",
+          "year": 2015,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'one piece' vs 'one piece movie'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 2,
+        "target_groups": 1,
+        "notes": "Very high ep count — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "demon slayer": {
+      "query": "demon slayer",
+      "total_files": 269,
+      "series_groups": 2,
+      "movie_groups": 8,
+      "non_series": 30,
+      "series_details": {
+        "demon slayer": {
+          "display_name": "Demon Slayer",
+          "seasons": 4,
+          "episodes": 66,
+          "versions": 199
+        },
+        "kimetsu no yaiba": {
+          "display_name": "Kimetsu no Yaiba (Demon Slayer)",
+          "seasons": 1,
+          "episodes": 26,
+          "versions": 27
+        }
+      },
+      "movie_details": {
+        "demon slayer|2003": {
+          "display_name": "Demon Slayer",
+          "year": 2003,
+          "versions": 1
+        },
+        "demon slayer kimetsu no yaiba infinity castle|2025": {
+          "display_name": "Demon Slayer Kimetsu No Yaiba,Infinity Castle",
+          "year": 2025,
+          "versions": 6
+        },
+        "demon slayer mugen train|2020": {
+          "display_name": "Demon Slayer Mugen Train",
+          "year": 2020,
+          "versions": 1
+        },
+        "demon slayer|kimetsu no yaiba the movie infinity castle|2025": {
+          "display_name": "Kimetsu no Yaiba- The Movie Infinity Castle / Demon Slayer",
+          "year": 2025,
+          "versions": 1
+        },
+        "demon slayer|il treno mugen|2020": {
+          "display_name": "Il treno Mugen / Demon Slayer",
+          "year": 2020,
+          "versions": 1
+        },
+        "demon slayer mugen train infinity train ressha hen|kimetsu no yaiba|2020": {
+          "display_name": "Demon Slayer - Mugen Train - Infinity Train - Ressha-Hen / Kimetsu no Yaiba",
+          "year": 2020,
+          "versions": 1
+        },
+        "[raze]|demon slayer|2025": {
+          "display_name": "Demon Slayer / [Raze]",
+          "year": 2025,
+          "versions": 1
+        },
+        "raze demon slayer kimetsu no yaiba infinity castle|2025": {
+          "display_name": "Raze Demon Slayer Kimetsu no Yaiba Infinity Castle",
+          "year": 2025,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 2,
+        "target_groups": 1,
+        "notes": "Dual-name Kimetsu no Yaiba — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "jujutsu kaisen": {
+      "query": "jujutsu kaisen",
+      "total_files": 500,
+      "series_groups": 2,
+      "movie_groups": 2,
+      "non_series": 3,
+      "series_details": {
+        "jujutsu kaisen": {
+          "display_name": "Jujuts Kaisen",
+          "seasons": 3,
+          "episodes": 62,
+          "versions": 450
+        },
+        "jujutsu kaisen s3": {
+          "display_name": "Jujutsu Kaisen S3",
+          "seasons": 1,
+          "episodes": 10,
+          "versions": 32
+        }
+      },
+      "movie_details": {
+        "jujutsu kaisen execution|2025": {
+          "display_name": "Jujutsu Kaisen Execution",
+          "year": 2025,
+          "versions": 1
+        },
+        "jujutsu kaisen hidden inventory premature death movie|2025": {
+          "display_name": "Jujutsu Kaisen Hidden Inventory Premature Death - The Movie",
+          "year": 2025,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'jujutsu kaisen' vs 'jujutsu kaisen s3'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 2,
+        "target_groups": 1,
+        "notes": "Japanese naming"
+      },
+      "status": "✓ PASS"
+    },
+    "dragon ball": {
+      "query": "dragon ball",
+      "total_files": 500,
+      "series_groups": 11,
+      "movie_groups": 4,
+      "non_series": 0,
+      "series_details": {
+        "dragon ball z s08": {
+          "display_name": "Dragon Ball Z - S08 E240 - Revival",
+          "seasons": 1,
+          "episodes": 32,
+          "versions": 32
+        },
+        "dragon ball z s02": {
+          "display_name": "Dragon Ball Z - S02 E048 - The Hunted",
+          "seasons": 1,
+          "episodes": 36,
+          "versions": 36
+        },
+        "dragon ball z s06": {
+          "display_name": "Dragon Ball Z - S06 E177 - Goku vs Cell",
+          "seasons": 1,
+          "episodes": 28,
+          "versions": 28
+        },
+        "dragon ball super": {
+          "display_name": "Dragon Ball Super",
+          "seasons": 1,
+          "episodes": 11,
+          "versions": 11
+        },
+        "dragon ball z s01": {
+          "display_name": "Dragon Ball Z - S01 E007 - Day",
+          "seasons": 1,
+          "episodes": 33,
+          "versions": 33
+        },
+        "dragon ball z s03": {
+          "display_name": "Dragon Ball Z - S03 E081 - Deja Vu",
+          "seasons": 1,
+          "episodes": 29,
+          "versions": 29
+        },
+        "dragon ball z s04": {
+          "display_name": "Dragon Ball Z - S04 E138 - Closing In",
+          "seasons": 1,
+          "episodes": 28,
+          "versions": 28
+        },
+        "dragon ball z s05": {
+          "display_name": "Dragon Ball Z - S05 E149 - He's Here",
+          "seasons": 1,
+          "episodes": 25,
+          "versions": 25
+        },
+        "dragon ball z s07": {
+          "display_name": "Dragon Ball Z - S07 E204 - Blackmail",
+          "seasons": 1,
+          "episodes": 24,
+          "versions": 24
+        },
+        "dragon ball z s09": {
+          "display_name": "Dragon Ball Z - S09 E274 - Mind Trap",
+          "seasons": 1,
+          "episodes": 37,
+          "versions": 37
+        },
+        "dragon ball z": {
+          "display_name": "Dragon Ball Z",
+          "seasons": 8,
+          "episodes": 212,
+          "versions": 212
+        }
+      },
+      "movie_details": {
+        "dragon ball z battle of gods|2013": {
+          "display_name": "Dragon Ball Z Battle Of The Gods",
+          "year": 2013,
+          "versions": 1
+        },
+        "dragon ball z|special 06 the history of trunks|1995": {
+          "display_name": "Special 06 - The History of Trunks / Dragon Ball Z",
+          "year": 1995,
+          "versions": 1
+        },
+        "battle of gods, director's cut|dragon ball z|2013": {
+          "display_name": "Battle of Gods, DIRECTOR's CUT / Dragon Ball Z",
+          "year": 2013,
+          "versions": 1
+        },
+        "dragon ball broly|2019": {
+          "display_name": "Dragon Ball Broly",
+          "year": 2019,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'dragon ball z s08' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s02' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s06' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s01' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s03' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s04' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s05' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s07' vs 'dragon ball z'",
+        "Substring not merged: 'dragon ball z s09' vs 'dragon ball z'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 11,
+        "target_groups": null,
+        "notes": "Multiple sub-series (DB, DBZ, DBS)"
+      },
+      "status": "✓ PASS"
+    },
+    "bleach": {
+      "query": "bleach",
+      "total_files": 500,
+      "series_groups": 1,
+      "movie_groups": 1,
+      "non_series": 118,
+      "series_details": {
+        "bleach": {
+          "display_name": "Bleach ep",
+          "seasons": 1,
+          "episodes": 247,
+          "versions": 364
+        }
+      },
+      "movie_details": {
+        "bleach|2018": {
+          "display_name": "Bleach",
+          "year": 2018,
+          "versions": 1
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "series",
+        "expected_groups": 1,
+        "target_groups": 1,
+        "notes": "Short name — correctly grouped"
+      },
+      "status": "✓ PASS"
+    },
+    "spy x family": {
+      "query": "spy x family",
+      "total_files": 312,
+      "series_groups": 3,
+      "movie_groups": 1,
+      "non_series": 3,
+      "series_details": {
+        "spy x family s3": {
+          "display_name": "Spy x Family S3",
+          "seasons": 1,
+          "episodes": 13,
+          "versions": 26
+        },
+        "[rin] spy x family|スハイファミリー": {
+          "display_name": "スパイファミリー / [RIN] Spy x Family",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "(lena)|spy x family": {
+          "display_name": "Spy x Family",
+          "seasons": 3,
+          "episodes": 64,
+          "versions": 272
+        }
+      },
+      "movie_details": {
+        "spy x family code white|2023": {
+          "display_name": "Spy X Family Code White",
+          "year": 2023,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): '[rin] spy x family|スハイファミリー'"
+      ],
+      "expected": {
+        "type": "series",
+        "expected_groups": 3,
+        "target_groups": 1,
+        "notes": "Special chars; JP variant not merged"
+      },
+      "status": "✓ PASS"
+    },
+    "pulp fiction": {
+      "query": "pulp fiction",
+      "total_files": 52,
+      "series_groups": 2,
+      "movie_groups": 4,
+      "non_series": 24,
+      "series_details": {
+        "pulp fiction historky z podsveti (": {
+          "display_name": "Pulp Fiction - Historky z podsvětí",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "mistri zastavarny": {
+          "display_name": "Mistři zastavárny",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "pulp fiction|1994": {
+          "display_name": "Pulp Fiction",
+          "year": 1994,
+          "versions": 20
+        },
+        "pulp fiction historky z podsveti|1994": {
+          "display_name": "Pulp Fiction Historky z podsvětí",
+          "year": 1994,
+          "versions": 3
+        },
+        "stealing pulp fiction|2024": {
+          "display_name": "Stealing Pulp Fiction",
+          "year": 2024,
+          "versions": 2
+        },
+        "quentin tarantino|1994": {
+          "display_name": "Quentin Tarantino",
+          "year": 1994,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'pulp fiction historky z podsveti ('",
+        "Single-ep series (might be movie?): 'mistri zastavarny'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 4,
+        "target_groups": 1,
+        "notes": "Classic; multiple groups due to Czech names"
+      },
+      "status": "✓ PASS"
+    },
+    "the matrix": {
+      "query": "the matrix",
+      "total_files": 89,
+      "series_groups": 1,
+      "movie_groups": 11,
+      "non_series": 16,
+      "series_details": {
+        "matrix": {
+          "display_name": "The Matrix",
+          "seasons": 1,
+          "episodes": 4,
+          "versions": 4
+        }
+      },
+      "movie_details": {
+        "matrix|1999": {
+          "display_name": "The Matrix",
+          "year": 1999,
+          "versions": 16
+        },
+        "matrix revolutions|2003": {
+          "display_name": "The Matrix 3 Revolutions",
+          "year": 2003,
+          "versions": 14
+        },
+        "matrix resurrections|2021": {
+          "display_name": "THE MATRIX -4-Resurrections",
+          "year": 2021,
+          "versions": 5
+        },
+        "matrix reloaded|2003": {
+          "display_name": "The Matrix 2 Reloaded",
+          "year": 2003,
+          "versions": 16
+        },
+        "matrix generation|2023": {
+          "display_name": "The Matrix Generation",
+          "year": 2023,
+          "versions": 2
+        },
+        "matrix 2 reloaded|the|2003": {
+          "display_name": "Matrix-2-Reloaded / The",
+          "year": 2003,
+          "versions": 1
+        },
+        "matrix 1|the|1999": {
+          "display_name": "Matrix 1 / The",
+          "year": 1999,
+          "versions": 1
+        },
+        "matrix revolutions (the matrix revolutions|2003": {
+          "display_name": "Matrix Revolutions (The Matrix Revolutions,",
+          "year": 2003,
+          "versions": 1
+        },
+        "generace matrix [the matrix generation|2023": {
+          "display_name": "Generace Matrix [The Matrix Generation",
+          "year": 2023,
+          "versions": 1
+        },
+        "roots of matrix|2004": {
+          "display_name": "The Roots Of The Matrix",
+          "year": 2004,
+          "versions": 9
+        },
+        "glitch in matrix|2021": {
+          "display_name": "A Glitch In The Matrix",
+          "year": 2021,
+          "versions": 3
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 7,
+        "target_groups": null,
+        "notes": "Franchise, sequel separation (1999, 2003, 2021)"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "star wars": {
+      "query": "star wars",
+      "total_files": 500,
+      "series_groups": 7,
+      "movie_groups": 17,
+      "non_series": 10,
+      "series_details": {
+        "povstalci|star wars": {
+          "display_name": "Star Wars",
+          "seasons": 5,
+          "episodes": 79,
+          "versions": 385
+        },
+        "rebels|star wars povstalci": {
+          "display_name": "Rebels / Star Wars Povstalci",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "star|wars rebels": {
+          "display_name": "Wars-Rebels / Star",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "star wars s01": {
+          "display_name": "Star Wars (EWOKS) - S01 E13 - Asha",
+          "seasons": 1,
+          "episodes": 13,
+          "versions": 27
+        },
+        "star wars s02": {
+          "display_name": "Star Wars (EWOKS) - S02 E05 - The Raich",
+          "seasons": 1,
+          "episodes": 9,
+          "versions": 9
+        },
+        "odboj|star wars": {
+          "display_name": "Odboj / Star Wars",
+          "seasons": 1,
+          "episodes": 9,
+          "versions": 9
+        },
+        "'star wars povstalci": {
+          "display_name": "'Star Wars Povstalci",
+          "seasons": 2,
+          "episodes": 6,
+          "versions": 6
+        }
+      },
+      "movie_details": {
+        "star wars the old republic gameplay|story sith warrior part 1 (star wars the old republic bandicam|2024": {
+          "display_name": "Story Sith Warrior Part 1 (Star Wars - The Old Republic - bandicam / Star Wars The Old Republic Gameplay",
+          "year": 2024,
+          "versions": 2
+        },
+        "star wars clone wars volume one|2003": {
+          "display_name": "Star Wars Clone Wars Volume One",
+          "year": 2003,
+          "versions": 1
+        },
+        "star wars – clone wars – volume two|2005": {
+          "display_name": "Star Wars – Clone Wars – Volume Two",
+          "year": 2005,
+          "versions": 2
+        },
+        "star wars clone wars – volume one|2005": {
+          "display_name": "Star Wars Clone Wars – Volume One",
+          "year": 2005,
+          "versions": 1
+        },
+        "star wars|1977": {
+          "display_name": "Star Wars",
+          "year": 1977,
+          "versions": 3
+        },
+        "star wars sila sa prebudza online film|2015": {
+          "display_name": "Star Wars Sila sa prebúdza online film",
+          "year": 2015,
+          "versions": 1
+        },
+        "star wars biomes|2021": {
+          "display_name": "Star Wars Biomes",
+          "year": 2021,
+          "versions": 1
+        },
+        "star wars holiday special|1980": {
+          "display_name": "star wars holiday special",
+          "year": 1980,
+          "versions": 1
+        },
+        "star wars one|2016": {
+          "display_name": "Star Wars One",
+          "year": 2016,
+          "versions": 1
+        },
+        "pomsta stihu|star wars iii|2005": {
+          "display_name": "Pomsta Stíhů / Star Wars III",
+          "year": 2005,
+          "versions": 1
+        },
+        "klonovani utocia|star wars ii|2002": {
+          "display_name": "Klonovani utocia / Star Wars II",
+          "year": 2002,
+          "versions": 1
+        },
+        "rogue one|star wars|2016": {
+          "display_name": "Rogue One / Star Wars",
+          "year": 2016,
+          "versions": 1
+        },
+        "solo|star wars|2018": {
+          "display_name": "Solo / Star Wars",
+          "year": 2018,
+          "versions": 1
+        },
+        "klony utoci|star wars ii|2002": {
+          "display_name": "Klony útočí / Star Wars II",
+          "year": 2002,
+          "versions": 1
+        },
+        "nova nadeje|star wars iv|1977": {
+          "display_name": "Nová naděje / Star Wars IV",
+          "year": 1977,
+          "versions": 1
+        },
+        "imperium vraci uder|star wars v|1980": {
+          "display_name": "Impérium vrací úder / Star Wars V",
+          "year": 1980,
+          "versions": 1
+        },
+        "navrat jediho|star wars vi|1983": {
+          "display_name": "Návrat Jediho / Star Wars VI",
+          "year": 1983,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'rebels|star wars povstalci'",
+        "Single-ep series (might be movie?): 'star|wars rebels'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 16,
+        "target_groups": null,
+        "notes": "Franchise, Episode in title"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "blade runner": {
+      "query": "blade runner",
+      "total_files": 131,
+      "series_groups": 2,
+      "movie_groups": 13,
+      "non_series": 23,
+      "series_details": {
+        "blade runner black lotus": {
+          "display_name": "Blade Runner Black Lotus",
+          "seasons": 1,
+          "episodes": 13,
+          "versions": 38
+        },
+        "supernatural": {
+          "display_name": "Supernatural",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "blade runner [blade runner]|1982": {
+          "display_name": "Blade Runner [Blade Runner]",
+          "year": 1982,
+          "versions": 1
+        },
+        "blade runner (blade runner|1982": {
+          "display_name": "Blade Runner (Blade Runner,",
+          "year": 1982,
+          "versions": 1
+        },
+        "blade runner|1982": {
+          "display_name": "Blade-Runner",
+          "year": 1982,
+          "versions": 53
+        },
+        "blade runner|final cut|2007": {
+          "display_name": "The Final Cut / Blade Runner",
+          "year": 2007,
+          "versions": 1
+        },
+        "blade runner black out|2022": {
+          "display_name": "Blade Runner Black Out",
+          "year": 2022,
+          "versions": 2
+        },
+        "blade runner|phanomen arte doku|2020": {
+          "display_name": "Phänomen - Arte Doku / Blade Runner",
+          "year": 2020,
+          "versions": 1
+        },
+        "blade runner final cut|1997": {
+          "display_name": "Blade Runner Final Cut",
+          "year": 1997,
+          "versions": 1
+        },
+        "black out (animovany, japonsko,|blade runner|2022": {
+          "display_name": "Black Out (Animovaný, Japonsko, / Blade Runner",
+          "year": 2022,
+          "versions": 1
+        },
+        "blade runner (usa|hong kong|1982": {
+          "display_name": "Hong Kong / Blade Runner (USA",
+          "year": 1982,
+          "versions": 1
+        },
+        "blade runner|2017": {
+          "display_name": "Blade Runner",
+          "year": 2017,
+          "versions": 2
+        },
+        "blade runner (harrison ford rutger hauer sean young|1982": {
+          "display_name": "Blade Runner (Harrison Ford, Rutger Hauer, Sean Young",
+          "year": 1982,
+          "versions": 2
+        },
+        "blade runner eng|1982": {
+          "display_name": "Blade Runner Cz, Eng",
+          "year": 1982,
+          "versions": 1
+        },
+        "das phaenomen blade runner|2021": {
+          "display_name": "Das Phaenomen Blade Runner",
+          "year": 2021,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'supernatural'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 13,
+        "target_groups": 2,
+        "notes": "Many fragments; two versions (1982, 2049)"
+      },
+      "status": "✓ PASS"
+    },
+    "interstellar": {
+      "query": "interstellar",
+      "total_files": 72,
+      "series_groups": 4,
+      "movie_groups": 5,
+      "non_series": 23,
+      "series_details": {
+        "htuw": {
+          "display_name": "HTUW",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "galactic messages": {
+          "display_name": "Galactic Messages",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "medzihviezdne zahady": {
+          "display_name": "S07E03 Medzihviezdne záhady - The Interstellar Mysteries.mkv",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "doctor who": {
+          "display_name": "Doctor Who 2023",
+          "seasons": 2,
+          "episodes": 2,
+          "versions": 5
+        }
+      },
+      "movie_details": {
+        "interstellar|2014": {
+          "display_name": "Interstellar",
+          "year": 2014,
+          "versions": 32
+        },
+        "interstellar (matthew mcconaughey anne hathaway essica chastain matt damon|2014": {
+          "display_name": "Interstellar (Matthew McConaughey,Anne Hathaway, essica Chastain,Matt Damon",
+          "year": 2014,
+          "versions": 3
+        },
+        "interstellar (matthew mcconaughey anne hathaway matt damon|2014": {
+          "display_name": "Interstellar (Matthew McConaughey,Anne Hathaway,Matt Damon",
+          "year": 2014,
+          "versions": 3
+        },
+        "faster than light dream of interstellar flight|2017": {
+          "display_name": "Faster Than Light The Dream of Interstellar Flight",
+          "year": 2017,
+          "versions": 1
+        },
+        "science of interstellar|2014": {
+          "display_name": "The Science of Interstellar",
+          "year": 2014,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'htuw'",
+        "Single-ep series (might be movie?): 'galactic messages'",
+        "Single-ep series (might be movie?): 'medzihviezdne zahady'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 5,
+        "target_groups": 1,
+        "notes": "Single-word title; multiple groups"
+      },
+      "status": "✓ PASS"
+    },
+    "fight club": {
+      "query": "fight club",
+      "total_files": 54,
+      "series_groups": 7,
+      "movie_groups": 12,
+      "non_series": 13,
+      "series_details": {
+        "akta x": {
+          "display_name": "Akta-X",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "breadwinners": {
+          "display_name": "Breadwinners",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "akta": {
+          "display_name": "Akta",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "zlata sedmdesata": {
+          "display_name": "Zlata sedmdesata",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "oddballs": {
+          "display_name": "Oddballs",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "uppdrag granskning fight club": {
+          "display_name": "uppdrag granskning fight club",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 5
+        },
+        "files|x": {
+          "display_name": "Files / The X",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "fight club|1999": {
+          "display_name": "Fight-Club",
+          "year": 1999,
+          "versions": 13
+        },
+        "fight club 10th anniversary edition|1999": {
+          "display_name": "Fight Club 10th Anniversary Edition",
+          "year": 1999,
+          "versions": 1
+        },
+        "fight club cd1|1999": {
+          "display_name": "Fight Club CD1",
+          "year": 1999,
+          "versions": 1
+        },
+        "fight club cd2|1999": {
+          "display_name": "Fight Club CD2",
+          "year": 1999,
+          "versions": 1
+        },
+        "[klub rvacu]fight club|1999": {
+          "display_name": "[Klub rváčů]Fight Club",
+          "year": 1999,
+          "versions": 1
+        },
+        "cz dab|klub rvacu|1999": {
+          "display_name": "Klub rváču",
+          "year": 1999,
+          "versions": 1
+        },
+        "klub rvacu dab fight club|1999": {
+          "display_name": "Klub-rvacu-cz-dab-Fight-Club",
+          "year": 1999,
+          "versions": 1
+        },
+        "zombie fight club|2014": {
+          "display_name": "zombie fight club",
+          "year": 2014,
+          "versions": 2
+        },
+        "shi cheng zombie fight club|2014": {
+          "display_name": "Shi cheng - Zombie Fight Club",
+          "year": 2014,
+          "versions": 1
+        },
+        "klub rvacu fight club|1999": {
+          "display_name": "Klub rváčů Fight Club",
+          "year": 1999,
+          "versions": 3
+        },
+        "klub bitkarov fight club|klub rvacu|1999": {
+          "display_name": "Klub bitkárov - Fight Club / Klub rváčů",
+          "year": 1999,
+          "versions": 1
+        },
+        "7hitmovies green|fight club|2023": {
+          "display_name": "Fight Club / 7HitMovies green",
+          "year": 2023,
+          "versions": 3
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'akta x' vs 'akta'",
+        "Single-ep series (might be movie?): 'akta x'",
+        "Single-ep series (might be movie?): 'breadwinners'",
+        "Single-ep series (might be movie?): 'akta'",
+        "Single-ep series (might be movie?): 'zlata sedmdesata'",
+        "Single-ep series (might be movie?): 'oddballs'",
+        "Single-ep series (might be movie?): 'files|x'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 12,
+        "target_groups": 1,
+        "notes": "Many unrelated results"
+      },
+      "status": "✓ PASS"
+    },
+    "dune": {
+      "query": "dune",
+      "total_files": 305,
+      "series_groups": 8,
+      "movie_groups": 39,
+      "non_series": 23,
+      "series_details": {
+        "dune": {
+          "display_name": "Dune",
+          "seasons": 1,
+          "episodes": 6,
+          "versions": 15
+        },
+        "aladdin": {
+          "display_name": "Aladdin",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "children of dune part": {
+          "display_name": "Children of Dune Part",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
+        },
+        "trailer dune2 tlr": {
+          "display_name": "Trailer Dune2 TLR-8 IMAX 38",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "duna proroctvi|dune prophecy": {
+          "display_name": "Dune Prophecy",
+          "seasons": 1,
+          "episodes": 6,
+          "versions": 91
+        },
+        "7hitmovies moe|dune prophecy 2024": {
+          "display_name": "Dune Prophecy 2024 / 7HitMovies moe",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "children of dune": {
+          "display_name": "Children of Dune E01 MULTi -MAJO",
+          "seasons": 1,
+          "episodes": 3,
+          "versions": 3
+        },
+        "plimsoll productions tiny world": {
+          "display_name": "Plimsoll Productions Tiny world",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "dune miniseries|frank herbert's children of dune part 1|2003": {
+          "display_name": "Frank Herbert's Children of Dune - Part 1 / Dune Miniseries",
+          "year": 2003,
+          "versions": 1
+        },
+        "dune miniseries|frank herbert's children of dune part 2|2003": {
+          "display_name": "Frank Herbert's Children of Dune - Part 2 / Dune Miniseries",
+          "year": 2003,
+          "versions": 1
+        },
+        "dune miniseries|frank herbert's children of dune part 3|2003": {
+          "display_name": "Frank Herbert's Children of Dune - Part 3 / Dune Miniseries",
+          "year": 2003,
+          "versions": 1
+        },
+        "dune miniseries|frank herbert's dune part 1|2000": {
+          "display_name": "Frank Herbert's Dune - Part 1 / Dune Miniseries",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune miniseries|frank herbert's dune part 2|2000": {
+          "display_name": "Frank Herbert's Dune - Part 2 / Dune Miniseries",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune miniseries part3|2000": {
+          "display_name": "Dune The Miniseries Part3",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune warriors|1991": {
+          "display_name": "Dune Warriors",
+          "year": 1991,
+          "versions": 1
+        },
+        "dune|1984": {
+          "display_name": "Dune",
+          "year": 1984,
+          "versions": 10
+        },
+        "dune miniseries part1|2000": {
+          "display_name": "Dune The Miniseries Part1",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune miniseries part2|2000": {
+          "display_name": "Dune The Miniseries Part2",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune drifter|2020": {
+          "display_name": "Dune Drifter",
+          "year": 2020,
+          "versions": 5
+        },
+        "dune|2021": {
+          "display_name": "Dune",
+          "year": 2021,
+          "versions": 14
+        },
+        "1dune|2021": {
+          "display_name": "1Dune",
+          "year": 2021,
+          "versions": 1
+        },
+        "dune|part 1|2000": {
+          "display_name": "Part 1 / Dune",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune|part 2|2000": {
+          "display_name": "Part 2 / Dune",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune|part3|2000": {
+          "display_name": "Part3 / Dune",
+          "year": 2000,
+          "versions": 1
+        },
+        "dune part two|2024": {
+          "display_name": "Dune Part Two",
+          "year": 2024,
+          "versions": 21
+        },
+        "dune cast druha|2024": {
+          "display_name": "Dune Část druhá",
+          "year": 2024,
+          "versions": 2
+        },
+        "dune|2024": {
+          "display_name": "Dune",
+          "year": 2024,
+          "versions": 7
+        },
+        "dl cz sk 5 1|dune part two web|2024": {
+          "display_name": "DL CZ SK 5 1 / Dune Part Two WEB",
+          "year": 2024,
+          "versions": 2
+        },
+        "dune|1950": {
+          "display_name": "Dune",
+          "year": 1950,
+          "versions": 1
+        },
+        "dune|part three|2026": {
+          "display_name": "PART THREE / DUNE",
+          "year": 2026,
+          "versions": 1
+        },
+        "jodorowskys dune|2013": {
+          "display_name": "Jodorowskys Dune",
+          "year": 2013,
+          "versions": 3
+        },
+        "children of dune|deti planety duna|2003": {
+          "display_name": "Children of Dune / Děti planety Duna",
+          "year": 2003,
+          "versions": 1
+        },
+        "20|1912": {
+          "display_name": "20",
+          "year": 1912,
+          "versions": 1
+        },
+        "4 dune|2000": {
+          "display_name": "20180127 222731174 Dune",
+          "year": 2000,
+          "versions": 1
+        },
+        "children of dune part 1|deti duny 1 dil|2003": {
+          "display_name": "Children Of Dune - Part 1 / Děti Duny - 1 Díl",
+          "year": 2003,
+          "versions": 1
+        },
+        "children of dune part 2|deti duny 2 dil|2003": {
+          "display_name": "Children Of Dune - Part 2 / Děti Duny - 2 Díl",
+          "year": 2003,
+          "versions": 1
+        },
+        "children of dune part 3|deti duny 3 dil|2003": {
+          "display_name": "Children Of Dune - Part 3 / Děti Duny - 3 Díl",
+          "year": 2003,
+          "versions": 1
+        },
+        "duna 3 dil|dune part 3|2000": {
+          "display_name": "Dune - Part 3 / Duna - 3 Díl",
+          "year": 2000,
+          "versions": 1
+        },
+        "duna (dune|2021": {
+          "display_name": "Duna (Dune",
+          "year": 2021,
+          "versions": 1
+        },
+        "planet dune|2021": {
+          "display_name": "Planet Dune",
+          "year": 2021,
+          "versions": 1
+        },
+        "children of dune|part 1|2003": {
+          "display_name": "Part 1 / Children of Dune",
+          "year": 2003,
+          "versions": 1
+        },
+        "children of dune|part 2|2003": {
+          "display_name": "Part 2 / Children of Dune",
+          "year": 2003,
+          "versions": 1
+        },
+        "children of dune|part 3|2003": {
+          "display_name": "Part 3 / Children of Dune",
+          "year": 2003,
+          "versions": 1
+        },
+        "duna cast druha|film czdab fullhd dune part two|2024": {
+          "display_name": "DUNA CAST DRUHA / FILM CZDAB FULLHD DUNE PART TWO",
+          "year": 2024,
+          "versions": 1
+        },
+        "7hitmovies zone|dune prophecy|2024": {
+          "display_name": "Dune Prophecy / 7HitMovies zone",
+          "year": 2024,
+          "versions": 2
+        },
+        "dune people|2025": {
+          "display_name": "the dune people",
+          "year": 2025,
+          "versions": 1
+        },
+        "keltove z normandie [the dune people|2018": {
+          "display_name": "Keltove z Normandie [The Dune People",
+          "year": 2018,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'dune' vs 'children of dune part'",
+        "Substring not merged: 'dune' vs 'trailer dune2 tlr'",
+        "Substring not merged: 'dune' vs 'duna proroctvi|dune prophecy'",
+        "Substring not merged: 'dune' vs '7hitmovies moe|dune prophecy 2024'",
+        "Substring not merged: 'dune' vs 'children of dune'",
+        "Substring not merged: 'children of dune part' vs 'children of dune'",
+        "Single-ep series (might be movie?): 'aladdin'",
+        "Single-ep series (might be movie?): 'trailer dune2 tlr'",
+        "Single-ep series (might be movie?): '7hitmovies moe|dune prophecy 2024'",
+        "Single-ep series (might be movie?): 'plimsoll productions tiny world'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 37,
+        "target_groups": null,
+        "notes": "Relevance filter removes files without \"dune\" in name"
+      },
+      "status": "✗ UNDER-MERGED"
+    },
+    "oppenheimer": {
+      "query": "oppenheimer",
+      "total_files": 3,
+      "series_groups": 0,
+      "movie_groups": 2,
+      "non_series": 0,
+      "series_details": {},
+      "movie_details": {
+        "oppenheimer|2023": {
+          "display_name": "Oppenheimer",
+          "year": 2023,
+          "versions": 1
+        },
+        "to end all war oppenheimer atomic bomb|2023": {
+          "display_name": "To End All War Oppenheimer The Atomic Bomb",
+          "year": 2023,
+          "versions": 2
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 2,
+        "target_groups": 1,
+        "notes": "Recent, well-named"
+      },
+      "status": "✓ PASS"
+    },
+    "joker": {
+      "query": "joker",
+      "total_files": 425,
+      "series_groups": 14,
+      "movie_groups": 20,
+      "non_series": 72,
+      "series_details": {
+        "batman": {
+          "display_name": "Batman",
+          "seasons": 4,
+          "episodes": 11,
+          "versions": 13
+        },
+        "kralovska dvojcata": {
+          "display_name": "Královská dvojčata",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "star trek tas": {
+          "display_name": "Star Trek TAS",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "matlock": {
+          "display_name": "Matlock",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "impractical jokers": {
+          "display_name": "Impractical Jokers",
+          "seasons": 8,
+          "episodes": 109,
+          "versions": 208
+        },
+        "south park": {
+          "display_name": "Sauth Park",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 6
+        },
+        "joker game": {
+          "display_name": "Joker Game",
+          "seasons": 1,
+          "episodes": 12,
+          "versions": 12
+        },
+        "mexicky joker": {
+          "display_name": "S23E01 - Mexický Joker.mkv",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "harley quinn": {
+          "display_name": "Harley Quinn",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "spongebob v kalhotach": {
+          "display_name": "Spongebob v kalhotách 060-SpongeBob Meets the Strangler (AKA Litter Bug)-Pranks A Lot",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "nijiyon animation": {
+          "display_name": "Nijiyon Animation - 07 - Lanzhu and the Joker",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "bewitched": {
+          "display_name": "Bewitched",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "ice road truckers": {
+          "display_name": "Ice Road Truckers",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "star trek animated series": {
+          "display_name": "Star Trek The Animated Series - 19 - Practical Joker",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "joker [joker]|2019": {
+          "display_name": "Joker [Joker]",
+          "year": 2019,
+          "versions": 1
+        },
+        "joker joker|2019": {
+          "display_name": "joker-joker",
+          "year": 2019,
+          "versions": 38
+        },
+        "joker|krimi drama thriller|2019": {
+          "display_name": "Krimi-Drama-Thriller / Joker",
+          "year": 2019,
+          "versions": 1
+        },
+        "joker krimi|2019": {
+          "display_name": "Joker-Krimi",
+          "year": 2019,
+          "versions": 1
+        },
+        "folie a deux|joker|2024": {
+          "display_name": "Folie a Deux / Joker 2",
+          "year": 2024,
+          "versions": 12
+        },
+        "joker folie deux|2024": {
+          "display_name": "Joker Folie à Deux",
+          "year": 2024,
+          "versions": 22
+        },
+        "joker folie deux 5 1 5 1 dab|2024": {
+          "display_name": "Joker Folie a Deux WEBrip CZ 5 1 EN 5 1 Dab",
+          "year": 2024,
+          "versions": 1
+        },
+        "dl cz 5 1 en 5 1|joker folie a deux web|2024": {
+          "display_name": "DL CZ 5 1 EN 5 1 / Joker Folie a Deux WEB",
+          "year": 2024,
+          "versions": 1
+        },
+        "joker 2|2024": {
+          "display_name": "Joker 2",
+          "year": 2024,
+          "versions": 1
+        },
+        "joker folie a deux|krimi,drama,thriller,muzikal|2024": {
+          "display_name": "Joker-Folie a Deux",
+          "year": 2024,
+          "versions": 1
+        },
+        "joaquin phoenix, robert de niro|joker|2019": {
+          "display_name": "Joaquin Phoenix, Robert De Niro / Joker",
+          "year": 2019,
+          "versions": 1
+        },
+        "joker scarecrow|2020": {
+          "display_name": "Joker Scarecrow",
+          "year": 2020,
+          "versions": 1
+        },
+        "joker|1991": {
+          "display_name": "Joker",
+          "year": 1991,
+          "versions": 1
+        },
+        "batman|beyond return of the joker|2000": {
+          "display_name": "Return of the Joker / Batman Beyond",
+          "year": 2000,
+          "versions": 2
+        },
+        "mera naam joker hin|vlozene titulky|1970": {
+          "display_name": "Mera Naam Joker HIN",
+          "year": 1970,
+          "versions": 1
+        },
+        "batman vs joker|2016": {
+          "display_name": "Batman vs Joker",
+          "year": 2016,
+          "versions": 1
+        },
+        "peoples joker|2024": {
+          "display_name": "The Peoples Joker",
+          "year": 2024,
+          "versions": 3
+        },
+        "divoky klaun|joker is wild (usa|1957": {
+          "display_name": "Joker Is Wild (USA / Divoký klaun",
+          "year": 1957,
+          "versions": 1
+        },
+        "batman beyond return of the joker|original uncut version|2000": {
+          "display_name": "The Original Uncut Version / Batman Beyond - Return of the Joker",
+          "year": 2000,
+          "versions": 1
+        },
+        "batman|1966": {
+          "display_name": "Batman",
+          "year": 1966,
+          "versions": 6
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'kralovska dvojcata'",
+        "Single-ep series (might be movie?): 'star trek tas'",
+        "Single-ep series (might be movie?): 'matlock'",
+        "Single-ep series (might be movie?): 'south park'",
+        "Single-ep series (might be movie?): 'mexicky joker'",
+        "Single-ep series (might be movie?): 'harley quinn'",
+        "Single-ep series (might be movie?): 'spongebob v kalhotach'",
+        "Single-ep series (might be movie?): 'nijiyon animation'",
+        "Single-ep series (might be movie?): 'bewitched'",
+        "Single-ep series (might be movie?): 'ice road truckers'",
+        "Single-ep series (might be movie?): 'star trek animated series'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 20,
+        "target_groups": 2,
+        "notes": "Many unrelated results"
+      },
+      "status": "✓ PASS"
+    },
+    "gladiator": {
+      "query": "gladiator",
+      "total_files": 213,
+      "series_groups": 16,
+      "movie_groups": 28,
+      "non_series": 42,
+      "series_details": {
+        "gladiator": {
+          "display_name": "Gladiátor",
+          "seasons": 1,
+          "episodes": 5,
+          "versions": 9
+        },
+        "gladiators uk": {
+          "display_name": "Gladiators UK",
+          "seasons": 1,
+          "episodes": 7,
+          "versions": 43
+        },
+        "gladiators": {
+          "display_name": "Gladiators",
+          "seasons": 2,
+          "episodes": 9,
+          "versions": 14
+        },
+        "smrtici valecnici": {
+          "display_name": "Smrtici valecnici",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 3
+        },
+        "uragan": {
+          "display_name": "Uragán - 07 SKUPINA GLADIÁTOR",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "forged in fire": {
+          "display_name": "Forged In Fire",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "super crooks": {
+          "display_name": "Super Crooks",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "fbi most wanted": {
+          "display_name": "FBI Most Wanted",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "osm dni ktere utvorily rim": {
+          "display_name": "Osm dní které utvořily Řím E02 Thrácký gladiátor",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "hercules legendary journeys": {
+          "display_name": "Hercules The Legendary Journeys",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "idefix smecka nepoddajnych": {
+          "display_name": "Idefix a smečka Nepoddajných E08 Nepoddajní a cirkus v aréně (E08 Les Irréductibles font leur cirque - Dogmatix and the gladiator)",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "one piece": {
+          "display_name": "One Piece 650 – Luffy a gladiátor osudu – Rebecca!",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "operace jauu": {
+          "display_name": "Operace Jauu",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "herkules": {
+          "display_name": "Herkules",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 3
+        },
+        "voltron legendary defender": {
+          "display_name": "Voltron Legendary Defender",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "weakest link": {
+          "display_name": "The Weakest Link 2021",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        }
+      },
+      "movie_details": {
+        "gladiator gladiator|2000": {
+          "display_name": "Gladiator - Gladiator",
+          "year": 2000,
+          "versions": 36
+        },
+        "gladiator gladiator (us akcni dobrodruzny drama|2000": {
+          "display_name": "GLADIÁTOR Gladiator (US Akční Dobrodružný Drama",
+          "year": 2000,
+          "versions": 2
+        },
+        "gladiator (usa uk|2000": {
+          "display_name": "Gladiátor (Gladiator) (USA-UK,",
+          "year": 2000,
+          "versions": 1
+        },
+        "gladiator|1995": {
+          "display_name": "Gladiator",
+          "year": 1995,
+          "versions": 1
+        },
+        "gladiator|1992": {
+          "display_name": "Gladiátor",
+          "year": 1992,
+          "versions": 2
+        },
+        "gladiator (prodlouzena verze|2000": {
+          "display_name": "Gladiátor (Prodloužená verze",
+          "year": 2000,
+          "versions": 2
+        },
+        "gladiator (russell crowe joaquin phoenix connie nielsen|2000": {
+          "display_name": "Gladiátor (Russell Crowe,Joaquin Phoenix,Connie Nielsen",
+          "year": 2000,
+          "versions": 3
+        },
+        "gladiators 7|1962": {
+          "display_name": "Gladiators 7",
+          "year": 1962,
+          "versions": 1
+        },
+        "gladiator|prodlouzena verze|2000": {
+          "display_name": "Gladiátor",
+          "year": 2000,
+          "versions": 1
+        },
+        "gladiator|2024": {
+          "display_name": "Gladiator",
+          "year": 2024,
+          "versions": 6
+        },
+        "dl cz 5 1 en 5 1|gladiator ii web|2024": {
+          "display_name": "DL CZ 5 1 EN 5 1 / Gladiator II WEB",
+          "year": 2024,
+          "versions": 1
+        },
+        "gladiators|2024": {
+          "display_name": "Gladiators",
+          "year": 2024,
+          "versions": 1
+        },
+        "il gladiatore|2000": {
+          "display_name": "Il Gladiatore",
+          "year": 2000,
+          "versions": 1
+        },
+        "gladiator 2|paul mescal, denzel washington|2024": {
+          "display_name": "Paul Mescal, Denzel Washington / Gladiátor 2",
+          "year": 2024,
+          "versions": 1
+        },
+        "gladiator underground|2025": {
+          "display_name": "Gladiator Underground",
+          "year": 2025,
+          "versions": 4
+        },
+        "gladiator(prodlouzena verze|2000": {
+          "display_name": "Gladiátor(Prodloužená verze",
+          "year": 2000,
+          "versions": 1
+        },
+        "gladiator 2|2026": {
+          "display_name": "Gladiator 2 CZ",
+          "year": 2026,
+          "versions": 1
+        },
+        "gladiator|2010": {
+          "display_name": "Gladiátor",
+          "year": 2010,
+          "versions": 3
+        },
+        "gladiator|lutinen 4 ✠|1986": {
+          "display_name": "GLADIÁTOR / LUTINEN 4 ✠",
+          "year": 1986,
+          "versions": 1
+        },
+        "gladiatori z pekla|kingdom of gladiators|2011": {
+          "display_name": "kingdom of gladiators / gladiatori z pekla",
+          "year": 2011,
+          "versions": 1
+        },
+        "last gladiators|2011": {
+          "display_name": "The Last Gladiators",
+          "year": 2011,
+          "versions": 1
+        },
+        "uragan 07|2001": {
+          "display_name": "Uragán 07",
+          "year": 2001,
+          "versions": 1
+        },
+        "demetrius and gladiators|1954": {
+          "display_name": "Demetrius and the Gladiators",
+          "year": 1954,
+          "versions": 1
+        },
+        "revenge of gladiators|1964": {
+          "display_name": "Revenge of the Gladiators",
+          "year": 1964,
+          "versions": 1
+        },
+        "texas gladiators|2000": {
+          "display_name": "2020 Texas Gladiators",
+          "year": 2000,
+          "versions": 1
+        },
+        "seven magnificent gladiators|1983": {
+          "display_name": "The Seven Magnificent Gladiators",
+          "year": 1983,
+          "versions": 1
+        },
+        "amazons and gladiators|2001": {
+          "display_name": "Amazons and Gladiators",
+          "year": 2001,
+          "versions": 1
+        },
+        "now we are gladiator|2026": {
+          "display_name": "Now We Are Gladiator",
+          "year": 2026,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Substring not merged: 'gladiator' vs 'gladiators uk'",
+        "Substring not merged: 'gladiator' vs 'gladiators'",
+        "Substring not merged: 'gladiators uk' vs 'gladiators'",
+        "Single-ep series (might be movie?): 'smrtici valecnici'",
+        "Single-ep series (might be movie?): 'uragan'",
+        "Single-ep series (might be movie?): 'forged in fire'",
+        "Single-ep series (might be movie?): 'super crooks'",
+        "Single-ep series (might be movie?): 'fbi most wanted'",
+        "Single-ep series (might be movie?): 'osm dni ktere utvorily rim'",
+        "Single-ep series (might be movie?): 'hercules legendary journeys'",
+        "Single-ep series (might be movie?): 'idefix smecka nepoddajnych'",
+        "Single-ep series (might be movie?): 'one piece'",
+        "Single-ep series (might be movie?): 'operace jauu'",
+        "Single-ep series (might be movie?): 'herkules'",
+        "Single-ep series (might be movie?): 'voltron legendary defender'",
+        "Single-ep series (might be movie?): 'weakest link'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 28,
+        "target_groups": 2,
+        "notes": "Many unrelated results"
+      },
+      "status": "✓ PASS"
+    },
+    "parasite": {
+      "query": "parasite",
+      "total_files": 42,
+      "series_groups": 6,
+      "movie_groups": 9,
+      "non_series": 7,
+      "series_details": {
+        "parasite dolls ova": {
+          "display_name": "Parasite Dolls OVA 01",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "heroes": {
+          "display_name": "Heroes",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "what to expect when you're expecting alien parasite": {
+          "display_name": "S04E04 What To Expect When You're Expecting... An Alien Parasite.mkv",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "lucifer": {
+          "display_name": "Lucifer",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 2
+        },
+        "amazing world of gumball": {
+          "display_name": "The Amazing World of Gumball",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        },
+        "law and order": {
+          "display_name": "Law and Order",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "parasite|2019": {
+          "display_name": "PARASITE",
+          "year": 2019,
+          "versions": 13
+        },
+        "parasite parazit|2019": {
+          "display_name": "Parasite Parazit",
+          "year": 2019,
+          "versions": 2
+        },
+        "3rd birthday bandicam|parasite eve|2024": {
+          "display_name": "3rd Birthday - bandicam / Parasite Eve",
+          "year": 2024,
+          "versions": 1
+        },
+        "parasite|2004": {
+          "display_name": "Parasite",
+          "year": 2004,
+          "versions": 1
+        },
+        "parasite dolls|2003": {
+          "display_name": "Parasite Dolls",
+          "year": 2003,
+          "versions": 1
+        },
+        "joon ho bong|2019": {
+          "display_name": "Joon-ho Bong",
+          "year": 2019,
+          "versions": 1
+        },
+        "deadly parasite|2022": {
+          "display_name": "Deadly Parasite",
+          "year": 2022,
+          "versions": 1
+        },
+        "dark parasite|2023": {
+          "display_name": "dark parasite",
+          "year": 2023,
+          "versions": 1
+        },
+        "3rd birthday|parasite eve|2025": {
+          "display_name": "Parasite Eve / The 3rd Birthday",
+          "year": 2025,
+          "versions": 2
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'parasite dolls ova'",
+        "Single-ep series (might be movie?): 'heroes'",
+        "Single-ep series (might be movie?): 'what to expect when you're expecting alien parasite'",
+        "Single-ep series (might be movie?): 'lucifer'",
+        "Single-ep series (might be movie?): 'amazing world of gumball'",
+        "Single-ep series (might be movie?): 'law and order'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 9,
+        "target_groups": 1,
+        "notes": "Korean/Czech dual (Parazit)"
+      },
+      "status": "✓ PASS"
+    },
+    "tenet": {
+      "query": "tenet",
+      "total_files": 41,
+      "series_groups": 0,
+      "movie_groups": 3,
+      "non_series": 7,
+      "series_details": {},
+      "movie_details": {
+        "tenet [tenet]|2020": {
+          "display_name": "Tenet [Tenet]",
+          "year": 2020,
+          "versions": 1
+        },
+        "tenet|2020": {
+          "display_name": "Tenet",
+          "year": 2020,
+          "versions": 27
+        },
+        "tenet (john david washington robert pattinson elizabeth debicki|2020": {
+          "display_name": "Tenet (John David Washington,Robert Pattinson,Elizabeth Debicki",
+          "year": 2020,
+          "versions": 6
+        }
+      },
+      "potential_issues": [],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 3,
+        "target_groups": 1,
+        "notes": "Short name"
+      },
+      "status": "✓ PASS"
+    },
+    "barbie": {
+      "query": "barbie",
+      "total_files": 500,
+      "series_groups": 2,
+      "movie_groups": 102,
+      "non_series": 128,
+      "series_details": {
+        "barbie": {
+          "display_name": "Barbie Mysteries",
+          "seasons": 5,
+          "episodes": 47,
+          "versions": 151
+        },
+        "dokturci|scrubs": {
+          "display_name": "Doktůrci / Scrubs",
+          "seasons": 1,
+          "episodes": 1,
+          "versions": 1
+        }
+      },
+      "movie_details": {
+        "mariposa a kvetinova princezna barbie|2013": {
+          "display_name": "Mariposa a Květinová princezna Barbie",
+          "year": 2013,
+          "versions": 2
+        },
+        "barbie mariposa kvetinova princezna barbie|2013": {
+          "display_name": "Barbie Mariposa-a-Kvetinova-princezna-Barbie",
+          "year": 2013,
+          "versions": 3
+        },
+        "barbie a kouzelny modni salon barbie animovana cz|fashion fairytale|2010": {
+          "display_name": "A Fashion Fairytale / Barbie a Kouzelny modni salon Barbie animovaná CZ",
+          "year": 2010,
+          "versions": 1
+        },
+        "barbie kouzelna dvirka barbie and secret door|2014": {
+          "display_name": "Barbie-a-Kouzelná-dvířka Barbie-and-the-Secret-Door",
+          "year": 2014,
+          "versions": 1
+        },
+        "barbie ponikova akademie barbie|2013": {
+          "display_name": "Barbie-a-Ponikova-akademie-Barbie",
+          "year": 2013,
+          "versions": 4
+        },
+        "barbie ve hvezdach barbie star light adventure|2016": {
+          "display_name": "Barbie Ve hvezdach Barbie Star Light Adventure",
+          "year": 2016,
+          "versions": 4
+        },
+        "barbie a kouzelne vanoce|barbie in a christmas carol|2008": {
+          "display_name": "Barbie in a Christmas Carol / Barbie a kouzelné Vánoce",
+          "year": 2008,
+          "versions": 2
+        },
+        "psi dobrodruzstvi barbie her sisters in the great puppy adventure|2015": {
+          "display_name": "Psí-dobrodruzstvi Barbie Her-Sisters-in-the-Great-Puppy-Adventure",
+          "year": 2015,
+          "versions": 1
+        },
+        "mariposa a kvetinova princezna barbie mariposa and the fairy princess|2013": {
+          "display_name": "Mariposa a Květinová princezna Barbie Mariposa and the Fairy Princess",
+          "year": 2013,
+          "versions": 3
+        },
+        "psi dobrodruzstvi barbie & her sisters in the great puppy adventure|2015": {
+          "display_name": "Psí-dobrodružství Barbie-&-Her-Sisters-in-the-Great-Puppy-Adventure",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie[1] kouzelne vanoce|2008": {
+          "display_name": "barbie[1] a kouzelne vanoce",
+          "year": 2008,
+          "versions": 1
+        },
+        "barbie pearl princess|2014": {
+          "display_name": "Barbie The Pearl Princess",
+          "year": 2014,
+          "versions": 1
+        },
+        "barbie|patma­ba›h moatmska© panny 2 cz|2012": {
+          "display_name": "PÅ™Ã­bÄ›h-moÅ™skÃ©-panny-2-CZ / Barbie",
+          "year": 2012,
+          "versions": 1
+        },
+        "barbie tajna agentka|2016": {
+          "display_name": "Barbie Tajna agentka",
+          "year": 2016,
+          "versions": 2
+        },
+        "barbie her sisters in great puppy adventure|2015": {
+          "display_name": "Barbie Her Sisters in the Great Puppy Adventure",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie modni salon animovany|2010": {
+          "display_name": "Barbie Módní salón,animovaný",
+          "year": 2010,
+          "versions": 1
+        },
+        "barbie odvazna princezna|2015": {
+          "display_name": "Odvážná princezna / Barbie",
+          "year": 2015,
+          "versions": 4
+        },
+        "barbie zachrante pejsky dabing animovany|2016": {
+          "display_name": "Barbie-Zachrante-pejsky cz-dabing- -animovany",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie v louskacku animovany|2001": {
+          "display_name": "Barbie v Louskáčku,animovaný",
+          "year": 2001,
+          "versions": 1
+        },
+        "barbie|ve hvezdach,animovany|2016": {
+          "display_name": "Ve hvězdách,animovaný / Barbie",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie|rockn royals|2015": {
+          "display_name": "Rockn-Royals / Barbie",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie|fashion fairytale|2010": {
+          "display_name": "A-Fashion-Fairytale / Barbie",
+          "year": 2010,
+          "versions": 1
+        },
+        "barbie and her sisters in great pupp adventure|2015": {
+          "display_name": "Barbie-and-Her-Sisters-in-the-Great-Pupp-Adventure",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie and diamond castle|2008": {
+          "display_name": "Barbie-and-the-Diamond-Castle",
+          "year": 2008,
+          "versions": 1
+        },
+        "barbie and magic of pegasus|2005": {
+          "display_name": "Barbie-and-the-Magic-of-Pegasus",
+          "year": 2005,
+          "versions": 1
+        },
+        "barbie in mermaid tale 1|2010": {
+          "display_name": "Barbie-in-a-Mermaid-Tale-1",
+          "year": 2010,
+          "versions": 1
+        },
+        "barbie in mermaid tale 2|2012": {
+          "display_name": "Barbie-in-a-Mermaid-Tale-2",
+          "year": 2012,
+          "versions": 2
+        },
+        "barbie mermaidia v1|2006": {
+          "display_name": "Barbie-Mermaidia-v1",
+          "year": 2006,
+          "versions": 1
+        },
+        "barbie mermaidia v2|2006": {
+          "display_name": "Barbie-Mermaidia-v2",
+          "year": 2006,
+          "versions": 1
+        },
+        "barbie|princess and the popstar|2012": {
+          "display_name": "The-Princess-And-The-Popstar / Barbie",
+          "year": 2012,
+          "versions": 1
+        },
+        "barbie kouzelna dvirka dabing animovana pohadka|2014": {
+          "display_name": "Barbie a Kouzelná dvířka-cz dabing animovaná pohádka",
+          "year": 2014,
+          "versions": 1
+        },
+        "barbie ve hvezdach|2016": {
+          "display_name": "Barbie Ve hvězdách",
+          "year": 2016,
+          "versions": 4
+        },
+        "barbie and secret door|2014": {
+          "display_name": "Barbie and the Secret Door",
+          "year": 2014,
+          "versions": 1
+        },
+        "barbie dolphin magic dabing animovany|2017": {
+          "display_name": "Barbie Dolphin Magic-cz dabing animovaný",
+          "year": 2017,
+          "versions": 1
+        },
+        "anim|barbie magicky delfin|2017": {
+          "display_name": "Anim / Barbie-Magicky-delfin",
+          "year": 2017,
+          "versions": 1
+        },
+        "barbie werbung hollywood hair|1993": {
+          "display_name": "Barbie Werbung Hollywood Hair",
+          "year": 1993,
+          "versions": 1
+        },
+        "barbie's house dum|old tv commercial from|1992": {
+          "display_name": "Barbie's house dům",
+          "year": 1992,
+          "versions": 1
+        },
+        "barbie|pribeh morske panny 2|2012": {
+          "display_name": "Příběh mořské panny 2 / Barbie",
+          "year": 2012,
+          "versions": 2
+        },
+        "barbie|kouzlo delfinu|2017": {
+          "display_name": "Kouzlo delfinu / Barbie",
+          "year": 2017,
+          "versions": 1
+        },
+        "barbie|tajemstvi vil|2011": {
+          "display_name": "Barbie-Tajemstvi-vil",
+          "year": 2011,
+          "versions": 4
+        },
+        "barbie v louskacku cz dabing animovany|rodinny, usa,|2001": {
+          "display_name": "Rodinný, USA, / Barbie v Louskáčku-CZ Dabing-Animovaný",
+          "year": 2001,
+          "versions": 1
+        },
+        "barbie sestricky psi dobrodruzstvi animovany film usa|2015": {
+          "display_name": "Barbie Sestřičky a psí dobrodružství-animovaný film USA",
+          "year": 2015,
+          "versions": 2
+        },
+        "barbie ruzove balerinky|2013": {
+          "display_name": "Barbie-a-růžové-balerínky",
+          "year": 2013,
+          "versions": 5
+        },
+        "barbie|rock’n royals|2015": {
+          "display_name": "Rock’n-Royals / Barbie",
+          "year": 2015,
+          "versions": 2
+        },
+        "barbie|tajna agentka [cz dabing,|2016": {
+          "display_name": "Tajná-agentka-[CZ-dabing, / Barbie",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie ve svete her dabing animovany|2017": {
+          "display_name": "Barbie-Ve-svete-her-cz-dabing animovany",
+          "year": 2017,
+          "versions": 2
+        },
+        "barbie|magicky delfin|2017": {
+          "display_name": "Magický delfín / Barbie",
+          "year": 2017,
+          "versions": 2
+        },
+        "barbie|perlova princezna|2014": {
+          "display_name": "barbie-perlova-princezna-novinky",
+          "year": 2014,
+          "versions": 3
+        },
+        "barbie|zachrante pejsky|2016": {
+          "display_name": "Zachrante pejsky / Barbie",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie and her sisters in great puppy adventure|2015": {
+          "display_name": "Barbie and Her Sisters in the Great Puppy Adventure",
+          "year": 2015,
+          "versions": 1
+        },
+        "anim|barbie psi dobrodruzstvi|2015": {
+          "display_name": "Barbie-Psi-dobrodruzstvi",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie|pribeh morske panny 1|2010": {
+          "display_name": "Příběh mořské panny 1 / Barbie",
+          "year": 2010,
+          "versions": 2
+        },
+        "barbie chelsea lost birthday|2021": {
+          "display_name": "Barbie Chelsea The Lost Birthday",
+          "year": 2021,
+          "versions": 1
+        },
+        "barbie v louskacku|2001": {
+          "display_name": "Barbie v Louskáčku",
+          "year": 2001,
+          "versions": 2
+        },
+        "barbie|princezna a svadlenka|2004": {
+          "display_name": "Princezna a švadlenka / Barbie",
+          "year": 2004,
+          "versions": 1
+        },
+        "barbie kouzelny modni salon|2010": {
+          "display_name": "Barbie a Kouzelný módní salón",
+          "year": 2010,
+          "versions": 6
+        },
+        "barbie jako princezna z ostrova|2007": {
+          "display_name": "Barbie jako Princezna z Ostrova",
+          "year": 2007,
+          "versions": 2
+        },
+        "barbie morska vila|2006": {
+          "display_name": "Barbie mořská víla",
+          "year": 2006,
+          "versions": 1
+        },
+        "barbie uvadi thumbelina|2009": {
+          "display_name": "Barbie uvádí Thumbelina",
+          "year": 2009,
+          "versions": 2
+        },
+        "anim|barbie zachrante pejsky|2016": {
+          "display_name": "Barbie Zachraňte pejsky",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie (19 07|2023": {
+          "display_name": "Barbie (19 07",
+          "year": 2023,
+          "versions": 1
+        },
+        "barbie|2023": {
+          "display_name": "Barbie",
+          "year": 2023,
+          "versions": 43
+        },
+        "barbie web|dl|2023": {
+          "display_name": "DL / Barbie WEB",
+          "year": 2023,
+          "versions": 1
+        },
+        "barbie czdab|2023": {
+          "display_name": "Barbie CZdab",
+          "year": 2023,
+          "versions": 1
+        },
+        "barbie motyli vila|2008": {
+          "display_name": "Barbie Motyli-vila",
+          "year": 2008,
+          "versions": 1
+        },
+        "barbie|psi dobrodruzstvi cz dabing animovany|2015": {
+          "display_name": "Psí dobrodružství cz dabing animovaný / Barbie",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie kouzelna dvirka|2014": {
+          "display_name": "barbie a kouzelna dvirka",
+          "year": 2014,
+          "versions": 5
+        },
+        "barbie ruzove balerinky animovany rodinny usa|2013": {
+          "display_name": "Barbie a ruzove balerinky animovany rodinny USA",
+          "year": 2013,
+          "versions": 1
+        },
+        "barbie dokonale vanoce dabing animovany rodinny usa|2011": {
+          "display_name": "Barbie-a-dokonale-Vanoce-CZ-dabing Animovany Rodinny-USA",
+          "year": 2011,
+          "versions": 1
+        },
+        "barbie|rockn royals cz dabing muzikalova pohadka|2015": {
+          "display_name": "Rockn-Royals-cz-dabing muzikalova-pohadka / Barbie",
+          "year": 2015,
+          "versions": 1
+        },
+        "barbie ruzenka|2002": {
+          "display_name": "barbie-ruzenka",
+          "year": 2002,
+          "versions": 2
+        },
+        "barbie ve hvezdachanimovany|2016": {
+          "display_name": "Barbie-Ve-hvezdachanimovany",
+          "year": 2016,
+          "versions": 1
+        },
+        "barbie dreamhouse adventures zahada morske vily|2019": {
+          "display_name": "Barbie Dreamhouse Adventures Záhada mořské víly",
+          "year": 2019,
+          "versions": 1
+        },
+        "barbie|perlova princezna (|2014": {
+          "display_name": "Perlová princezna ( / Barbie",
+          "year": 2014,
+          "versions": 3
+        },
+        "barbie (margot robbie ryan gosling america ferrera|2023": {
+          "display_name": "Barbie (Margot Robbie,Ryan Gosling,America Ferrera",
+          "year": 2023,
+          "versions": 3
+        },
+        "barbie and stacie to rescue|2024": {
+          "display_name": "Barbie And Stacie To The Rescue",
+          "year": 2024,
+          "versions": 1
+        },
+        "barbie skola pro princezny dabing|2011": {
+          "display_name": "Barbie a Skola pro princezny, CZ dabing",
+          "year": 2011,
+          "versions": 1
+        },
+        "barbie dreamtopia|2016": {
+          "display_name": "Barbie Dreamtopia",
+          "year": 2016,
+          "versions": 3
+        },
+        "barbie as princessandthe pauper|2004": {
+          "display_name": "Barbie as The Princessandthe Pauper",
+          "year": 2004,
+          "versions": 1
+        },
+        "barbie fairy secret|2011": {
+          "display_name": "Barbie A Fairy Secret",
+          "year": 2011,
+          "versions": 1
+        },
+        "barbie a zahady s02|e01 e08|2025": {
+          "display_name": "E01-E08 / Barbie a záhady S02",
+          "year": 2025,
+          "versions": 1
+        },
+        "barbie a zahady s01|e01 e08|2024": {
+          "display_name": "E01-E08 / Barbie a záhady S01",
+          "year": 2024,
+          "versions": 1
+        },
+        "barbie and three musketeers|2009": {
+          "display_name": "Barbie and the Three Musketeers",
+          "year": 2009,
+          "versions": 1
+        },
+        "barbie as rapunzel|2003": {
+          "display_name": "Barbie as Rapunzel",
+          "year": 2003,
+          "versions": 2
+        },
+        "barbie in nutcracker|2001": {
+          "display_name": "Barbie in the Nutcracker",
+          "year": 2001,
+          "versions": 1
+        },
+        "barabba|barbie|1987": {
+          "display_name": "Barabba / Barbie",
+          "year": 1987,
+          "versions": 1
+        },
+        "barbie|swan lake labuti jezero|2003": {
+          "display_name": "Swan Lake - Labutí jezero / Barbie",
+          "year": 2003,
+          "versions": 1
+        },
+        "barbie of swan lake|2003": {
+          "display_name": "Barbie of Swan Lake",
+          "year": 2003,
+          "versions": 4
+        },
+        "14|2008": {
+          "display_name": "14",
+          "year": 2008,
+          "versions": 1
+        },
+        "22|2012": {
+          "display_name": "22",
+          "year": 2012,
+          "versions": 1
+        },
+        "03 barbie z labutiho jezera|2003": {
+          "display_name": "03 Barbie z Labutího jezera",
+          "year": 2003,
+          "versions": 1
+        },
+        "04 barbie princezna svadlenka|2004": {
+          "display_name": "04 Barbie Princezna a švadlenka",
+          "year": 2004,
+          "versions": 1
+        },
+        "05 barbie fairytopia 1 kralovstvi vil|2005": {
+          "display_name": "05 Barbie Fairytopia 1 Království víl",
+          "year": 2005,
+          "versions": 1
+        },
+        "06 barbie kouzlo pegasu|2005": {
+          "display_name": "06 Barbie a kouzlo Pegasu",
+          "year": 2005,
+          "versions": 1
+        },
+        "07 barbie 12 tancicich princezen|2006": {
+          "display_name": "07 Barbie a 12 tančících princezen",
+          "year": 2006,
+          "versions": 1
+        },
+        "08 barbie|denicek|2006": {
+          "display_name": "Deníček / 08 Barbie",
+          "year": 2006,
+          "versions": 1
+        },
+        "09 barbie fairytopia 2 morska vila|2006": {
+          "display_name": "09 Barbie Fairytopia 2 Mořská víla",
+          "year": 2006,
+          "versions": 1
+        },
+        "10 barbie fairytopia 3 kouzlo duhy|2007": {
+          "display_name": "10 Barbie Fairytopia 3 Kouzlo duhy",
+          "year": 2007,
+          "versions": 1
+        },
+        "12 barbie diamantovy zamek|2008": {
+          "display_name": "12 Barbie a Diamantový zámek",
+          "year": 2008,
+          "versions": 1
+        },
+        "13 barbie fairytopia 4 motyli vila|2008": {
+          "display_name": "13 Barbie Fairytopia 4 Motýlí víla",
+          "year": 2008,
+          "versions": 1
+        },
+        "19 barbie dokonale vanoce|2011": {
+          "display_name": "19 Barbie a dokonalé Vánoce",
+          "year": 2011,
+          "versions": 1
+        },
+        "21 barbie skola pro princezny|2011": {
+          "display_name": "21 Barbie a Škola pro princezny",
+          "year": 2011,
+          "versions": 1
+        }
+      },
+      "potential_issues": [
+        "Single-ep series (might be movie?): 'dokturci|scrubs'"
+      ],
+      "expected": {
+        "type": "movie",
+        "expected_groups": 106,
+        "target_groups": 1,
+        "notes": "Very noisy; many Barbie animated movies"
+      },
+      "status": "↑ IMPROVED"
     }
   }
 }

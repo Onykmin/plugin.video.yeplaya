@@ -38,16 +38,16 @@ class TestSettingsXML:
         assert slast.get('default') == '', \
             "slast default should be empty string, not sentinel"
 
-    def test_csfd_series_only_has_enable(self, settings_xml):
-        """csfd_series_only should depend on csfd_enabled."""
-        csfd_series = None
+    def test_duuid_hidden(self, settings_xml):
+        """duuid should be hidden (visible=false)."""
+        duuid = None
         for setting in settings_xml.iter('setting'):
-            if setting.get('id') == 'csfd_series_only':
-                csfd_series = setting
+            if setting.get('id') == 'duuid':
+                duuid = setting
                 break
 
-        assert csfd_series is not None
-        assert csfd_series.get('enable') == 'eq(-1,true)'
+        assert duuid is not None
+        assert duuid.get('visible') == 'false'
 
     def test_labelformat_has_enable(self, settings_xml):
         """labelformat should depend on customformat."""

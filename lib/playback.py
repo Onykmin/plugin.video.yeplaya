@@ -40,6 +40,30 @@ _handle = get_handle()
 _addon = get_addon()
 _session = get_session()
 
+
+def resolve_and_play(ident, name, token):
+    """Get stream link, attach headers, resolve URL and wait for playback.
+
+    Returns True on success, False on failure. Calls setResolvedUrl internally.
+    """
+    from lib.player import YePlayer
+    link = getlink(ident, token)
+    if link is not None:
+        headers = dict(_session.headers) if _session and hasattr(_session, 'headers') else None
+        if headers:
+            headers['Cookie'] = 'wst=' + token
+            link = link + '|' + urlencode(headers)
+        player = YePlayer()
+        listitem = xbmcgui.ListItem(label=name, path=link)
+        listitem.setProperty('mimetype', 'application/octet-stream')
+        xbmcplugin.setResolvedUrl(_handle, True, listitem)
+        player.wait_for_playback()
+        return True
+    else:
+        popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+        return False
+
 def play(params):
     try:
         token = revalidate()
@@ -51,21 +75,7 @@ def play(params):
             xbmc.log("YAWsP: Missing ident in play", xbmc.LOGERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
             return
-        link = getlink(params['ident'],token)
-        if link is not None:
-            #headers experiment
-            headers = _session.headers if _session and hasattr(_session, 'headers') else None
-            if headers:
-                headers.update({'Cookie':'wst='+token})
-                link = link + '|' + urlencode(headers)
-            player = YePlayer()
-            listitem = xbmcgui.ListItem(label=params['name'],path=link)
-            listitem.setProperty('mimetype', 'application/octet-stream')
-            xbmcplugin.setResolvedUrl(_handle, True, listitem)
-            player.wait_for_playback()
-        else:
-            popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
-            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+        resolve_and_play(params['ident'], params['name'], token)
     except requests.exceptions.RequestException as e:
         xbmc.log("YAWsP: Network error in play: " + str(e), xbmc.LOGERROR)
         popinfo(_addon.getLocalizedString(30305), icon=xbmcgui.NOTIFICATION_ERROR)
@@ -83,19 +93,70 @@ def join(path, file):
         return path + '/' + file
 
 
+_WINDOWS_RESERVED = frozenset(['CON', 'PRN', 'AUX', 'NUL'] +
+    ['COM%d' % i for i in range(1, 10)] + ['LPT%d' % i for i in range(1, 10)])
+
+
+def _sanitize_filename(name):
+    """Sanitize filename: strip path components, control chars, reserved names."""
+    # Strip null bytes and control characters
+    name = re.sub(r'[\x00-\x1f]', '', name)
+    # Remove path separators and parent references
+    name = name.replace('..', '').replace('/', '_').replace('\\', '_')
+    name = os.path.basename(name)
+    # Remove Windows-reserved characters
+    name = re.sub(r'[<>:"|?*]', '', name)
+    # Check Windows reserved names
+    stem = name.split('.')[0].upper()
+    if stem in _WINDOWS_RESERVED:
+        name = '_' + name
+    return name.strip() or 'download'
+
+
+def _unique_path(filepath):
+    """Return filepath with numeric suffix if file already exists."""
+    if not os.path.exists(filepath):
+        return filepath
+    base, ext = os.path.splitext(filepath)
+    counter = 1
+    while os.path.exists('{}_{}{}'.format(base, counter, ext)):
+        counter += 1
+    return '{}_{}{}'.format(base, counter, ext)
+
+
+_active_downloads = set()
+_download_lock = __import__('threading').Lock()
+
+
 def download(params):
     token = revalidate()
     if 'ident' not in params:
         xbmc.log("YAWsP: Missing ident in download", xbmc.LOGERROR)
         return
+
+    ident = params['ident']
+    with _download_lock:
+        if ident in _active_downloads:
+            xbmc.log("YAWsP: Download already in progress: " + ident, xbmc.LOGWARNING)
+            return
+        _active_downloads.add(ident)
+
+    try:
+        _do_download(params, token)
+    finally:
+        with _download_lock:
+            _active_downloads.discard(ident)
+
+
+def _do_download(params, token):
     where = _addon.getSetting('dfolder')
     if not where or not xbmcvfs.exists(where):
         popinfo(_addon.getLocalizedString(30413), sound=True)
         _addon.openSettings()
         return
-        
+
     local = os.path.exists(where)
-        
+
     normalize = 'true' == _addon.getSetting('dnormalize')
     notify = 'true' == _addon.getSetting('dnotify')
     every = _addon.getSetting('dnevery')
@@ -103,8 +164,10 @@ def download(params):
         every = int(re.sub(r'[^\d]+', '', every))
     except (ValueError, TypeError):
         every = 10
-        
+
     name = None
+    filepath = None
+    bf = None
     try:
         link = getlink(params['ident'],token,'file_download')
         if link is None:
@@ -118,29 +181,50 @@ def download(params):
         if name_elem is None or name_elem.text is None:
             popinfo(_addon.getLocalizedString(30307), icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
             return
-        name = name_elem.text
-        # Sanitize filename - remove path separators and parent references
-        name = os.path.basename(name.replace('..', '').replace('/', '_').replace('\\', '_'))
+        name = _sanitize_filename(name_elem.text)
         if normalize:
             normalized = unidecode(name)
-            # Fallback to ident if unidecode returns empty string
             if not normalized or not normalized.strip():
                 name = params.get('ident', 'download') + os.path.splitext(name)[1]
             else:
                 name = normalized
-        bf = io.open(os.path.join(where,name), 'wb') if local else xbmcvfs.File(join(where,name), 'w')
-        response = _session.get(link, stream=True, timeout=60)
-        total = response.headers.get('content-length')
-        # Always stream in chunks to avoid memory spikes
-        popinfo(_addon.getLocalizedString(30302) + name)
+
+        # Resolve filename collisions (local only)
+        if local:
+            filepath = _unique_path(os.path.join(where, name))
+            name = os.path.basename(filepath)
+
+        # Check for existing partial download (resume support, local only)
         dl = 0
+        req_headers = {}
+        if local and filepath and os.path.exists(filepath + '.part'):
+            dl = os.path.getsize(filepath + '.part')
+            req_headers['Range'] = 'bytes={}-'.format(dl)
+
+        response = _session.get(link, stream=True, timeout=60, headers=req_headers)
+        total = response.headers.get('content-length')
+
+        # If server returned 206 Partial Content, we're resuming
+        resuming = response.status_code == 206
         if total is not None:
-            total = int(total)
-            pct = total / 100 if total > 0 else 1
+            total = int(total) + (dl if resuming else 0)
+
+        popinfo(_addon.getLocalizedString(30302) + name)
+
+        if total is not None and total > 0:
+            pct = total / 100
         else:
-            # Fallback: estimate progress by MB downloaded
             total = None
             pct = 1
+
+        # Write to .part file first, rename on completion
+        if local:
+            write_path = filepath + '.part'
+            bf = io.open(write_path, 'ab' if resuming else 'wb')
+        else:
+            write_path = join(where, name)
+            bf = xbmcvfs.File(write_path, 'w')
+
         lastpop = 0
         for data in response.iter_content(chunk_size=4096):
             dl += len(data)
@@ -149,7 +233,6 @@ def download(params):
                 if total is not None:
                     done = int(dl / pct)
                 else:
-                    # Show MB downloaded when size unknown
                     done = dl // (1024 * 1024)
                 if done % every == 0 and lastpop != done:
                     if total is not None:
@@ -158,12 +241,23 @@ def download(params):
                         popinfo(str(done) + 'MB - ' + name)
                     lastpop = done
         bf.close()
+        bf = None
+
+        # Rename .part to final name on success (local only)
+        if local and filepath:
+            os.rename(filepath + '.part', filepath)
+
         popinfo(_addon.getLocalizedString(30303) + name, sound=True)
     except (IOError, OSError, requests.exceptions.RequestException) as e:
-        #TODO - remove unfinished file?
         xbmc.log("YAWsP: Download failed: " + str(e), xbmc.LOGERROR)
         err_name = name if name else 'file'
         popinfo(_addon.getLocalizedString(30304) + err_name, icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
+    finally:
+        if bf is not None:
+            try:
+                bf.close()
+            except Exception:
+                pass
 
 
 def queue(params):

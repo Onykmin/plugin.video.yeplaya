@@ -18,27 +18,27 @@ class YePlayer(xbmc.Player):
     def __init__(self):
         super(YePlayer, self).__init__()
         self._av_started = False
-        self._error = False
+        self._playback_done = False
         self._monitor = xbmc.Monitor()
 
     def wait_for_playback(self, timeout=30):
         """Keep script alive until onAVStarted fires, error, or timeout (seconds)."""
         for _ in range(timeout * 10):
-            if self._av_started or self._error:
+            if self._av_started or self._playback_done:
                 return
             if self._monitor.waitForAbort(0.1):
                 return
         xbmc.log(_LOG + "wait_for_playback: timeout after %ds" % timeout, xbmc.LOGWARNING)
 
     def onPlayBackError(self):
-        self._error = True
+        self._playback_done = True
         xbmc.log(_LOG + "playback error", xbmc.LOGERROR)
 
     def onPlayBackStopped(self):
-        self._error = True
+        self._playback_done = True
 
     def onPlayBackEnded(self):
-        self._error = True
+        self._playback_done = True
 
     def onAVStarted(self):
         self._av_started = True

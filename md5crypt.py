@@ -68,12 +68,10 @@ def unix_md5_crypt(pw, salt, magic=None):
 
 
     # salt can have up to 8 characters:
-    import string
-    
-    try:
-        salt = string.split(salt, '$', 1)[0]
-    except AttributeError:
-        salt = salt.decode("utf-8").split('$', 1)[0].encode("utf-8")
+    if isinstance(salt, bytes):
+        salt = salt.split(b'$', 1)[0]
+    else:
+        salt = salt.split('$', 1)[0]
     
     salt = salt[:8]
     

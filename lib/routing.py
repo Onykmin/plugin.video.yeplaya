@@ -6,7 +6,9 @@
 """URL routing logic."""
 
 import xbmc
-from lib.ui import search, newsearch, history, settings, menu, browse_series, browse_season, browse_other, select_version, select_movie_version, info, goto_page
+from lib.ui import history, settings, menu, info, goto_page
+from lib.search_ui import search, newsearch
+from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version
 from lib.playback import play, download, queue
 from lib.database import db
 

@@ -3,18 +3,37 @@
 # Author: onykmin
 # License: AGPL v.3 https://www.gnu.org/licenses/agpl-3.0.html
 
+from functools import lru_cache
+
+try:
+    from unidecode import unidecode
+except ImportError:
+    import unicodedata
+    def unidecode(text):
+        normalized = unicodedata.normalize('NFKD', text)
+        return ''.join([c for c in normalized if not unicodedata.combining(c)])
+
+
+@lru_cache(maxsize=2048)
+def _normalize(text):
+    """Lowercase + strip diacritics for accent-insensitive matching (cached)."""
+    return unidecode(text).lower().strip()
+
+
 def calculate_search_relevance(display_name, query, canonical_key=None):
     """Calculate search relevance score (0-1000, higher = better match)."""
     if not query:
         return -1
+    if not display_name:
+        return 0
 
-    q_norm = query.lower().strip()
-    d_norm = display_name.lower().strip()
+    q_norm = _normalize(query)
+    d_norm = _normalize(display_name)
     clean_title = d_norm.split('(')[0].strip()
 
     search_targets = [clean_title]
     if canonical_key:
-        parts = [p.strip() for p in canonical_key.lower().split('|')]
+        parts = [_normalize(p) for p in canonical_key.split('|')]
         search_targets.extend([
             p for i, p in enumerate(parts)
             if p and not (p.isdigit() and len(p) == 4 and i == len(parts) - 1)
@@ -48,13 +67,24 @@ def _score_single_match(target, query):
         if matches > 0:
             return 600 + (matches * 15)
 
+    # Single-word query: check for word-start match
     for word in target_words:
         if word.startswith(query):
             return 500
+        # Also check if query starts with target word (partial match)
+        if query.startswith(word) and len(word) >= 3:
+            return 400
 
     if query in target:
         pos = target.index(query)
         penalty = min(pos * 2, 100)
         return 300 - penalty
+
+    # Fuzzy: check if target contains most query chars in order (handles Czech transliterations)
+    if len(query) >= 4:
+        from difflib import SequenceMatcher
+        ratio = SequenceMatcher(None, target, query).ratio()
+        if ratio > 0.7:
+            return int(200 * ratio)
 
     return 0

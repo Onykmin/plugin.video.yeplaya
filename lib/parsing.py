@@ -6,6 +6,8 @@
 import datetime
 import re
 
+_CURRENT_YEAR = datetime.datetime.now().year
+
 try:
     from unidecode import unidecode
 except ImportError:
@@ -29,7 +31,8 @@ _PATTERN_YEAR = re.compile(r'\[?\d{4}\]?')
 _PATTERN_LANG = re.compile(r'\b(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)\b|[\(\[](?:CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)[\)\]]', re.IGNORECASE)
 _PATTERN_SEPARATORS = re.compile(r'[\-_\.\,\:\;]+')
 _PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
-_PATTERN_MOVIE_YEAR = re.compile(r'^(.+?)[\s_\.\-]*[\(\[]?((?:19|20)\d{2})[\)\]]?')
+_PATTERN_MOVIE_YEAR = re.compile(r'^(.+?)[\s_\.\-]*[\(\[]?((?:19|20)\d{2})(?!x\d{3,4})[\)\]]?')
+_RE_RELEASE_GROUP = re.compile(r'[-\s]+(sparks|fgt|yify|yts|rarbg|etrg|ettv|fum|shitbox|ion10|fleet|cmrg|evo|geckos|playnow|demand|ntb|drones|strife|megusta|nogrp|mkvcage|galaxytv|stuttershit|lama|tbs|nhanc3|afg|qoq|wrd|joy|cinefile|fle|dr|lena)\s*$', re.IGNORECASE)
 
 
 # ============================================================================
@@ -265,6 +268,28 @@ def extract_dual_names(raw_name):
 # Name Cleaning
 # ============================================================================
 
+_ROMAN_MAP = {
+    'ii': '2', 'iii': '3', 'iv': '4', 'v': '5',
+    'vi': '6', 'vii': '7', 'viii': '8', 'ix': '9', 'x': '10',
+    'xi': '11', 'xii': '12', 'xiii': '13',
+}
+# Only match ii+ (skip standalone "i" which conflicts with articles/pronouns)
+_RE_ROMAN = re.compile(r'\b(xiii|xii|xi|ix|viii|vii|vi|iv|iii|ii)\b')
+
+
+def _normalize_roman_numerals(name):
+    """Convert Roman numerals (II+) to Arabic in canonical keys.
+
+    "part iii" → "part 3", "season ii" → "season 2"
+    Skips standalone "i" (too ambiguous — article/pronoun).
+    """
+    def replace_roman(m):
+        roman = m.group(1).lower()
+        return _ROMAN_MAP.get(roman, m.group(0))
+
+    return _RE_ROMAN.sub(replace_roman, name)
+
+
 def clean_series_name(name):
     """Aggressively normalize series name for grouping.
 
@@ -277,13 +302,22 @@ def clean_series_name(name):
     name = _PATTERN_CODEC.sub('', name)
     name = _PATTERN_AUDIO.sub('', name)
     name = _PATTERN_LANG.sub('', name)
+    # Strip years, but preserve if the name IS a year (e.g., series "1883")
+    name_before_year_strip = name
     name = _PATTERN_YEAR.sub('', name)
+    if not name.strip():
+        name = name_before_year_strip  # Restore — name was entirely a year
     name = _PATTERN_SEPARATORS.sub(' ', name)
     name = ' '.join(name.split())
     name = re.sub(r'\([^)]*\)', '', name)
     name = ' '.join(name.split())
+    # Strip release group tags from end
+    name = _RE_RELEASE_GROUP.sub('', name)
     name = unidecode(name)
     name = name.strip().lower()
+
+    # Normalize Roman numerals to Arabic (only standalone: I, II, III, IV, V, etc.)
+    name = _normalize_roman_numerals(name)
 
     # Strip articles from START
     if name.startswith('the '):
@@ -485,8 +519,8 @@ def parse_episode_info(filename):
         if match_end < len(cleaned_filename) and cleaned_filename[match_end:match_end+1].lower() == 'p':
             return None
 
-        # Skip audio channel markers like "AAC5.1", "DD7.1", "AC3.2.0", "AC3.7.1"
-        # Pattern: series name ends with digit, then separator, then our matched episode
+        # Skip audio channel markers like "AAC5.1", "DD5.1", "AC3 5.1", "DD7.1"
+        # Pattern: series name ends with audio codec, then our matched "episode" is a channel number
         if raw_name and raw_name[-1].isdigit():
             last_char = raw_name[-1]
             # Common audio: AC3 (3.x), 2.0, 2.1, 5.1, 7.1
@@ -495,6 +529,13 @@ def parse_episode_info(filename):
                 return None
             # Also skip if episode is 1,7 and series ends with 3 (AC3.7.1 pattern)
             if last_char == '3' and episode_str in ('1', '7'):
+                return None
+
+        # Skip if raw_name ends with known audio codec and episode is a channel number
+        # Catches: "AC3 5.1", "DTS 5.1", "DD 5.1", "AAC 2.0"
+        raw_name_upper = raw_name.rstrip(' .-_').upper() if raw_name else ''
+        if raw_name_upper and episode_str in ('1', '2', '5', '7'):
+            if any(raw_name_upper.endswith(codec) for codec in ('AC3', 'DTS', 'DD', 'AAC', 'EAC3', 'TRUEHD')):
                 return None
 
         # Parse episode number (may have decimal like "6.5")
@@ -559,14 +600,19 @@ def parse_movie_info(filename):
             return None
 
         # Validate year is reasonable (not future)
-        if year > datetime.datetime.now().year + 2:
+        if year > _CURRENT_YEAR + 2:
             return None
 
         clean_title = clean_series_name(raw_title)
 
-        # Reject if cleaned title is too short (likely garbage extraction)
+        # Handle year-as-name edge case (e.g., movie "2012", series "1883")
+        # If cleaning removed everything and raw title IS a 4-digit year, preserve it
         if len(clean_title) < 2:
-            return None
+            raw_stripped = raw_title.strip().replace('.', ' ').replace('-', ' ').strip()
+            if re.match(r'^\d{4}$', raw_stripped):
+                clean_title = raw_stripped
+            else:
+                return None
 
         dual_names = extract_dual_names(raw_title)
 

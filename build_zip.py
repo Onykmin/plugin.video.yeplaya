@@ -49,6 +49,7 @@ def main():
             '-x', f'{ADDON_ID}/tests/*',
             '-x', f'{ADDON_ID}/repository.yeplaya/*',
             '-x', '*.pyc',
+            '-x', '**/.DS_Store',
             '-x', f'{ADDON_ID}/.gitignore',
             '-x', f'{ADDON_ID}/LICENSE',
             '-x', f'{ADDON_ID}/README.md',

@@ -6,12 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# Mock Kodi modules
-sys.modules['xbmc'] = __import__('unittest.mock').mock.MagicMock()
-sys.modules['xbmcaddon'] = __import__('unittest.mock').mock.MagicMock()
-sys.modules['xbmcgui'] = __import__('unittest.mock').mock.MagicMock()
-sys.modules['xbmcplugin'] = __import__('unittest.mock').mock.MagicMock()
-sys.modules['xbmcvfs'] = __import__('unittest.mock').mock.MagicMock()
+# Mocks provided by conftest.py
 
 from lib.grouping import deduplicate_versions
 

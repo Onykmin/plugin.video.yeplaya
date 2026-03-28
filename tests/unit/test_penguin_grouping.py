@@ -10,42 +10,7 @@ import os
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mock Kodi modules before any imports
-class MockXBMC:
-    LOGDEBUG = 0
-    LOGINFO = 1
-    LOGWARNING = 2
-    LOGERROR = 3
-
-    @staticmethod
-    def log(msg, level=0):
-        pass
-
-class MockXBMCAddon:
-    def __init__(self):
-        pass
-
-    def getSettingBool(self, key):
-        return True
-
-    def getSetting(self, key):
-        return ''
-
-class MockXBMCGUI:
-    NOTIFICATION_INFO = 1
-    NOTIFICATION_WARNING = 2
-    NOTIFICATION_ERROR = 3
-
-class MockXBMCPlugin:
-    SORT_METHOD_NONE = 0
-    SORT_METHOD_LABEL = 1
-
-sys.modules['xbmc'] = MockXBMC()
-sys.modules['xbmcgui'] = MockXBMCGUI()
-sys.modules['xbmcplugin'] = MockXBMCPlugin()
-sys.modules['xbmcaddon'] = type('obj', (object,), {'Addon': MockXBMCAddon})()
-
-# Import from new lib structure
+# Import from new lib structure (mocks provided by conftest.py)
 from lib.parsing import parse_episode_info, extract_dual_names, clean_series_name
 from lib.grouping import group_by_series
 
