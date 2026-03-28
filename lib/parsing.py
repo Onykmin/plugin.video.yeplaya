@@ -306,6 +306,8 @@ def clean_series_name(name):
     name = ' '.join(name.split())
     name = re.sub(r'\([^)]*\)', '', name)
     name = ' '.join(name.split())
+    # Strip release group tags from end: "-SPARKS", "-FGT", "-YIFY", etc.
+    name = re.sub(r'[-\s]+(sparks|fgt|yify|yts|rarbg|etrg|ettv|fum|shitbox|ion10|fleet|cmrg|evo|geckos|playnow|demand|ntb|drones|strife|megusta|nogrp|mkvcage|galaxytv|stuttershit|lama|tbs|nhanc3|afg|qoq|wrd|joy|cinefile|fle|dr|lena)\s*$', '', name, flags=re.IGNORECASE)
     name = unidecode(name)
     name = name.strip().lower()
 
