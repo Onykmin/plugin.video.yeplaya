@@ -67,13 +67,24 @@ def _score_single_match(target, query):
         if matches > 0:
             return 600 + (matches * 15)
 
+    # Single-word query: check for word-start match
     for word in target_words:
         if word.startswith(query):
             return 500
+        # Also check if query starts with target word (partial match)
+        if query.startswith(word) and len(word) >= 3:
+            return 400
 
     if query in target:
         pos = target.index(query)
         penalty = min(pos * 2, 100)
         return 300 - penalty
+
+    # Fuzzy: check if target contains most query chars in order (handles Czech transliterations)
+    if len(query) >= 4:
+        from difflib import SequenceMatcher
+        ratio = SequenceMatcher(None, target, query).ratio()
+        if ratio > 0.7:
+            return int(200 * ratio)
 
     return 0
