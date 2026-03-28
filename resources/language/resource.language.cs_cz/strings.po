@@ -289,6 +289,10 @@ msgctxt "#30260"
 msgid "Group movies by title and year"
 msgstr "Seskupit filmy podle názvu a roku"
 
+msgctxt "#30261"
+msgid "Filter irrelevant search results"
+msgstr "Filtrovat irelevantní výsledky vyhledávání"
+
 msgctxt "#30400"
 msgid "Back to search menu"
 msgstr "Zpět do vyhledávání"

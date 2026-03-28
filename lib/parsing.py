@@ -32,6 +32,7 @@ _PATTERN_LANG = re.compile(r'\b(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)\b|[\(\[](?:CZ|
 _PATTERN_SEPARATORS = re.compile(r'[\-_\.\,\:\;]+')
 _PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
 _PATTERN_MOVIE_YEAR = re.compile(r'^(.+?)[\s_\.\-]*[\(\[]?((?:19|20)\d{2})(?!x\d{3,4})[\)\]]?')
+_RE_RELEASE_GROUP = re.compile(r'[-\s]+(sparks|fgt|yify|yts|rarbg|etrg|ettv|fum|shitbox|ion10|fleet|cmrg|evo|geckos|playnow|demand|ntb|drones|strife|megusta|nogrp|mkvcage|galaxytv|stuttershit|lama|tbs|nhanc3|afg|qoq|wrd|joy|cinefile|fle|dr|lena)\s*$', re.IGNORECASE)
 
 
 # ============================================================================
@@ -306,8 +307,8 @@ def clean_series_name(name):
     name = ' '.join(name.split())
     name = re.sub(r'\([^)]*\)', '', name)
     name = ' '.join(name.split())
-    # Strip release group tags from end: "-SPARKS", "-FGT", "-YIFY", etc.
-    name = re.sub(r'[-\s]+(sparks|fgt|yify|yts|rarbg|etrg|ettv|fum|shitbox|ion10|fleet|cmrg|evo|geckos|playnow|demand|ntb|drones|strife|megusta|nogrp|mkvcage|galaxytv|stuttershit|lama|tbs|nhanc3|afg|qoq|wrd|joy|cinefile|fle|dr|lena)\s*$', '', name, flags=re.IGNORECASE)
+    # Strip release group tags from end
+    name = _RE_RELEASE_GROUP.sub('', name)
     name = unidecode(name)
     name = name.strip().lower()
 

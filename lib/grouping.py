@@ -47,6 +47,19 @@ _RE_SE_MARKER = re.compile(r'\s*[Ss]\d{1,2}[Ee]\d{1,3}.*$')
 _RE_NxN_MARKER = re.compile(r'\s*\d{1,2}x\d{1,3}.*$')
 _RE_TRAILING_SEP = re.compile(r'[\s\-_\.]+$')
 _RE_MULTI_SPACE = re.compile(r'\s+')
+_RE_MULTI_DASH = re.compile(r'-{2,}')
+
+
+_RE_YEAR_TOKEN = re.compile(r'^\d{4}$')
+_FILTER_STOP_WORDS = {'the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'is', 'it', 'by'}
+
+# Module-level unidecode for _filter_irrelevant (avoid re-import per call)
+try:
+    from unidecode import unidecode as _unidecode_filter
+except ImportError:
+    import unicodedata as _unicodedata_filter
+    def _unidecode_filter(text):
+        return ''.join(c for c in _unicodedata_filter.normalize('NFKD', text) if not _unicodedata_filter.combining(c))
 
 
 def _filter_irrelevant(files, query):
@@ -56,16 +69,10 @@ def _filter_irrelevant(files, query):
     query word with the filename. This is conservative — only drops files
     that have ZERO overlap with the query.
     """
-    try:
-        from unidecode import unidecode as _uni
-    except ImportError:
-        import unicodedata
-        def _uni(text):
-            return ''.join(c for c in unicodedata.normalize('NFKD', text) if not unicodedata.combining(c))
-
-    query_words = set(_uni(query).lower().split())
-    # Remove very short words (articles, prepositions) and year-like tokens
-    query_words = {w for w in query_words if len(w) >= 3 and not re.match(r'^\d{4}$', w)}
+    query_words = set(_unidecode_filter(query).lower().split())
+    # Remove stop words, very short words, and year-like tokens
+    query_words = {w for w in query_words
+                   if len(w) >= 3 and w not in _FILTER_STOP_WORDS and not _RE_YEAR_TOKEN.match(w)}
 
     if not query_words:
         return files
@@ -82,7 +89,7 @@ def _filter_irrelevant(files, query):
     filtered = []
     for f in files:
         name = f.get('name', '')
-        name_lower = _uni(name).lower()
+        name_lower = _unidecode_filter(name).lower()
         # Keep if any query word/stem appears as substring in filename
         if any(qw in name_lower for qw in stems):
             filtered.append(f)
@@ -360,7 +367,7 @@ def pick_best_display_name_from_list(names):
         # Replace dots and underscores with spaces (scene naming: "Movie.Name.2010")
         cleaned = cleaned.replace('.', ' ').replace('_', ' ')
         # Normalize multiple dashes/hyphens to single space
-        cleaned = re.sub(r'-{2,}', ' ', cleaned)
+        cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
         cleaned = _RE_QUALITY.sub('', cleaned)
         cleaned = _RE_SOURCE.sub('', cleaned)
         cleaned = _RE_CODEC.sub('', cleaned)
@@ -825,12 +832,11 @@ def group_movies(files):
 
 
 def _clean_movie_display_name(name):
-    """Clean a movie display name: dots→spaces, dashes→spaces, strip artifacts."""
+    """Clean a movie display name: dots→spaces, multi-dashes→spaces, strip artifacts."""
     cleaned = name
     cleaned = cleaned.replace('.', ' ').replace('_', ' ')
-    cleaned = re.sub(r'-{2,}', ' ', cleaned)  # Multiple dashes → space
-    cleaned = re.sub(r'(?<=[a-zA-Z])-(?=[a-zA-Z])', ' ', cleaned)  # Single dash between words → space
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = _RE_MULTI_DASH.sub(' ', cleaned)  # Multiple dashes → space
+    cleaned = _RE_MULTI_SPACE.sub(' ', cleaned).strip()
     return cleaned
 
 
@@ -1001,7 +1007,7 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
     if first_page_files is not None:
         all_files.extend(first_page_files)
         if first_page_total is not None and len(first_page_files) >= first_page_total:
-            return group_by_series(all_files, token=token, enable_csfd=False) if all_files else None
+            return group_by_series(all_files, token=token, enable_csfd=False, search_query=what) if all_files else None
         offset = len(first_page_files)
         page = 1
 
