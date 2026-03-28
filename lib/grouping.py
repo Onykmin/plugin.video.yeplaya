@@ -843,7 +843,10 @@ def group_movies(files):
     # e.g., "blade 2|blade ii|2002" merges into "blade 2|2002"
     result = merge_dual_key_movies(result)
 
-    # Clean display names (dots→spaces, dashes→spaces, strip artifacts)
+    # Final merge: absorb 1-version orphans into larger same-year groups
+    result = merge_orphan_movies(result)
+
+    # Clean display names (dots→spaces, strip artifacts, fix reversed dual names)
     for movie_data in result['movies'].values():
         movie_data['display_name'] = _clean_movie_display_name(movie_data['display_name'])
 
@@ -930,11 +933,112 @@ def merge_dual_key_movies(result):
     return result
 
 
+def merge_orphan_movies(result):
+    """Absorb single-version movie orphans into larger same-year groups.
+
+    For 1-version movies: if ALL their title words appear in a larger group's
+    title (same year), merge into the larger group.
+    """
+    movies = result.get('movies', {})
+    if len(movies) < 2:
+        return result
+
+    # Separate orphans (1 version) from groups (2+ versions)
+    orphans = {}
+    groups = {}
+    for key, data in movies.items():
+        if len(data.get('versions', [])) <= 1:
+            orphans[key] = data
+        else:
+            groups[key] = data
+
+    if not orphans or not groups:
+        return result
+
+    keys_to_delete = set()
+    for orphan_key, orphan_data in orphans.items():
+        if orphan_key in keys_to_delete:
+            continue
+        orphan_year = orphan_data.get('year', 0)
+        orphan_title = orphan_key.rsplit('|', 1)[0].replace('|', ' ') if '|' in orphan_key else orphan_key
+        orphan_words = set(orphan_title.split())
+        if not orphan_words:
+            continue
+
+        best_target = None
+        best_versions = 0
+
+        for group_key, group_data in groups.items():
+            if group_data.get('year', 0) != orphan_year:
+                continue
+            group_title = group_key.rsplit('|', 1)[0].replace('|', ' ') if '|' in group_key else group_key
+            group_words = set(group_title.split())
+
+            # Check: orphan's significant words are subset of group's words
+            # (or group's words are subset of orphan's — handles reversed dual names)
+            sig_orphan = {w for w in orphan_words if len(w) >= 2}
+            sig_group = {w for w in group_words if len(w) >= 2}
+            if sig_orphan and sig_group and (sig_orphan.issubset(sig_group) or sig_group.issubset(sig_orphan)):
+                versions = len(group_data.get('versions', []))
+                if versions > best_versions:
+                    best_target = group_key
+                    best_versions = versions
+
+        if best_target and best_target in movies:
+            movies[best_target]['versions'].extend(movies[orphan_key]['versions'])
+            movies[best_target]['versions'] = deduplicate_versions(movies[best_target]['versions'])
+            movies[best_target]['versions'].sort(
+                key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                reverse=True)
+            keys_to_delete.add(orphan_key)
+
+    for key in keys_to_delete:
+        if key in movies:
+            del movies[key]
+
+    return result
+
+
 def _clean_movie_display_name(name):
-    """Clean a movie display name: dots→spaces, multi-dashes→spaces, strip artifacts."""
+    """Clean a movie display name: dots→spaces, fix artifacts, fix reversed dual names."""
     cleaned = name
     cleaned = cleaned.replace('.', ' ').replace('_', ' ')
     cleaned = _RE_MULTI_DASH.sub(' ', cleaned)  # Multiple dashes → space
+
+    # Fix reversed dual names: "Something / Main Title" → "Main Title"
+    # Keep only the part that looks like a proper title (longer, no parenthesized metadata)
+    if ' / ' in cleaned:
+        parts = cleaned.split(' / ', 1)
+        # Pick the part that is shorter and cleaner (fewer artifacts)
+        p0_clean = parts[0].strip().lstrip('(').rstrip(',')
+        p1_clean = parts[1].strip().lstrip('(').rstrip(',')
+        # If one part is mostly metadata (actors, language codes), use the other
+        if len(p0_clean) > 0 and len(p1_clean) > 0:
+            # Heuristic: if one part starts with lowercase or has commas (actor list), it's metadata
+            p0_meta = p0_clean[0].islower() or p0_clean.count(',') >= 2
+            p1_meta = p1_clean[0].islower() or p1_clean.count(',') >= 2
+            if p0_meta and not p1_meta:
+                cleaned = p1_clean
+            elif p1_meta and not p0_meta:
+                cleaned = p0_clean
+
+    # Strip leading/trailing separators
+    cleaned = re.sub(r'^[\s\-]+', '', cleaned)
+    cleaned = re.sub(r'[\s\-]+$', '', cleaned)
+
+    # Remove duplicate words: "Blade -Blade" → "Blade", "Matrix Matrix" → "Matrix"
+    words = cleaned.split()
+    if len(words) >= 2:
+        seen = set()
+        deduped = []
+        for w in words:
+            w_lower = w.lower().strip('-')
+            if w_lower not in seen:
+                seen.add(w_lower)
+                deduped.append(w)
+        if deduped:
+            cleaned = ' '.join(deduped)
+
     cleaned = _RE_MULTI_SPACE.sub(' ', cleaned).strip()
     return cleaned
 

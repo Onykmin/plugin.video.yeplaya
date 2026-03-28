@@ -313,13 +313,13 @@ TEST_CASES = {
     },
     'the matrix': {
         'type': 'movie',
-        'expected_groups': 11,  # dual-key+pipe merge
+        'expected_groups': 7,  # orphan merge absorbed 1-ver fragments
         'target_groups': None,  # Multiple sequels OK
         'notes': 'Franchise, sequel separation (1999, 2003, 2021)',
     },
     'star wars': {
         'type': 'movie',
-        'expected_groups': 17,  # 500-file baseline
+        'expected_groups': 16,  # orphan merge
         'target_groups': None,
         'notes': 'Franchise, Episode in title',
     },
@@ -343,7 +343,7 @@ TEST_CASES = {
     },
     'dune': {
         'type': 'movie',
-        'expected_groups': 39,  # 500-file baseline
+        'expected_groups': 37,  # orphan merge
         'target_groups': None,  # Multiple movies OK
         'notes': 'Relevance filter removes files without "dune" in name',
     },
