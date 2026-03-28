@@ -240,6 +240,60 @@ def merge_dual_canonical_series(grouped):
     return grouped
 
 
+def merge_similar_series(grouped):
+    """Merge series with similar canonical keys (typo tolerance).
+
+    Uses SequenceMatcher ratio > 0.85 to catch typos like:
+    - "jujuts kaisen" → "jujutsu kaisen"
+    - "stranger thing" → "stranger things"
+
+    Only merges if one group is much smaller (likely the typo variant).
+    """
+    from difflib import SequenceMatcher
+
+    series = grouped.get('series', {})
+    if len(series) < 2:
+        return grouped
+
+    keys = list(series.keys())
+    merges = []  # (target, source)
+
+    for i, key1 in enumerate(keys):
+        for key2 in keys[i+1:]:
+            # Skip pipe-separated keys (already handled by dual merge)
+            if '|' in key1 or '|' in key2:
+                continue
+
+            ratio = SequenceMatcher(None, key1, key2).ratio()
+            if ratio > 0.85:
+                eps1 = series[key1]['total_episodes']
+                eps2 = series[key2]['total_episodes']
+
+                # Safety: don't merge if both have significant episode counts
+                # (suggests genuinely different series, e.g., "dragon ball z" vs "dragon ball super")
+                if min(eps1, eps2) >= 3:
+                    continue
+
+                # Merge smaller into larger
+                if eps1 >= eps2:
+                    merges.append((key1, key2))
+                else:
+                    merges.append((key2, key1))
+
+    for target, source in merges:
+        if target not in series or source not in series:
+            continue
+
+        log_debug(f'Similarity merge ({SequenceMatcher(None, target, source).ratio():.2f}): "{source}" → "{target}"')
+        merge_season_data(series[target], series[source])
+        target_display = series[target].get('display_name', target.title())
+        source_display = series[source].get('display_name', source.title())
+        series[target]['display_name'] = pick_best_display_name(target_display, source_display)
+        del series[source]
+
+    return grouped
+
+
 def pick_best_display_name_from_list(names):
     """Pick best display name from a list of candidates.
 
@@ -585,6 +639,9 @@ def group_by_series(files, token=None, enable_csfd=True):
 
     # Merge series with dual canonical names (e.g., "the penguin|tucnak")
     result = merge_dual_canonical_series(result)
+
+    # Merge series with similar names (typo tolerance)
+    result = merge_similar_series(result)
 
     # Single dedup+sort pass after all merges (avoids redundant per-merge dedup)
     for series_data in result['series'].values():

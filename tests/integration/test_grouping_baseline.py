@@ -173,9 +173,9 @@ TEST_CASES = {
     # === NEW SERIES (Western) ===
     'stranger things': {
         'type': 'series',
-        'expected_groups': 2,
+        'expected_groups': 1,  # v4: similarity merge catches "stranger thing" → "stranger things"
         'target_groups': 1,
-        'notes': 'Modern naming, clean S##E##; "stranger thing" vs "stranger things" not merged',
+        'notes': 'Modern naming, clean S##E##',
     },
     'lost': {
         'type': 'series',
@@ -221,9 +221,9 @@ TEST_CASES = {
     },
     'house of the dragon': {
         'type': 'series',
-        'expected_groups': 3,
+        'expected_groups': 2,  # v4: similarity merge "house of dragon" ↔ "house of dragons"
         'target_groups': 1,
-        'notes': 'dragon/dragons not merged, GoT spin-off',
+        'notes': 'GoT spin-off',
     },
     'better call saul': {
         'type': 'series',
@@ -282,13 +282,13 @@ TEST_CASES = {
     },
     'jujutsu kaisen': {
         'type': 'series',
-        'expected_groups': 2,
+        'expected_groups': 1,  # v4: similarity merge catches "jujuts kaisen" typo
         'target_groups': 1,
-        'notes': 'Typo "jujuts kaisen" not merged',
+        'notes': 'Japanese naming',
     },
     'dragon ball': {
         'type': 'series',
-        'expected_groups': 10,
+        'expected_groups': 9,  # v4: "dragonball" merged with "dragon ball" (correct)
         'target_groups': None,  # Multiple sub-series is OK
         'notes': 'Multiple sub-series (DB, DBZ, DBS)',
     },
