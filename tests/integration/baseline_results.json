@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-28T17:46:35.247986",
+  "timestamp": "2026-03-28T18:31:11.873535",
   "test_cases": {
     "penguin": {
       "query": "penguin",
@@ -515,7 +515,7 @@
           "versions": 1
         },
         "game of thrones, season 5 , episode 10 mother's mercy|usa, united kingdom|2015": {
-          "display_name": "USA, United Kingdom / Game of Thrones, Season 5 , Episode 10 Mother's Mercy",
+          "display_name": "USA, United Kingdom",
           "year": 2015,
           "versions": 1
         },
@@ -595,7 +595,7 @@
           "versions": 3
         },
         "endo obu za warudo|singeki no kjodzin attack on titan|2015": {
-          "display_name": "endo obu za wárudo / Šingeki no kjodžin ATTACK ON TITAN",
+          "display_name": "Šingeki no kjodžin ATTACK ON TITAN",
           "year": 2015,
           "versions": 2
         }
@@ -832,7 +832,7 @@
       "query": "dark",
       "total_files": 500,
       "series_groups": 13,
-      "movie_groups": 49,
+      "movie_groups": 50,
       "non_series": 20,
       "series_details": {
         "dark blue": {
@@ -916,7 +916,7 @@
       },
       "movie_details": {
         "darkness light darkness|tma, svetlo, tma|1989": {
-          "display_name": "Tma, světlo, tma / Darkness-Light-Darkness",
+          "display_name": "Darkness-Light-Darkness",
           "year": 1989,
           "versions": 1
         },
@@ -940,10 +940,15 @@
           "year": 2015,
           "versions": 1
         },
+        "dark summer tit v obraze thriller|2015": {
+          "display_name": "Dark-Summer-cz-tit v-obraze-thriller",
+          "year": 2015,
+          "versions": 1
+        },
         "dark summer tit v obraze|2015": {
           "display_name": "Dark-Summer-cz-tit v-obraze",
           "year": 2015,
-          "versions": 2
+          "versions": 1
         },
         "dark matter 1 01|2015": {
           "display_name": "Dark Matter 1-01",
@@ -1081,7 +1086,7 @@
           "versions": 1
         },
         "dark light temne svetlo|horor|2019": {
-          "display_name": "horor / Dark-Light-Temne-svetlo-",
+          "display_name": "Dark-Light-Temne-svetlo",
           "year": 2019,
           "versions": 1
         },
@@ -1091,12 +1096,12 @@
           "versions": 8
         },
         "dark ride en|vlozene titulky|2006": {
-          "display_name": "vložene titulky / Dark Ride EN",
+          "display_name": "Dark Ride EN",
           "year": 2006,
           "versions": 1
         },
         "dark hours, the en|vlozene titulky|2005": {
-          "display_name": "vložene titulky / Dark Hours, The EN",
+          "display_name": "Dark Hours, The EN",
           "year": 2005,
           "versions": 1
         },
@@ -1111,7 +1116,7 @@
           "versions": 1
         },
         "dark angel|temny andel|1990": {
-          "display_name": "temny andel / Dark Angel",
+          "display_name": "Dark Angel",
           "year": 1990,
           "versions": 1
         },
@@ -1385,7 +1390,7 @@
       "query": "house of the dragon",
       "total_files": 195,
       "series_groups": 3,
-      "movie_groups": 9,
+      "movie_groups": 8,
       "non_series": 0,
       "series_details": {
         "house of dragon": {
@@ -1403,18 +1408,13 @@
         "rod draka house of dragon": {
           "display_name": "Rod Draka House of the Dragon",
           "seasons": 2,
-          "episodes": 6,
-          "versions": 7
+          "episodes": 7,
+          "versions": 8
         }
       },
       "movie_details": {
         "rod draka house of dragon 01x07|2022": {
           "display_name": "Rod Draka House of the Dragon 01x07",
-          "year": 2022,
-          "versions": 1
-        },
-        "rod draka house of dragon czdabing|2022": {
-          "display_name": "Rod Draka,House of the Dragon S01E09,CZdabing",
           "year": 2022,
           "versions": 1
         },
@@ -1507,7 +1507,7 @@
       "query": "the boys",
       "total_files": 407,
       "series_groups": 56,
-      "movie_groups": 70,
+      "movie_groups": 68,
       "non_series": 76,
       "series_details": {
         "boys word blood on asphalt": {
@@ -1933,11 +1933,6 @@
           "year": 2012,
           "versions": 1
         },
-        "boy 2 chlapec 2|2020": {
-          "display_name": "The Boy 2 Chlapec 2",
-          "year": 2020,
-          "versions": 1
-        },
         "boy who smells like fish|2013": {
           "display_name": "The Boy Who Smells Like Fish",
           "year": 2013,
@@ -2054,7 +2049,7 @@
           "versions": 2
         },
         "condor|to all the boys ive loved before|2018": {
-          "display_name": "Condor / To-All-the-Boys-Ive-Loved-Before-",
+          "display_name": "Condor / To-All-the-Boys-Ive-Loved-Before",
           "year": 2018,
           "versions": 1
         },
@@ -2066,7 +2061,7 @@
         "to all the boys p s i still love you|vsem klukum p s stale te miluju|2020": {
           "display_name": "To All the Boys P S I Still Love You / Všem klukům P S Stále tě miluju",
           "year": 2020,
-          "versions": 2
+          "versions": 3
         },
         "vsem klukum ktere jsem milovalato all boys ive loved before|2018": {
           "display_name": "Všem klukům, které jsem milovalaTo All the Boys Ive Loved Before",
@@ -2082,11 +2077,6 @@
           "display_name": "To All the Boys I ve Loved Before",
           "year": 2018,
           "versions": 3
-        },
-        "h vsem klukum p s stale te miluju to all boys p s i still love you|2020": {
-          "display_name": "-H- Vsem klukum P S Stale te miluju-To All the Boys P S I Still Love You",
-          "year": 2020,
-          "versions": 1
         },
         "h vsem klukum ktere jsem milovala|to all the boys i've loved before|2018": {
           "display_name": "To All the Boys I've Loved Before / -H- Všem klukům které jsem milovala",
@@ -2109,7 +2099,7 @@
           "versions": 1
         },
         "brahms the boy 2|horor|2020": {
-          "display_name": "horor / Brahms-The-Boy-2-",
+          "display_name": "Brahms-The-Boy-2",
           "year": 2020,
           "versions": 1
         },
@@ -2141,7 +2131,7 @@
         "brahms chlapec 2|brahms the boy ii|2020": {
           "display_name": "Brahms The Boy II / Brahms Chlapec 2",
           "year": 2020,
-          "versions": 4
+          "versions": 5
         },
         "boys are back|kluci jsou zpet|2009": {
           "display_name": "The Boys Are Back / Kluci jsou zpet",
@@ -2355,7 +2345,7 @@
           "display_name": "Squid Game",
           "seasons": 3,
           "episodes": 23,
-          "versions": 395
+          "versions": 401
         }
       },
       "movie_details": {
@@ -2394,11 +2384,6 @@
           "year": 2025,
           "versions": 1
         },
-        "squid game hra na olihen czdab|2025": {
-          "display_name": "Squid Game, Hra na oliheň, S03E02, CZdab",
-          "year": 2025,
-          "versions": 6
-        },
         "squid game s03 e02|2025": {
           "display_name": "Squid Game S03 E02",
           "year": 2025,
@@ -2432,7 +2417,12 @@
         "7hitmovies moe|squid game|2024": {
           "display_name": "Squid Game / 7HitMovies moe",
           "year": 2024,
-          "versions": 6
+          "versions": 3
+        },
+        "7hitmovies moe|squid game|2021": {
+          "display_name": "Squid Game / 7HitMovies moe",
+          "year": 2021,
+          "versions": 3
         },
         "making squid game challenge|2023": {
           "display_name": "Making Squid Game The Challenge",
@@ -3048,11 +3038,11 @@
       "potential_issues": [],
       "expected": {
         "type": "movie",
-        "expected_groups": 11,
+        "expected_groups": 7,
         "target_groups": null,
         "notes": "Franchise, sequel separation (1999, 2003, 2021)"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "star wars": {
       "query": "star wars",
@@ -3197,11 +3187,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 17,
+        "expected_groups": 16,
         "target_groups": null,
         "notes": "Franchise, Episode in title"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "blade runner": {
       "query": "blade runner",
@@ -3450,7 +3440,7 @@
           "versions": 1
         },
         "cz dab|klub rvacu|1999": {
-          "display_name": "cz dab / Klub rváču",
+          "display_name": "Klub rváču",
           "year": 1999,
           "versions": 1
         },
@@ -3769,11 +3759,11 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 39,
+        "expected_groups": 37,
         "target_groups": null,
         "notes": "Relevance filter removes files without \"dune\" in name"
       },
-      "status": "✓ PASS"
+      "status": "✗ UNDER-MERGED"
     },
     "oppenheimer": {
       "query": "oppenheimer",
@@ -3807,7 +3797,7 @@
       "query": "joker",
       "total_files": 425,
       "series_groups": 14,
-      "movie_groups": 19,
+      "movie_groups": 20,
       "non_series": 72,
       "series_details": {
         "batman": {
@@ -3906,10 +3896,15 @@
           "year": 2019,
           "versions": 38
         },
+        "joker|krimi drama thriller|2019": {
+          "display_name": "Krimi-Drama-Thriller / Joker",
+          "year": 2019,
+          "versions": 1
+        },
         "joker krimi|2019": {
           "display_name": "Joker-Krimi",
           "year": 2019,
-          "versions": 2
+          "versions": 1
         },
         "folie a deux|joker|2024": {
           "display_name": "Folie a Deux / Joker 2",
@@ -3937,7 +3932,7 @@
           "versions": 1
         },
         "joker folie a deux|krimi,drama,thriller,muzikal|2024": {
-          "display_name": "krimi,drama,thriller,muzikal / Joker-Folie a Deux",
+          "display_name": "Joker-Folie a Deux",
           "year": 2024,
           "versions": 1
         },
@@ -3962,7 +3957,7 @@
           "versions": 2
         },
         "mera naam joker hin|vlozene titulky|1970": {
-          "display_name": "vložene titulky / Mera Naam Joker HIN",
+          "display_name": "Mera Naam Joker HIN",
           "year": 1970,
           "versions": 1
         },
@@ -4007,7 +4002,7 @@
       ],
       "expected": {
         "type": "movie",
-        "expected_groups": 19,
+        "expected_groups": 20,
         "target_groups": 2,
         "notes": "Many unrelated results"
       },
@@ -4159,7 +4154,7 @@
           "versions": 1
         },
         "gladiator|prodlouzena verze|2000": {
-          "display_name": "prodloužená verze / Gladiátor",
+          "display_name": "Gladiátor",
           "year": 2000,
           "versions": 1
         },
@@ -4214,7 +4209,7 @@
           "versions": 1
         },
         "gladiatori z pekla|kingdom of gladiators|2011": {
-          "display_name": "kingdom of gladiators / gladiatori z pekla-",
+          "display_name": "kingdom of gladiators / gladiatori z pekla",
           "year": 2011,
           "versions": 1
         },
@@ -4429,7 +4424,7 @@
       "query": "barbie",
       "total_files": 500,
       "series_groups": 2,
-      "movie_groups": 106,
+      "movie_groups": 102,
       "non_series": 128,
       "series_details": {
         "barbie": {
@@ -4451,11 +4446,6 @@
           "year": 2013,
           "versions": 2
         },
-        "barbie a ponikova akademie|2013": {
-          "display_name": "Barbie a Poníková akademie",
-          "year": 2013,
-          "versions": 1
-        },
         "barbie mariposa kvetinova princezna barbie|2013": {
           "display_name": "Barbie Mariposa-a-Kvetinova-princezna-Barbie",
           "year": 2013,
@@ -4474,12 +4464,12 @@
         "barbie ponikova akademie barbie|2013": {
           "display_name": "Barbie-a-Ponikova-akademie-Barbie",
           "year": 2013,
-          "versions": 3
+          "versions": 4
         },
         "barbie ve hvezdach barbie star light adventure|2016": {
           "display_name": "Barbie Ve hvezdach Barbie Star Light Adventure",
           "year": 2016,
-          "versions": 3
+          "versions": 4
         },
         "barbie a kouzelne vanoce|barbie in a christmas carol|2008": {
           "display_name": "Barbie in a Christmas Carol / Barbie a kouzelné Vánoce",
@@ -4494,7 +4484,7 @@
         "mariposa a kvetinova princezna barbie mariposa and the fairy princess|2013": {
           "display_name": "Mariposa a Květinová princezna Barbie Mariposa and the Fairy Princess",
           "year": 2013,
-          "versions": 2
+          "versions": 3
         },
         "psi dobrodruzstvi barbie & her sisters in the great puppy adventure|2015": {
           "display_name": "Psí-dobrodružství Barbie-&-Her-Sisters-in-the-Great-Puppy-Adventure",
@@ -4538,11 +4528,6 @@
         },
         "barbie zachrante pejsky dabing animovany|2016": {
           "display_name": "Barbie-Zachrante-pejsky cz-dabing- -animovany",
-          "year": 2016,
-          "versions": 1
-        },
-        "barbie|star light adventure|2016": {
-          "display_name": "Star-Light-Adventure / Barbie",
           "year": 2016,
           "versions": 1
         },
@@ -4627,7 +4612,7 @@
           "versions": 1
         },
         "anim|barbie magicky delfin|2017": {
-          "display_name": "Anim / Barbie-Magicky-delfin-",
+          "display_name": "Anim / Barbie-Magicky-delfin",
           "year": 2017,
           "versions": 1
         },
@@ -4637,7 +4622,7 @@
           "versions": 1
         },
         "barbie's house dum|old tv commercial from|1992": {
-          "display_name": "old TV commercial from / Barbie's house dům",
+          "display_name": "Barbie's house dům",
           "year": 1992,
           "versions": 1
         },
@@ -4686,11 +4671,6 @@
           "year": 2017,
           "versions": 2
         },
-        "barbie mariposa and fairy princess|2013": {
-          "display_name": "Barbie Mariposa And The Fairy Princess",
-          "year": 2013,
-          "versions": 1
-        },
         "barbie|magicky delfin|2017": {
           "display_name": "Magický delfín / Barbie",
           "year": 2017,
@@ -4712,7 +4692,7 @@
           "versions": 1
         },
         "anim|barbie psi dobrodruzstvi|2015": {
-          "display_name": "anim / Barbie-Psi-dobrodruzstvi-",
+          "display_name": "Barbie-Psi-dobrodruzstvi",
           "year": 2015,
           "versions": 1
         },
@@ -4757,7 +4737,7 @@
           "versions": 2
         },
         "anim|barbie zachrante pejsky|2016": {
-          "display_name": "anim / Barbie Zachraňte pejsky",
+          "display_name": "Barbie Zachraňte pejsky",
           "year": 2016,
           "versions": 1
         },
@@ -4871,11 +4851,6 @@
           "year": 2024,
           "versions": 1
         },
-        "barbie|swan lake|2003": {
-          "display_name": "Swan Lake / Barbie",
-          "year": 2003,
-          "versions": 1
-        },
         "barbie and three musketeers|2009": {
           "display_name": "Barbie and the Three Musketeers",
           "year": 2009,
@@ -4904,7 +4879,7 @@
         "barbie of swan lake|2003": {
           "display_name": "Barbie of Swan Lake",
           "year": 2003,
-          "versions": 3
+          "versions": 4
         },
         "14|2008": {
           "display_name": "14",
@@ -4986,7 +4961,7 @@
         "target_groups": 1,
         "notes": "Very noisy; many Barbie animated movies"
       },
-      "status": "✓ PASS"
+      "status": "↑ IMPROVED"
     }
   }
 }

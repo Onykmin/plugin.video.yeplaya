@@ -33,7 +33,7 @@ _PATTERN_0x00 = get_0x00_pattern()
 # Pattern to detect S##E## markers for movie vs series disambiguation
 # Use [\b_] boundaries to also match underscore-separated markers like _S01E06_
 import re
-_PATTERN_EPISODE_MARKER = re.compile(r'(?:^|[\b_\s.\-,])[Ss]\d{1,2}[Ee]\d{1,3}(?:[\b_\s.\-,]|$)')
+_PATTERN_EPISODE_MARKER = re.compile(r'(?:^|[_\s.\-,])[Ss]\d{1,2}[Ee]\d{1,3}(?:[_\s.\-,]|$)')
 
 # Compiled patterns for display name cleaning (used in pick_best_display_name_from_list)
 _RE_FILE_EXT = re.compile(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', re.IGNORECASE)
@@ -975,10 +975,11 @@ def merge_orphan_movies(result):
             group_words = set(group_title.split())
 
             # Check: orphan's significant words are subset of group's words
-            # (or group's words are subset of orphan's — handles reversed dual names)
+            # Require ≥2 significant words to prevent single-word false matches
+            # like "Fast" (1v) merging into "Fast and Furious" (2v)
             sig_orphan = {w for w in orphan_words if len(w) >= 2}
             sig_group = {w for w in group_words if len(w) >= 2}
-            if sig_orphan and sig_group and (sig_orphan.issubset(sig_group) or sig_group.issubset(sig_orphan)):
+            if len(sig_orphan) >= 2 and sig_orphan.issubset(sig_group):
                 versions = len(group_data.get('versions', []))
                 if versions > best_versions:
                     best_target = group_key
@@ -1026,18 +1027,15 @@ def _clean_movie_display_name(name):
     cleaned = re.sub(r'^[\s\-]+', '', cleaned)
     cleaned = re.sub(r'[\s\-]+$', '', cleaned)
 
-    # Remove duplicate words: "Blade -Blade" → "Blade", "Matrix Matrix" → "Matrix"
+    # Remove only consecutive duplicate words: "Blade -Blade" → "Blade", "Matrix Matrix" → "Matrix"
+    # Preserves non-consecutive: "Run Lola Run", "New York New York", "Sing Sing"
     words = cleaned.split()
     if len(words) >= 2:
-        seen = set()
-        deduped = []
-        for w in words:
-            w_lower = w.lower().strip('-')
-            if w_lower not in seen:
-                seen.add(w_lower)
+        deduped = [words[0]]
+        for w in words[1:]:
+            if w.lower().strip('-') != deduped[-1].lower().strip('-'):
                 deduped.append(w)
-        if deduped:
-            cleaned = ' '.join(deduped)
+        cleaned = ' '.join(deduped)
 
     cleaned = _RE_MULTI_SPACE.sub(' ', cleaned).strip()
     return cleaned
@@ -1096,10 +1094,19 @@ def merge_crossyear_movies(result, max_gap=3):
         entries.sort(key=lambda x: -x[2])
         target_key, target_year, _ = entries[0]
 
-        for source_key, source_year, _ in entries[1:]:
+        for source_key, source_year, source_versions in entries[1:]:
             if source_key in keys_to_delete:
                 continue
             if abs(target_year - source_year) <= max_gap:
+                # Don't merge if both have significant version counts and aren't
+                # hugely lopsided (both likely legitimate movies).
+                # Skip: min >= 3 AND ratio >= 1:4 (e.g., 8v vs 10v = real).
+                # Allow: 2v vs 30v = lopsided, likely year error.
+                target_versions = len(movies[target_key].get('versions', []))
+                smaller = min(target_versions, source_versions)
+                larger = max(target_versions, source_versions)
+                if smaller >= 3 and smaller * 4 >= larger:
+                    continue
                 if target_key in movies and source_key in movies:
                     movies[target_key]['versions'].extend(movies[source_key]['versions'])
                     movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
@@ -1158,8 +1165,7 @@ def merge_substring_movies(result):
         'dubbed', 'subbed', 'multi',
         # Format/container tags (often in Czech file names)
         'avi', 'mkv', 'mp4', '3d', 'hd', 'uhd',
-        # Genre tags
-        'scifi', 'horror', 'drama', 'comedy', 'action', 'thriller',
+        # Czech genre tags (only appear as metadata, never in titles)
         'komedie', 'sportovni', 'zivotopisny', 'novinky',
         # Misc metadata
         'r', '(r', 'dvdrip',

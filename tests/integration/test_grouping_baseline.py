@@ -355,7 +355,7 @@ TEST_CASES = {
     },
     'joker': {
         'type': 'movie',
-        'expected_groups': 19,  # 500-file baseline
+        'expected_groups': 20,  # genre words no longer non_significant (B4 fix)
         'target_groups': 2,  # 2019 + 2024
         'notes': 'Many unrelated results',
     },
