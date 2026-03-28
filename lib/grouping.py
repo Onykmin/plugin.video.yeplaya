@@ -89,7 +89,10 @@ def _filter_irrelevant(files, query):
     filtered = []
     for f in files:
         name = f.get('name', '')
-        name_lower = _unidecode_filter(name).lower()
+        # Strip leading bracket tags (fansub/release groups like "[Blade]", "(Lena)")
+        # so they don't false-match the query
+        stripped = re.sub(r'^[\(\[][^\)\]]*[\)\]]\s*', '', name)
+        name_lower = _unidecode_filter(stripped).lower()
         # Keep if any query word/stem appears as substring in filename
         if any(qw in name_lower for qw in stems):
             filtered.append(f)
@@ -824,6 +827,9 @@ def group_movies(files):
     # Merge movies with substring title relationships (same year)
     result = merge_substring_movies(result)
 
+    # Merge movies with identical titles across nearby years (uploader year errors)
+    result = merge_crossyear_movies(result)
+
     # Clean display names (dots→spaces, dashes→spaces, strip artifacts)
     for movie_data in result['movies'].values():
         movie_data['display_name'] = _clean_movie_display_name(movie_data['display_name'])
@@ -859,6 +865,58 @@ def _pick_cleaner_movie_name(name1, name2):
     if s1 <= s2:
         return name1
     return name2
+
+
+def merge_crossyear_movies(result, max_gap=3):
+    """Merge movies with identical title but slightly different years.
+
+    Handles uploader year errors (e.g., "Blade 2|2000" vs "Blade 2|2002").
+    Merges into the group with more versions (assumed correct year).
+    Only merges when titles match exactly and year gap ≤ max_gap.
+    """
+    movies = result.get('movies', {})
+    if len(movies) < 2:
+        return result
+
+    # Build title → [(key, year, version_count)] mapping
+    by_title = {}
+    for key, data in movies.items():
+        year = data.get('year', 0)
+        entry = (key, year, len(data.get('versions', [])))
+        # Extract title part (before last |year)
+        if '|' in key:
+            title = key.rsplit('|', 1)[0]
+        else:
+            title = key
+        by_title.setdefault(title, []).append(entry)
+
+    keys_to_delete = set()
+    for title, entries in by_title.items():
+        if len(entries) < 2:
+            continue
+
+        # Sort by version count desc (most versions = likely correct year)
+        entries.sort(key=lambda x: -x[2])
+        target_key, target_year, _ = entries[0]
+
+        for source_key, source_year, _ in entries[1:]:
+            if source_key in keys_to_delete:
+                continue
+            if abs(target_year - source_year) <= max_gap:
+                if target_key in movies and source_key in movies:
+                    movies[target_key]['versions'].extend(movies[source_key]['versions'])
+                    movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
+                    movies[target_key]['versions'].sort(
+                        key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                        reverse=True)
+                    log_debug(f'Cross-year merge: "{source_key}" → "{target_key}"')
+                    keys_to_delete.add(source_key)
+
+    for key in keys_to_delete:
+        if key in movies:
+            del movies[key]
+
+    return result
 
 
 def merge_substring_movies(result):

@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-03-28T17:11:45.157185",
+  "timestamp": "2026-03-28T17:23:12.217882",
   "test_cases": {
     "penguin": {
       "query": "penguin",
       "total_files": 200,
       "series_groups": 6,
-      "movie_groups": 6,
+      "movie_groups": 5,
       "non_series": 30,
       "series_details": {
         "spravna dvojka": {
@@ -51,15 +51,10 @@
           "year": 2017,
           "versions": 1
         },
-        "penguin bloom|2021": {
-          "display_name": "Penguin Bloom",
-          "year": 2021,
-          "versions": 2
-        },
         "penguin bloom|2020": {
           "display_name": "Penguin Bloom",
           "year": 2020,
-          "versions": 3
+          "versions": 5
         },
         "tucnak bloom penguin bloom|2020": {
           "display_name": "Tučňák Bloom Penguin Bloom",
@@ -1140,7 +1135,7 @@
       "query": "the boys",
       "total_files": 200,
       "series_groups": 19,
-      "movie_groups": 35,
+      "movie_groups": 32,
       "non_series": 27,
       "series_details": {
         "boys": {
@@ -1307,12 +1302,7 @@
         "boy in woods|2023": {
           "display_name": "The Boy In The Woods",
           "year": 2023,
-          "versions": 4
-        },
-        "boy in woods|2024": {
-          "display_name": "The Boy in the Woods",
-          "year": 2024,
-          "versions": 1
+          "versions": 5
         },
         "boy and kite|1962": {
           "display_name": "The Boy and the Kite",
@@ -1337,7 +1327,7 @@
         "boy|2016": {
           "display_name": "The Boy",
           "year": 2016,
-          "versions": 12
+          "versions": 13
         },
         "boy downstairs|2017": {
           "display_name": "The Boy Downstairs",
@@ -1364,20 +1354,10 @@
           "year": 1985,
           "versions": 1
         },
-        "boy|2015": {
-          "display_name": "The Boy",
-          "year": 2015,
-          "versions": 1
-        },
-        "boy next door|2015": {
-          "display_name": "The Boy Next Door",
-          "year": 2015,
-          "versions": 1
-        },
         "boy next door|2017": {
           "display_name": "The Boy Next Door",
           "year": 2017,
-          "versions": 30
+          "versions": 31
         },
         "boy soldier|1981": {
           "display_name": "The Boy Soldier",

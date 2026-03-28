@@ -515,8 +515,8 @@ def parse_episode_info(filename):
         if match_end < len(cleaned_filename) and cleaned_filename[match_end:match_end+1].lower() == 'p':
             return None
 
-        # Skip audio channel markers like "AAC5.1", "DD7.1", "AC3.2.0", "AC3.7.1"
-        # Pattern: series name ends with digit, then separator, then our matched episode
+        # Skip audio channel markers like "AAC5.1", "DD5.1", "AC3 5.1", "DD7.1"
+        # Pattern: series name ends with audio codec, then our matched "episode" is a channel number
         if raw_name and raw_name[-1].isdigit():
             last_char = raw_name[-1]
             # Common audio: AC3 (3.x), 2.0, 2.1, 5.1, 7.1
@@ -525,6 +525,13 @@ def parse_episode_info(filename):
                 return None
             # Also skip if episode is 1,7 and series ends with 3 (AC3.7.1 pattern)
             if last_char == '3' and episode_str in ('1', '7'):
+                return None
+
+        # Skip if raw_name ends with known audio codec and episode is a channel number
+        # Catches: "AC3 5.1", "DTS 5.1", "DD 5.1", "AAC 2.0"
+        raw_name_upper = raw_name.rstrip(' .-_').upper() if raw_name else ''
+        if raw_name_upper and episode_str in ('1', '2', '5', '7'):
+            if any(raw_name_upper.endswith(codec) for codec in ('AC3', 'DTS', 'DD', 'AAC', 'EAC3', 'TRUEHD')):
                 return None
 
         # Parse episode number (may have decimal like "6.5")
