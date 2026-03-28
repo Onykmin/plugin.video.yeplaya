@@ -267,6 +267,28 @@ def extract_dual_names(raw_name):
 # Name Cleaning
 # ============================================================================
 
+_ROMAN_MAP = {
+    'ii': '2', 'iii': '3', 'iv': '4', 'v': '5',
+    'vi': '6', 'vii': '7', 'viii': '8', 'ix': '9', 'x': '10',
+    'xi': '11', 'xii': '12', 'xiii': '13',
+}
+# Only match ii+ (skip standalone "i" which conflicts with articles/pronouns)
+_RE_ROMAN = re.compile(r'\b(xiii|xii|xi|ix|viii|vii|vi|iv|iii|ii)\b')
+
+
+def _normalize_roman_numerals(name):
+    """Convert Roman numerals (II+) to Arabic in canonical keys.
+
+    "part iii" → "part 3", "season ii" → "season 2"
+    Skips standalone "i" (too ambiguous — article/pronoun).
+    """
+    def replace_roman(m):
+        roman = m.group(1).lower()
+        return _ROMAN_MAP.get(roman, m.group(0))
+
+    return _RE_ROMAN.sub(replace_roman, name)
+
+
 def clean_series_name(name):
     """Aggressively normalize series name for grouping.
 
@@ -286,6 +308,9 @@ def clean_series_name(name):
     name = ' '.join(name.split())
     name = unidecode(name)
     name = name.strip().lower()
+
+    # Normalize Roman numerals to Arabic (only standalone: I, II, III, IV, V, etc.)
+    name = _normalize_roman_numerals(name)
 
     # Strip articles from START
     if name.startswith('the '):
