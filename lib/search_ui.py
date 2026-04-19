@@ -363,8 +363,6 @@ def search(params):
         sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
         limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
         offset = int(params['offset']) if 'offset' in params else 0
-        if offset == 0 and what != NONE_WHAT:
-            storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)
     else:

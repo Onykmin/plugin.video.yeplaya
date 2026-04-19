@@ -7,6 +7,7 @@ import io
 import os
 import json
 import time
+import tempfile
 import threading
 import xbmcaddon
 from lib.logging import log_warning, log_error, log_debug
@@ -152,52 +153,78 @@ def loadsearch():
     """Load search history from disk (with file locking)."""
     history = []
     try:
-        if not os.path.exists(_profile):
-            os.makedirs(_profile)
+        os.makedirs(_profile, exist_ok=True)
     except OSError as e:
         log_error("Failed to create profile directory: " + str(e))
 
+    path = os.path.join(_profile, SEARCH_HISTORY)
     try:
-        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'r', encoding='utf8') as f:
+        with io.open(path, 'r', encoding='utf8') as f:
             _flock(f)
             try:
-                history = json.loads(f.read())
+                raw = f.read()
             finally:
                 _funlock(f)
-    except (IOError, OSError, ValueError) as e:
-        log_warning("Failed to load search history: " + str(e))
+        history = json.loads(raw) if raw else []
+        log_debug("loadsearch: {} items, file={} bytes".format(len(history), len(raw)))
+    except (IOError, OSError) as e:
+        log_warning("loadsearch: IO error ({}): {}".format(path, e))
+    except ValueError as e:
+        try:
+            sz = os.path.getsize(path)
+        except OSError:
+            sz = -1
+        log_warning("loadsearch: corrupt JSON (size={}): {}".format(sz, e))
 
     return history
 
 
 def savesearch(history):
-    """Save search history to disk (with file locking)."""
+    """Save search history to disk atomically (unique tmp + os.replace).
+
+    Each call uses a unique tmp file (via tempfile.mkstemp) so concurrent
+    writers cannot corrupt a shared tmp.
+    """
     try:
-        with io.open(os.path.join(_profile, SEARCH_HISTORY), 'w', encoding='utf8') as f:
-            _flock(f, exclusive=True)
-            try:
+        os.makedirs(_profile, exist_ok=True)
+        path = os.path.join(_profile, SEARCH_HISTORY)
+        fd, tmp = tempfile.mkstemp(dir=_profile,
+                                   prefix=SEARCH_HISTORY + '.',
+                                   suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w', encoding='utf8') as f:
                 f.write(json.dumps(history))
-            finally:
-                _funlock(f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
     except (IOError, OSError) as e:
         log_error("Failed to save search history: " + str(e))
 
 
 def storesearch(what):
     """Add search term to history."""
-    if what:
+    if not what:
+        return
+    try:
         size = int(_addon.getSetting('shistory'))
-        history = loadsearch()
-
-        if what in history:
-            history.remove(what)
-
-        history = [what] + history
-
-        if len(history) > size:
-            history = history[:size]
-
-        savesearch(history)
+    except (ValueError, TypeError):
+        size = 20
+    if size <= 0:
+        size = 20
+    history = loadsearch()
+    if what in history:
+        history.remove(what)
+    history = [what] + history
+    if len(history) > size:
+        history = history[:size]
+    log_debug("storesearch: writing {} items (cap={})".format(len(history), size))
+    savesearch(history)
 
 
 def removesearch(what):

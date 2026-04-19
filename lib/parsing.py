@@ -309,7 +309,8 @@ def clean_series_name(name):
         name = name_before_year_strip  # Restore — name was entirely a year
     name = _PATTERN_SEPARATORS.sub(' ', name)
     name = ' '.join(name.split())
-    name = re.sub(r'\([^)]*\)', '', name)
+    # Strip bracket groups: "(...)" and "[...]" (release tags like [FLE], [YIFY])
+    name = re.sub(r'[\(\[][^)\]]*[\)\]]', '', name)
     name = ' '.join(name.split())
     # Strip release group tags from end
     name = _RE_RELEASE_GROUP.sub('', name)
