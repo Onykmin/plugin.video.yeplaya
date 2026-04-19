@@ -397,3 +397,27 @@ msgctxt "#30075"
 msgid "Auto-enable subtitles"
 msgstr ""
 
+msgctxt "#30270"
+msgid "Mark as watched"
+msgstr ""
+
+msgctxt "#30271"
+msgid "Mark as unwatched"
+msgstr ""
+
+msgctxt "#30272"
+msgid "Clear resume point"
+msgstr ""
+
+msgctxt "#30290"
+msgid "Playback tracking"
+msgstr ""
+
+msgctxt "#30291"
+msgid "Track resume points"
+msgstr ""
+
+msgctxt "#30292"
+msgid "Track watched status"
+msgstr ""
+

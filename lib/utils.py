@@ -183,6 +183,42 @@ def set_webshare_id(listitem, ident):
                 pass
 
 
+def apply_playback_state(listitem, state_key):
+    """Attach watched/resume metadata to a ListItem for the given state key.
+
+    Returns the list of (label, runplugin) context entries for this key,
+    or [] if no state key is present.
+    """
+    if not state_key:
+        return []
+    try:
+        from lib import state as _state
+        st = _state.get_state(state_key)
+    except Exception:
+        st = None
+    info = {}
+    if st and st.get('watched'):
+        info['playcount'] = 1
+        info['overlay'] = 5
+    if st and st.get('resume_seconds', 0) > 0:
+        listitem.setProperty('ResumeTime', str(st['resume_seconds']))
+        if st.get('total_seconds'):
+            listitem.setProperty('TotalTime', str(st['total_seconds']))
+    if info:
+        listitem.setInfo('video', info)
+    cmds = []
+    if st and st.get('watched'):
+        cmds.append((_addon.getLocalizedString(30271),
+            'RunPlugin(' + get_url(action='mark_unwatched', key=state_key) + ')'))
+    else:
+        cmds.append((_addon.getLocalizedString(30270),
+            'RunPlugin(' + get_url(action='mark_watched', key=state_key) + ')'))
+    if st and st.get('resume_seconds', 0) > 0:
+        cmds.append((_addon.getLocalizedString(30272),
+            'RunPlugin(' + get_url(action='clear_resume', key=state_key) + ')'))
+    return cmds
+
+
 def tolistitem(file, addcommands=[]):
     """Create Kodi ListItem from file dict."""
     label = labelize(file)
@@ -196,9 +232,18 @@ def tolistitem(file, addcommands=[]):
     if get_filesize_enabled() and 'size' in file and file['size'].isdigit():
         listitem.setInfo('video', {'size': int(file['size'])})
     listitem.setProperty('IsPlayable', 'true')
+
+    try:
+        from lib.state import state_key_for
+        state_key = state_key_for(file)
+    except Exception:
+        state_key = None
+    state_cmds = apply_playback_state(listitem, state_key)
+
     commands = []
     commands.append((_addon.getLocalizedString(30211), 'RunPlugin(' + get_url(action='info', ident=file['ident']) + ')'))
     commands.append((_addon.getLocalizedString(30212), 'RunPlugin(' + get_url(action='download', ident=file['ident']) + ')'))
+    commands.extend(state_cmds)
     if addcommands:
         commands = commands + addcommands
     listitem.addContextMenuItems(commands)

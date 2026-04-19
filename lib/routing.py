@@ -17,6 +17,16 @@ try:
 except ImportError:
     from urlparse import parse_qsl
 
+def _state_action(params, fn_name):
+    """Dispatch a mark_watched / mark_unwatched / clear_resume action."""
+    key = params.get('key')
+    if not key:
+        return
+    from lib import state
+    getattr(state, fn_name)(key)
+    xbmc.executebuiltin('Container.Refresh')
+
+
 def router(paramstring):
     params = dict(parse_qsl(paramstring))
     if params:
@@ -50,6 +60,12 @@ def router(paramstring):
             goto_page(params)
         elif params['action'] == 'newsearch':
             newsearch(params)
+        elif params['action'] == 'mark_watched':
+            _state_action(params, 'mark_watched')
+        elif params['action'] == 'mark_unwatched':
+            _state_action(params, 'mark_unwatched')
+        elif params['action'] == 'clear_resume':
+            _state_action(params, 'clear_resume')
         else:
             menu()
     else:

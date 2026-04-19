@@ -10,7 +10,7 @@ import xbmcgui
 import xbmcplugin
 
 from lib.api import api, parse_xml, is_ok, revalidate
-from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, get_handle, get_addon, set_webshare_id, set_video_info
+from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
 from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, cache_set, clear_cache
 from lib.grouping import fetch_and_group_series
 from lib.search import calculate_search_relevance
@@ -202,7 +202,9 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
                         listitem.setLabel(label)
                         xbmcplugin.addDirectoryItem(_handle,
                             get_url(action='play', ident=ep_data['ident'],
-                                   name=ep_data['name']),
+                                   name=ep_data['name'],
+                                   series=series_name, season=season_num,
+                                   episode=ep_num),
                             listitem, False)
                     else:
                         season_word = _addon.getLocalizedString(30414 if season_count == 1 else 30415)
@@ -263,10 +265,16 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
+            mv_state_key = "mv:{0}".format(movie_key)
+            state_cmds = apply_playback_state(listitem, mv_state_key)
+            if state_cmds:
+                listitem.addContextMenuItems(state_cmds)
+
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
                 set_webshare_id(listitem, versions[0]['ident'])
-                url = get_url(action='play', ident=versions[0]['ident'], name=versions[0]['name'])
+                url = get_url(action='play', ident=versions[0]['ident'],
+                             name=versions[0]['name'], movie_key=movie_key)
                 xbmcplugin.addDirectoryItem(_handle, url, listitem, False)
             else:
                 listitem.setProperty('IsPlayable', 'true')

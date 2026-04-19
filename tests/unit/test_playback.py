@@ -157,6 +157,33 @@ def test_filename_sanitization():
         assert '\\' not in sanitized, f"Backslash in: {sanitized}"
 
 
+def test_build_state_key_season_zero_episode_zero():
+    """Fix E: int(0) for season/episode must still build a valid ep:... key."""
+    from lib.playback import _build_state_key
+    key = _build_state_key({
+        'series': 's', 'season': 0, 'episode': 0, 'ident': 'x',
+    })
+    assert key == 'ep:s|S00E00', "season=0/episode=0 should not fall back to file:"
+
+
+def test_build_state_key_empty_season_falls_back():
+    """Fix E: empty-string season must fall back to file:<ident>."""
+    from lib.playback import _build_state_key
+    key = _build_state_key({
+        'series': 's', 'season': '', 'episode': 0, 'ident': 'x',
+    })
+    assert key == 'file:x', "empty-string season should fall back to file key"
+
+
+def test_build_state_key_string_ints():
+    """URL params come as strings; '0'/'0' must still yield ep:... not file:."""
+    from lib.playback import _build_state_key
+    key = _build_state_key({
+        'series': 's', 'season': '0', 'episode': '0', 'ident': 'x',
+    })
+    assert key == 'ep:s|S00E00'
+
+
 if __name__ == '__main__':
     print("Running playback tests...")
     test_getinfo_none_handling()

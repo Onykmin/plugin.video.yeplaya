@@ -111,3 +111,38 @@ def simulate_grouping():
 
 if __name__ == '__main__':
     simulate_grouping()
+
+
+def test_series_name_is_canonical_key_after_grouping():
+    """Fix A: file_dict['series_name'] must be the canonical_key (dual-name aware)."""
+    files = [
+        {'name': 'The.Penguin.-.Tučňák.S01E04.1080p.WEB-DL', 'ident': 'fileA', 'size': '1'},
+    ]
+    result = group_by_series(files)
+    # Canonical key should contain both names joined (|), not just raw 'the penguin'
+    assert files[0]['series_name'] != 'the penguin', (
+        "series_name should be canonical_key (with alt name), got raw: %r" % files[0]['series_name']
+    )
+    # And it should match one of the series keys in result
+    assert files[0]['series_name'] in result['series'], (
+        "series_name %r not in result['series'] keys %r" %
+        (files[0]['series_name'], list(result['series'].keys()))
+    )
+    # state_key_for must derive the same ep-key regardless of which quality was watched
+    from lib.state import state_key_for
+    key = state_key_for(files[0])
+    assert key.startswith('ep:')
+    # Multiple quality variants of same dual-name episode should share the key
+    files2 = [
+        {'name': 'Penguin.S01E04.2160p.BluRay', 'ident': 'fileB', 'size': '2'},
+        {'name': 'The.Penguin.-.Tučňák.S01E04.720p.WEB', 'ident': 'fileC', 'size': '3'},
+    ]
+    group_by_series(files2)
+    # fileC has dual-name detection → canonical includes both
+    # fileB is single-name ("penguin") → canonical is just "penguin"
+    # These WON'T share a key without dual-names in fileB; what we assert here is
+    # that fileC got the canonical key, not the raw.
+    fc = next(f for f in files2 if f['ident'] == 'fileC')
+    assert fc['series_name'] != 'the penguin', (
+        "dual-name file's series_name should be canonical, got: %r" % fc['series_name']
+    )

@@ -397,3 +397,27 @@ msgctxt "#30075"
 msgid "Auto-enable subtitles"
 msgstr "Automaticky zapnout titulky"
 
+
+msgctxt "#30270"
+msgid "Mark as watched"
+msgstr "Označit jako zhlédnuté"
+
+msgctxt "#30271"
+msgid "Mark as unwatched"
+msgstr "Označit jako nezhlédnuté"
+
+msgctxt "#30272"
+msgid "Clear resume point"
+msgstr "Smazat bod pokračování"
+
+msgctxt "#30290"
+msgid "Playback tracking"
+msgstr "Sledování přehrávání"
+
+msgctxt "#30291"
+msgid "Track resume points"
+msgstr "Zapamatovat body pokračování"
+
+msgctxt "#30292"
+msgid "Track watched status"
+msgstr "Zapamatovat zhlédnuté"
