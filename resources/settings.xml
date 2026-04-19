@@ -31,5 +31,8 @@
         <setting label="30073" id="sub_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30074" id="sub_lang2" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30075" id="sub_auto" type="bool" default="false" />
+        <setting type="lsep" label="30290" />
+        <setting label="30291" id="track_resume" type="bool" default="true" />
+        <setting label="30292" id="track_watched" type="bool" default="true" />
     </category>
 </settings>

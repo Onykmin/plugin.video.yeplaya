@@ -642,7 +642,7 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             # Add episode and metadata to file dict
             file_dict['episode'] = episode
             file_dict['season'] = season
-            file_dict['series_name'] = series
+            file_dict['series_name'] = canonical_key
 
             # Defer quality metadata parsing — computed on demand in version dialogs
 

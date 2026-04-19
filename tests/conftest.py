@@ -145,6 +145,11 @@ def get_mock_addon():
 def reset_mock_addon():
     """Reset mock addon settings and re-initialize lib modules that depend on it."""
     _mock_addon._settings = {}
+    # Restore the global mock: other tests (e.g. test_player_lang) replace
+    # xbmcaddon.Addon with a MagicMock bound to a different addon instance.
+    xbmcaddon = sys.modules.get('xbmcaddon')
+    if xbmcaddon is not None:
+        xbmcaddon.Addon = MagicMock(return_value=_mock_addon)
     # Clear cached lib modules so they pick up fresh mock state
     for mod in list(sys.modules.keys()):
         if mod.startswith('lib.'):

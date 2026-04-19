@@ -2,6 +2,7 @@
 """Tests for utils module."""
 import pytest
 import sys
+from unittest.mock import patch, MagicMock
 
 # Ensure conftest mocks are loaded first
 from tests.conftest import get_mock_addon, reset_mock_addon
@@ -183,3 +184,47 @@ class TestSettingsRefresh:
         # Disable
         self.mock_addon.setSetting('resultsize', 'false')
         assert self.utils.get_filesize_enabled() is False
+
+
+class TestTolistitemState:
+    """Test playback state metadata on ListItems produced by tolistitem."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_mock_addon()
+
+    def _file(self):
+        return {'ident': 'id1', 'name': 'movie.mkv',
+                'series_name': 'show', 'season': 1, 'episode': 5}
+
+    def _run(self, get_state_return):
+        from lib import utils
+        import lib.state as _state
+        original = _state.get_state
+        _state.get_state = lambda key: get_state_return
+        try:
+            return utils.tolistitem(self._file())
+        finally:
+            _state.get_state = original
+
+    def test_watched_sets_playcount(self):
+        li = self._run({'watched': 1, 'resume_seconds': 0, 'total_seconds': 1800})
+        assert li._info.get('playcount') == 1
+        assert li._info.get('overlay') == 5
+        context_labels = [c[0] for c in li._context]
+        assert any('30271' in lbl for lbl in context_labels)
+
+    def test_resume_sets_properties(self):
+        li = self._run({'watched': 0, 'resume_seconds': 450, 'total_seconds': 1800})
+        assert li._properties.get('ResumeTime') == '450'
+        assert li._properties.get('TotalTime') == '1800'
+        context_labels = [c[0] for c in li._context]
+        assert any('30272' in lbl for lbl in context_labels)
+        assert any('30270' in lbl for lbl in context_labels)
+
+    def test_no_state_no_metadata(self):
+        li = self._run(None)
+        assert 'playcount' not in li._info
+        assert 'ResumeTime' not in li._properties
+        context_labels = [c[0] for c in li._context]
+        assert any('30270' in lbl for lbl in context_labels)

@@ -15,10 +15,13 @@ _LOG = "YAWsP.player: "
 class YePlayer(xbmc.Player):
     """Player subclass that selects preferred audio/subtitle streams on playback start."""
 
-    def __init__(self):
+    def __init__(self, state_key=None, tracking_enabled=True):
         super(YePlayer, self).__init__()
         self._av_started = False
         self._playback_done = False
+        self._had_error = False
+        self._state_key = state_key
+        self._tracking_enabled = tracking_enabled
         self._monitor = xbmc.Monitor()
 
     def wait_for_playback(self, timeout=30):
@@ -30,14 +33,50 @@ class YePlayer(xbmc.Player):
                 return
         xbmc.log(_LOG + "wait_for_playback: timeout after %ds" % timeout, xbmc.LOGWARNING)
 
+    def _capture_state(self, force_watched=False):
+        """Persist resume/watched state while the player is still alive."""
+        if not self._tracking_enabled or not self._state_key or self._had_error:
+            return
+        addon = xbmcaddon.Addon()
+        resume_ok = addon.getSetting('track_resume') != 'false'
+        watched_ok = addon.getSetting('track_watched') != 'false'
+        if not (resume_ok or watched_ok):
+            return
+        try:
+            pos = self.getTime()
+            total = self.getTotalTime()
+        except Exception as e:
+            xbmc.log(_LOG + "capture: getTime failed: %s" % e, xbmc.LOGWARNING)
+            pos, total = 0.0, 0.0
+        try:
+            from lib import state
+            if force_watched:
+                if watched_ok:
+                    state.mark_watched(self._state_key)
+                return
+            if total is None or total <= 0:
+                return
+            ratio = pos / total
+            if ratio >= 0.90:
+                if watched_ok:
+                    state.mark_watched(self._state_key)
+            else:
+                if resume_ok:
+                    state.record_playback(self._state_key, pos, total)
+        except Exception as e:
+            xbmc.log(_LOG + "capture: state write failed: %s" % e, xbmc.LOGERROR)
+
     def onPlayBackError(self):
         self._playback_done = True
+        self._had_error = True
         xbmc.log(_LOG + "playback error", xbmc.LOGERROR)
 
     def onPlayBackStopped(self):
+        self._capture_state()
         self._playback_done = True
 
     def onPlayBackEnded(self):
+        self._capture_state(force_watched=True)
         self._playback_done = True
 
     def onAVStarted(self):

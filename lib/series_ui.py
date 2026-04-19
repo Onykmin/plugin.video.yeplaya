@@ -9,7 +9,8 @@ import xbmcgui
 import xbmcplugin
 
 from lib.api import revalidate
-from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info
+from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
+from lib.state import state_key_for
 from lib.parsing import parse_quality_metadata
 from lib.cache import get_or_fetch_grouped
 from lib.grouping import deduplicate_versions
@@ -111,7 +112,9 @@ def browse_season(params):
                     listitem.setLabel(label)
                     xbmcplugin.addDirectoryItem(_handle,
                         get_url(action='play', ident=ep_data['ident'],
-                               name=ep_data['name']),
+                               name=ep_data['name'],
+                               series=series_name, season=season_num,
+                               episode=ep_num),
                         listitem, False)
                 else:
                     label = _addon.getLocalizedString(30406).format(ep_num, len(versions))
@@ -122,6 +125,13 @@ def browse_season(params):
                     if versions[0].get('img'):
                         listitem.setArt({'thumb': versions[0]['img']})
 
+                    ep_state_key = state_key_for({
+                        'series_name': series_name,
+                        'season': season_num,
+                        'episode': ep_num,
+                    })
+                    state_cmds = apply_playback_state(listitem, ep_state_key)
+
                     commands = []
                     for v in versions:
                         commands.append((
@@ -131,6 +141,7 @@ def browse_season(params):
                                 season=season_num, what=params['what'],
                                 toqueue=v['ident']) + ')'
                         ))
+                    commands.extend(state_cmds)
                     listitem.addContextMenuItems(commands)
 
                     url = get_url(action='select_version', series=series_name,
@@ -202,7 +213,12 @@ def show_version_dialog(params):
 
     if selected >= 0:
         chosen_file = versions[selected]
-        resolve_and_play(chosen_file['ident'], chosen_file['name'], token)
+        ep_state_key = state_key_for({
+            'series_name': series_name,
+            'season': season_num,
+            'episode': episode_num,
+        })
+        resolve_and_play(chosen_file['ident'], chosen_file['name'], token, state_key=ep_state_key)
     else:
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
@@ -258,7 +274,8 @@ def select_movie_version(params):
     if selected >= 0:
         selected_version = versions[selected]
         log_debug('Playing movie: {} [ident={}]'.format(selected_version['name'], selected_version['ident']))
-        resolve_and_play(selected_version['ident'], selected_version['name'], token)
+        mv_state_key = "mv:{0}".format(movie_key)
+        resolve_and_play(selected_version['ident'], selected_version['name'], token, state_key=mv_state_key)
     else:
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
@@ -302,10 +319,15 @@ def browse_other(params):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
+            mv_state_key = "mv:{0}".format(canonical_key)
+            state_cmds = apply_playback_state(listitem, mv_state_key)
+            if state_cmds:
+                listitem.addContextMenuItems(state_cmds)
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
                 set_webshare_id(listitem, versions[0]['ident'])
-                url = get_url(action='play', ident=versions[0]['ident'], name=versions[0]['name'])
+                url = get_url(action='play', ident=versions[0]['ident'],
+                             name=versions[0]['name'], movie_key=canonical_key)
                 xbmcplugin.addDirectoryItem(_handle, url, listitem, False)
             else:
                 listitem.setProperty('IsPlayable', 'true')

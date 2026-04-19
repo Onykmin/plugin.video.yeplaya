@@ -41,7 +41,15 @@ _addon = get_addon()
 _session = get_session()
 
 
-def resolve_and_play(ident, name, token):
+def _tracking_on():
+    """True if either resume or watched tracking is enabled (default on)."""
+    r = _addon.getSetting('track_resume')
+    w = _addon.getSetting('track_watched')
+    # Default true when setting is unset ('')
+    return (r != 'false') or (w != 'false')
+
+
+def resolve_and_play(ident, name, token, state_key=None):
     """Get stream link, attach headers, resolve URL and wait for playback.
 
     Returns True on success, False on failure. Calls setResolvedUrl internally.
@@ -53,7 +61,7 @@ def resolve_and_play(ident, name, token):
         if headers:
             headers['Cookie'] = 'wst=' + token
             link = link + '|' + urlencode(headers)
-        player = YePlayer()
+        player = YePlayer(state_key=state_key, tracking_enabled=_tracking_on())
         listitem = xbmcgui.ListItem(label=name, path=link)
         listitem.setProperty('mimetype', 'application/octet-stream')
         xbmcplugin.setResolvedUrl(_handle, True, listitem)
@@ -63,6 +71,27 @@ def resolve_and_play(ident, name, token):
         popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return False
+
+
+def _build_state_key(params):
+    """Build state_key from play() params: episode → movie → file fallback."""
+    series = params.get('series')
+    season = params.get('season')
+    episode = params.get('episode')
+    if (series and season is not None and season != ''
+            and episode is not None and episode != ''):
+        try:
+            return "ep:{0}|S{1:02d}E{2:02d}".format(series, int(season), int(episode))
+        except (ValueError, TypeError):
+            pass
+    movie_key = params.get('movie_key')
+    if movie_key:
+        return "mv:{0}".format(movie_key)
+    ident = params.get('ident')
+    if ident:
+        return "file:{0}".format(ident)
+    return None
+
 
 def play(params):
     try:
@@ -75,7 +104,8 @@ def play(params):
             xbmc.log("YAWsP: Missing ident in play", xbmc.LOGERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
             return
-        resolve_and_play(params['ident'], params['name'], token)
+        state_key = _build_state_key(params)
+        resolve_and_play(params['ident'], params['name'], token, state_key=state_key)
     except requests.exceptions.RequestException as e:
         xbmc.log("YAWsP: Network error in play: " + str(e), xbmc.LOGERROR)
         popinfo(_addon.getLocalizedString(30305), icon=xbmcgui.NOTIFICATION_ERROR)
