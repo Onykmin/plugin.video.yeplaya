@@ -155,3 +155,59 @@ def reset_mock_addon():
         if mod.startswith('lib.'):
             del sys.modules[mod]
     return _mock_addon
+
+
+def make_kodi_recorder(dialog_yesno=True):
+    """Ordered call recorder spanning Kodi runtime entry points.
+
+    Returns (events, dialog). `events` is a list of (kind, payload) tuples
+    in invocation order. Useful for asserting Kodi contract invariants
+    like "endOfDirectory must precede Container.Update" — pitfalls a
+    plain MagicMock can't detect because it records each attribute
+    independently with no cross-module ordering.
+
+    Kinds:
+      ('exec', cmd)     — xbmc.executebuiltin
+      ('end', succeeded)— xbmcplugin.endOfDirectory
+      ('resolved', ok)  — xbmcplugin.setResolvedUrl
+      ('yesno', None)   — xbmcgui.Dialog().yesno
+      ('ok', None)      — xbmcgui.Dialog().ok
+      ('popinfo', msg)  — utils.popinfo
+
+    Callers should call this in setUp and tear back to MagicMock in
+    tearDown, since it mutates module-level globals.
+    """
+    import xbmc, xbmcgui, xbmcplugin
+    events = []
+
+    xbmc.executebuiltin = lambda cmd: events.append(('exec', cmd))
+
+    def _end(handle, succeeded=True, updateListing=False, cacheToDisc=True):
+        events.append(('end', succeeded))
+    xbmcplugin.endOfDirectory = _end
+
+    def _resolved(handle, succeeded, listitem):
+        events.append(('resolved', succeeded))
+    xbmcplugin.setResolvedUrl = _resolved
+
+    dialog = MagicMock()
+    def _yesno(*a, **kw):
+        events.append(('yesno', None))
+        return dialog_yesno
+    def _ok(*a, **kw):
+        events.append(('ok', None))
+    dialog.yesno = _yesno
+    dialog.ok = _ok
+    xbmcgui.Dialog = lambda: dialog
+
+    # popinfo is module-level in utils + sometimes re-imported elsewhere;
+    # callers can patch additional sites if they pin to a stale binding.
+    try:
+        from lib import utils
+        def _popinfo(message, heading=None, icon=None, time=3000, sound=False):
+            events.append(('popinfo', message))
+        utils.popinfo = _popinfo
+    except ImportError:
+        pass
+
+    return events, dialog

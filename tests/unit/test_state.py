@@ -69,6 +69,47 @@ class TestStateKeyFor:
         assert harness.state.state_key_for({}) is None
 
 
+class TestStateKeyDriftNormalization:
+    """State keys must survive dual-name canonical_key drift.
+
+    Dual-name detection in grouping.py produces different canonical_keys
+    across fetches when different alias files are present. If state keys
+    drifted with them, resume/watched would split across multiple rows.
+    Normalization strips the dual-name prefix (everything before the last
+    "|" in a series key; preserves trailing |year for movies).
+    """
+
+    def test_episode_simple_key_unchanged(self, harness):
+        key = harness.state.state_key_for({
+            'series_name': 'south park', 'season': 1, 'episode': 5,
+        })
+        assert key == 'ep:south park|S01E05'
+
+    def test_episode_dual_name_prefix_stripped(self, harness):
+        """mestecko|south park drifts to pandemic special cz|south park;
+        both must yield the SAME normalized state key."""
+        k1 = harness.state.state_key_for({
+            'series_name': 'mestecko|south park', 'season': 1, 'episode': 5,
+        })
+        k2 = harness.state.state_key_for({
+            'series_name': 'pandemic special cz|south park', 'season': 1, 'episode': 5,
+        })
+        assert k1 == k2 == 'ep:south park|S01E05'
+
+    def test_movie_simple_key_unchanged(self, harness):
+        key = harness.state.state_key_for({'canonical_key': 'inception|2010'})
+        assert key == 'mv:inception|2010'
+
+    def test_movie_dual_name_prefix_stripped_preserves_year(self, harness):
+        k1 = harness.state.state_key_for({'canonical_key': 'tucnak|penguin|2022'})
+        k2 = harness.state.state_key_for({'canonical_key': 'penguin tucnak alias|penguin|2022'})
+        assert k1 == k2 == 'mv:penguin|2022'
+
+    def test_build_mv_state_key_helper(self, harness):
+        assert harness.state.build_mv_state_key('inception|2010') == 'mv:inception|2010'
+        assert harness.state.build_mv_state_key('tucnak|penguin|2022') == 'mv:penguin|2022'
+
+
 class TestMigration:
     def test_idempotent(self, harness):
         harness.state._connect()
