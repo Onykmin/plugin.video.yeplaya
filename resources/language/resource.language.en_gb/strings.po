@@ -302,7 +302,7 @@ msgid "No versions found"
 msgstr ""
 
 msgctxt "#30409"
-msgid "Movie not found in cache"
+msgid "Movie not found"
 msgstr ""
 
 msgctxt "#30410"
@@ -427,21 +427,25 @@ msgid "Favorites"
 msgstr ""
 
 msgctxt "#30421"
-msgid "Add to favorites"
+msgid "Add to Ye-Playa list"
 msgstr ""
 
 msgctxt "#30422"
-msgid "Remove from favorites"
+msgid "Remove from Ye-Playa list"
 msgstr ""
 
-msgctxt "#30423"
-msgid "Favorite item no longer available"
+msgctxt "#30426"
+msgid "[Search]"
 msgstr ""
 
-msgctxt "#30424"
-msgid "No favorites yet"
+msgctxt "#30427"
+msgid "[Series]"
 msgstr ""
 
-msgctxt "#30425"
-msgid "Search: {}"
+msgctxt "#30428"
+msgid "[Movie]"
+msgstr ""
+
+msgctxt "#30431"
+msgid "Series not found"
 msgstr ""

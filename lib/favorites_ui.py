@@ -12,6 +12,7 @@ import xbmcplugin
 from lib.utils import get_url, popinfo, get_handle, get_addon
 from lib.favorites import (
     load_favorites, add_favorite, remove_favorite, is_favorited,
+    find_favorite_by_name,
 )
 from lib.logging import log_debug
 
@@ -23,22 +24,25 @@ _addon = get_addon()
 _STR_FAVORITES = 30420
 _STR_ADD_FAV = 30421
 _STR_REMOVE_FAV = 30422
-_STR_FAV_GONE = 30423
-_STR_NO_FAVORITES = 30424
-_STR_SAVED_SEARCH_PREFIX = 30425
+_STR_TAG_SEARCH = 30426
+_STR_TAG_SERIES = 30427
+_STR_TAG_MOVIE = 30428
 
 
 def _label_for(entry):
     """Human-readable label for a favorite list row."""
     t = entry.get('type')
     if t == 'search':
-        return _addon.getLocalizedString(_STR_SAVED_SEARCH_PREFIX).format(entry.get('query', ''))
+        return (_addon.getLocalizedString(_STR_TAG_SEARCH) + ' '
+                + entry.get('query', ''))
     if t == 'series':
-        return entry.get('display_name') or entry.get('canonical_key', '')
+        name = entry.get('display_name') or entry.get('canonical_key', '')
+        return _addon.getLocalizedString(_STR_TAG_SERIES) + ' ' + name
     if t == 'movie':
         name = entry.get('display_name') or entry.get('canonical_key', '')
         year = entry.get('year')
-        return '{} ({})'.format(name, year) if year else name
+        body = '{} ({})'.format(name, year) if year else name
+        return _addon.getLocalizedString(_STR_TAG_MOVIE) + ' ' + body
     return entry.get('canonical_key') or entry.get('query', '')
 
 
@@ -54,18 +58,26 @@ def _icon_for(entry):
 
 
 def _click_url(entry):
-    """Build the URL Kodi follows when the user clicks a favorite row."""
+    """Build the URL Kodi follows when the user clicks a favorite row.
+
+    display_name rides along so the target handler can fall back to a
+    substring match when the stored canonical_key has drifted in the
+    current grouping (dual-name detection produces different keys when
+    different files are present).
+    """
     t = entry.get('type')
     if t == 'search':
         return get_url(action='search', what=entry.get('query', ''))
     if t == 'series':
         return get_url(action='browse_series',
                        series=entry.get('canonical_key', ''),
-                       what=entry.get('search_query', '') or entry.get('display_name', ''))
+                       what=entry.get('search_query', '') or entry.get('display_name', ''),
+                       fav_display_name=entry.get('display_name', ''))
     if t == 'movie':
         return get_url(action='select_movie_version',
                        movie_key=entry.get('canonical_key', ''),
-                       what=entry.get('search_query', '') or entry.get('display_name', ''))
+                       what=entry.get('search_query', '') or entry.get('display_name', ''),
+                       fav_display_name=entry.get('display_name', ''))
     return get_url(action='favorites')
 
 
@@ -85,19 +97,19 @@ def favorites(params):
     items = load_favorites()
 
     if not items:
-        listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(_STR_NO_FAVORITES))
-        listitem.setArt({'icon': 'DefaultFolder.png'})
-        xbmcplugin.addDirectoryItem(_handle, get_url(action='favorites'), listitem, False)
         xbmcplugin.endOfDirectory(_handle, cacheToDisc=False)
         return
 
+    # is_folder mirrors how each handler builds its UI: search and
+    # browse_series open directories; select_movie_version opens a dialog
+    # (Kodi calls non-folder handlers via PlayMedia rather than GetDirectory).
     is_folder_by_type = {'search': True, 'series': True, 'movie': False}
     for entry in items:
         listitem = xbmcgui.ListItem(label=_label_for(entry))
         listitem.setArt({'icon': _icon_for(entry)})
         commands = [(
             _addon.getLocalizedString(_STR_REMOVE_FAV),
-            'Container.Update(' + _remove_url(entry) + ')'
+            'RunPlugin(' + _remove_url(entry) + ')'
         )]
         listitem.addContextMenuItems(commands)
         is_folder = is_folder_by_type.get(entry.get('type'), True)
@@ -127,7 +139,7 @@ def add_favorite_action(params):
                 pass
 
     if add_favorite(entry):
-        xbmc.executebuiltin('Container.Refresh')
+        popinfo(_addon.getLocalizedString(_STR_ADD_FAV))
 
 
 def remove_favorite_action(params):
@@ -136,49 +148,6 @@ def remove_favorite_action(params):
     key = params.get('key') or params.get('query', '')
     if remove_favorite(t, key):
         xbmc.executebuiltin('Container.Refresh')
-
-
-def resolve_favorite_url(entry, grouped=None):
-    """Resolve a favorite to its click URL with availability check + fallback.
-
-    `grouped` is the current grouping (cached/fetched by caller). When the
-    canonical_key is missing, attempts a display_name substring match in the
-    grouped buckets. Returns (url, fallback_used, dead) tuple.
-
-    - fallback_used=True means the canonical_key did not match but a similar
-      entry (by display_name substring) was found.
-    - dead=True means neither match worked: caller should popinfo + offer remove.
-    """
-    t = entry.get('type')
-    if t == 'search':
-        return _click_url(entry), False, False
-    if not grouped:
-        return _click_url(entry), False, False
-
-    bucket_name = 'series' if t == 'series' else 'movies'
-    bucket = grouped.get(bucket_name, {}) or {}
-    key = entry.get('canonical_key', '')
-
-    if key in bucket:
-        return _click_url(entry), False, False
-
-    target = (entry.get('display_name') or '').lower()
-    if target:
-        for k, v in bucket.items():
-            display = (v.get('display_name') or '').lower()
-            if display and (target in display or display in target):
-                resolved = dict(entry)
-                resolved['canonical_key'] = k
-                return _click_url(resolved), True, False
-
-    return _click_url(entry), False, True
-
-
-def maybe_announce_dead(entry):
-    """Notify the user that a favorite no longer resolves."""
-    popinfo(_addon.getLocalizedString(_STR_FAV_GONE),
-            icon=xbmcgui.NOTIFICATION_WARNING)
-    log_debug("favorite dead: {!r}".format(entry))
 
 
 def add_favorite_context_entry(entry):
@@ -190,11 +159,21 @@ def add_favorite_context_entry(entry):
     key_field = 'query' if t == 'search' else 'canonical_key'
     key = entry.get(key_field, '')
 
-    if is_favorited(t, key):
+    # Drift-aware lookup: canonical_keys produced by dual-name detection
+    # are not stable across fetches, so a series may already be favorited
+    # under a different key. Match by display_name as well so the toggle
+    # correctly shows Remove (and the remove URL targets the STORED key).
+    existing_key = key
+    if not is_favorited(t, key) and t in ('series', 'movie'):
+        existing = find_favorite_by_name(t, entry.get('display_name', ''))
+        if existing:
+            existing_key = existing.get('canonical_key', key)
+
+    if is_favorited(t, existing_key):
         return (
             _addon.getLocalizedString(_STR_REMOVE_FAV),
-            'Container.Update(' + get_url(action='remove_favorite',
-                                          type=t, key=key) + ')'
+            'RunPlugin(' + get_url(action='remove_favorite',
+                                   type=t, key=existing_key) + ')'
         )
 
     url_params = {'action': 'add_favorite', 'type': t, 'key': key}

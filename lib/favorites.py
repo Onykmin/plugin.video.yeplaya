@@ -32,6 +32,16 @@ MAX_FAVORITES = 200
 
 _VALID_TYPES = ('search', 'series', 'movie')
 
+# Per-process in-memory cache. Reset on each Kodi addon invocation
+# (matches Kodi lifecycle), so cross-process staleness is not possible.
+_cached_items = None
+
+
+def invalidate_cache():
+    """Drop the in-memory cache. Used by save_favorites and tests."""
+    global _cached_items
+    _cached_items = None
+
 
 def _profile_path():
     addon = xbmcaddon.Addon()
@@ -73,7 +83,12 @@ def load_favorites():
     Returns a list of valid entries (may be empty).
     Legacy bare-list format is accepted; rewrite happens on next save.
     Invalid individual entries are dropped with a warning.
+    Caches the result in memory; invalidated by save_favorites.
     """
+    global _cached_items
+    if _cached_items is not None:
+        return list(_cached_items)
+
     profile = _profile_path()
     try:
         os.makedirs(profile, exist_ok=True)
@@ -91,15 +106,18 @@ def load_favorites():
                 _funlock(f)
     except (IOError, OSError) as e:
         log_warning("load_favorites: IO error ({}): {}".format(path, e))
+        _cached_items = []
         return []
 
     if not raw:
+        _cached_items = []
         return []
 
     try:
         data = json.loads(raw)
     except ValueError as e:
         log_warning("load_favorites: corrupt JSON: {}".format(e))
+        _cached_items = []
         return []
 
     if isinstance(data, list):
@@ -109,10 +127,12 @@ def load_favorites():
         if not isinstance(items, list):
             log_warning("load_favorites: 'items' not a list ({}); resetting".format(
                 type(items).__name__))
+            _cached_items = []
             return []
     else:
         log_warning("load_favorites: top-level not list/dict ({}); resetting".format(
             type(data).__name__))
+        _cached_items = []
         return []
 
     valid = []
@@ -122,11 +142,13 @@ def load_favorites():
         else:
             log_warning("load_favorites: dropping invalid entry: {!r}".format(entry))
     log_debug("load_favorites: {} valid items".format(len(valid)))
-    return valid
+    _cached_items = valid
+    return list(valid)
 
 
 def save_favorites(items):
     """Atomic write of envelope {version, items} to disk."""
+    invalidate_cache()
     profile = _profile_path()
     try:
         os.makedirs(profile, exist_ok=True)
@@ -192,3 +214,26 @@ def is_favorited(type_, key):
         if _entry_key(it) == target:
             return True
     return False
+
+
+def find_favorite_by_name(type_, display_name):
+    """Drift-aware favorite lookup by (type, display_name).
+
+    Returns the matching entry dict or None. Used by the UI to detect
+    "this series/movie is already favorited under a drifted canonical_key"
+    so the context-menu toggle correctly shows Remove instead of Add and
+    avoids creating a duplicate entry on click.
+
+    Substring match (case-insensitive) on display_name so minor casing /
+    suffix differences between the saved and current grouping resolve.
+    """
+    if type_ not in ('series', 'movie') or not display_name:
+        return None
+    target = display_name.lower()
+    for it in load_favorites():
+        if it.get('type') != type_:
+            continue
+        existing = (it.get('display_name') or '').lower()
+        if existing and (target in existing or existing in target):
+            return it
+    return None
