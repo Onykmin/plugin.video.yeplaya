@@ -337,33 +337,6 @@ def search(params):
         what = params['what']
         log_debug("what from params: {}".format(what))
 
-    if 'ask' in params:
-        slast = _addon.getSetting('slast')
-        log_debug("ask=1, slast='{}', what={}".format(slast, what))
-        if what is None and slast == '':
-            log_debug("Showing search dialog")
-            xbmcplugin.endOfDirectory(_handle)
-            what = ask(what)
-            log_debug("Dialog result: {}".format(what))
-            if what is not None:
-                storesearch(what)
-                _addon.setSetting('slast', what)
-                clear_cache()
-                log_debug("Stored search, set slast='{}', cleared cache".format(what))
-                category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
-                sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
-                limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
-                offset = int(params['offset']) if 'offset' in params else 0
-                url = get_url(action='search',what=what,category=category,sort=sort,limit=limit,offset=offset)
-                xbmc.executebuiltin("Container.Update({})".format(url))
-                return
-            else:
-                log_debug("Search cancelled, clearing slast")
-                _addon.setSetting('slast', '')
-                updateListing=True
-        else:
-            log_debug("Skipping dialog, slast='{}' indicates previous interaction".format(slast))
-
     if what is not None:
         _addon.setSetting('slast', what)
 
@@ -371,8 +344,11 @@ def search(params):
         sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
         limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
         offset = int(params['offset']) if 'offset' in params else 0
+        if offset == 0 and what != NONE_WHAT:
+            storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)
+        return
     else:
         _addon.setSetting('slast', '')
         history = loadsearch()
@@ -395,18 +371,21 @@ def search(params):
             commands.append(( _addon.getLocalizedString(30213), 'Container.Update(' + get_url(action='search',remove=s) + ')'))
             listitem.addContextMenuItems(commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=s), listitem, True)
-    xbmcplugin.endOfDirectory(_handle, updateListing=updateListing)
+        xbmcplugin.endOfDirectory(_handle, updateListing=updateListing, cacheToDisc=False)
 
 
 def newsearch(params):
-    """Handle new search - show keyboard and navigate to results without creating history entry."""
+    """Handle new search: keyboard prompt, store term, navigate to results."""
     what = ask(None)
-    if what is not None:
-        storesearch(what)
-        _addon.setSetting('slast', what)
-        clear_cache()
-        category = CATEGORIES[int(_addon.getSetting('scategory'))]
-        sort = SORTS[int(_addon.getSetting('ssort'))]
-        limit = int(_addon.getSetting('slimit'))
-        url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
-        xbmc.executebuiltin("Container.Update({})".format(url))
+    if what is None or what == '':
+        xbmcplugin.endOfDirectory(_handle, succeeded=False)
+        return
+    storesearch(what)
+    _addon.setSetting('slast', what)
+    clear_cache()
+    category = CATEGORIES[int(_addon.getSetting('scategory'))]
+    sort = SORTS[int(_addon.getSetting('ssort'))]
+    limit = int(_addon.getSetting('slimit'))
+    url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
+    xbmcplugin.endOfDirectory(_handle, succeeded=False)
+    xbmc.executebuiltin("Container.Update({})".format(url))

@@ -166,6 +166,9 @@ def loadsearch():
             finally:
                 _funlock(f)
         history = json.loads(raw) if raw else []
+        if not isinstance(history, list):
+            log_warning("loadsearch: non-list JSON on disk ({}), resetting".format(type(history).__name__))
+            history = []
         log_debug("loadsearch: {} items, file={} bytes".format(len(history), len(raw)))
     except (IOError, OSError) as e:
         log_warning("loadsearch: IO error ({}): {}".format(path, e))
