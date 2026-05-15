@@ -182,6 +182,10 @@ def menu():
     listitem.setArt({'icon': 'DefaultAddonsUpdates.png'})
     xbmcplugin.addDirectoryItem(_handle, get_url(action='history'), listitem, True)
 
+    listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30420))
+    listitem.setArt({'icon': 'DefaultFavourites.png'})
+    xbmcplugin.addDirectoryItem(_handle, get_url(action='favorites'), listitem, True)
+
     if 'true' == _addon.getSetting('experimental'):
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30412))
         listitem.setArt({'icon': 'DefaultAddonsZip.png'})

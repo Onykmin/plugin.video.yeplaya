@@ -246,6 +246,14 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             listitem = xbmcgui.ListItem(label=label)
             listitem.setArt({'icon': 'DefaultTVShows.png'})
 
+            from lib.favorites_ui import add_favorite_context_entry
+            listitem.addContextMenuItems([add_favorite_context_entry({
+                'type': 'series',
+                'canonical_key': series_name,
+                'display_name': display_name,
+                'search_query': what,
+            })])
+
             url_params = {'action': 'browse_series'}
             if series_name:
                 url_params['series'] = series_name
@@ -278,8 +286,15 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
 
             mv_state_key = "mv:{0}".format(movie_key)
             state_cmds = apply_playback_state(listitem, mv_state_key)
-            if state_cmds:
-                listitem.addContextMenuItems(state_cmds)
+            from lib.favorites_ui import add_favorite_context_entry
+            fav_entry = add_favorite_context_entry({
+                'type': 'movie',
+                'canonical_key': movie_key,
+                'display_name': display_name,
+                'search_query': what,
+                'year': year,
+            })
+            listitem.addContextMenuItems((state_cmds or []) + [fav_entry])
 
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
@@ -372,11 +387,13 @@ def search(params):
         listitem.setArt({'icon': 'DefaultHardDisk.png'})
         xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=NONE_WHAT,sort=SORTS[3]), listitem, True)
 
+        from lib.favorites_ui import add_favorite_context_entry
         for s in history:
             listitem = xbmcgui.ListItem(label=s)
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
             commands = []
             commands.append(( _addon.getLocalizedString(30213), 'Container.Update(' + get_url(action='search',remove=s) + ')'))
+            commands.append(add_favorite_context_entry({'type': 'search', 'query': s}))
             listitem.addContextMenuItems(commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=s), listitem, True)
         xbmcplugin.endOfDirectory(_handle, updateListing=updateListing, cacheToDisc=False)

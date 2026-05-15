@@ -421,3 +421,27 @@ msgctxt "#30292"
 msgid "Track watched status"
 msgstr ""
 
+
+msgctxt "#30420"
+msgid "Favorites"
+msgstr ""
+
+msgctxt "#30421"
+msgid "Add to favorites"
+msgstr ""
+
+msgctxt "#30422"
+msgid "Remove from favorites"
+msgstr ""
+
+msgctxt "#30423"
+msgid "Favorite item no longer available"
+msgstr ""
+
+msgctxt "#30424"
+msgid "No favorites yet"
+msgstr ""
+
+msgctxt "#30425"
+msgid "Search: {}"
+msgstr ""

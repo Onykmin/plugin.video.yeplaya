@@ -421,3 +421,27 @@ msgstr "Zapamätať body pokračovania"
 msgctxt "#30292"
 msgid "Track watched status"
 msgstr "Zapamätať zhliadnuté"
+
+msgctxt "#30420"
+msgid "Favorites"
+msgstr "Obľúbené"
+
+msgctxt "#30421"
+msgid "Add to favorites"
+msgstr "Pridať do obľúbených"
+
+msgctxt "#30422"
+msgid "Remove from favorites"
+msgstr "Odstrániť z obľúbených"
+
+msgctxt "#30423"
+msgid "Favorite item no longer available"
+msgstr "Obľúbená položka už nie je dostupná"
+
+msgctxt "#30424"
+msgid "No favorites yet"
+msgstr "Zatiaľ žiadne obľúbené"
+
+msgctxt "#30425"
+msgid "Search: {}"
+msgstr "Hľadať: {}"
