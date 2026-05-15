@@ -12,7 +12,7 @@ import xbmcaddon
 
 from lib.api import api, parse_xml, is_ok, revalidate, getinfo, refresh_addon
 from lib.utils import todict, get_url, popinfo, tolistitem, sizelize, infonize, fpsize, get_handle, get_addon, refresh_settings
-from lib.cache import clear_cache
+from lib.cache import clear_cache, refresh_cache_addon
 from lib.logging import log_debug
 
 _handle = get_handle()
@@ -228,6 +228,7 @@ class SettingsMonitor(xbmc.Monitor):
         _addon = xbmcaddon.Addon()
         refresh_addon()  # Refresh api module addon
         refresh_settings()  # Refresh utils module addon
+        refresh_cache_addon()  # Refresh cache module addon (shistory etc.)
         clear_cache()  # Invalidate cached data that may depend on settings
 
 

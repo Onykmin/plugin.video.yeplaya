@@ -79,3 +79,24 @@ class TestSettingsReading:
         mock_addon.setSetting('key', 'value1')
         mock_addon.setSetting('key', 'value2')
         assert mock_addon.getSetting('key') == 'value2'
+
+
+class TestSettingsMonitor:
+    """Settings change must propagate to cache module addon."""
+
+    def test_settings_monitor_refreshes_cache_addon(self):
+        """SettingsMonitor.onSettingsChanged must call refresh_cache_addon."""
+        import lib.ui as ui_mod
+        import lib.cache as cache_mod
+
+        called = []
+        saved = cache_mod.refresh_cache_addon
+        try:
+            cache_mod.refresh_cache_addon = lambda: called.append('refresh')
+            ui_mod.refresh_cache_addon = cache_mod.refresh_cache_addon
+            monitor = ui_mod.SettingsMonitor()
+            monitor.onSettingsChanged()
+            assert 'refresh' in called, "refresh_cache_addon was not invoked"
+        finally:
+            cache_mod.refresh_cache_addon = saved
+            ui_mod.refresh_cache_addon = saved

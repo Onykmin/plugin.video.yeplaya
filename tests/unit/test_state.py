@@ -186,3 +186,46 @@ class TestCacheInvalidation:
         second = harness.state.get_state('ep:x|S01E01')
         assert second['watched'] == 1
         assert second['resume_seconds'] == 0
+
+
+class TestGetStateLockOrder:
+    def test_cache_read_under_lock(self, harness):
+        """get_state must read _cache only while holding _db_lock.
+
+        Detect by replacing _db_lock with a wrapper that records acquisition,
+        then asserting that the cache hit was returned only after acquire().
+        """
+        import threading as _th
+        state = harness.state
+
+        # Prime cache with a known entry.
+        state.record_playback('ep:lock|S01E01', 100, 1000)
+        _ = state.get_state('ep:lock|S01E01')  # populates _cache
+
+        events = []
+        real_lock = state._db_lock
+
+        class TrackingLock:
+            def __enter__(self):
+                events.append('acquire')
+                real_lock.acquire()
+                return self
+            def __exit__(self, *exc):
+                real_lock.release()
+                events.append('release')
+            def acquire(self, *a, **kw):
+                events.append('acquire')
+                return real_lock.acquire(*a, **kw)
+            def release(self):
+                real_lock.release()
+                events.append('release')
+
+        state._db_lock = TrackingLock()
+        try:
+            result = state.get_state('ep:lock|S01E01')
+            assert result is not None
+            # Lock must have been acquired before returning the cached value.
+            assert events and events[0] == 'acquire', \
+                "expected lock acquired before cache read, got events={}".format(events)
+        finally:
+            state._db_lock = real_lock

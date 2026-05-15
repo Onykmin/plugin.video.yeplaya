@@ -185,24 +185,24 @@ def get_state(key):
     """Return {'watched', 'resume_seconds', 'total_seconds'} or None."""
     if not key:
         return None
-    if key in _cache:
-        return _cache[key]
     with _db_lock:
+        if key in _cache:
+            return _cache[key]
         conn = _connect()
         cur = conn.execute(
             'SELECT watched, resume_seconds, total_seconds FROM playback_state WHERE state_key=?',
             (key,))
         row = cur.fetchone()
-    if row is None:
-        _cache[key] = None
-        return None
-    state = {
-        'watched': int(row[0]),
-        'resume_seconds': int(row[1]),
-        'total_seconds': int(row[2]),
-    }
-    _cache[key] = state
-    return state
+        if row is None:
+            _cache[key] = None
+            return None
+        state = {
+            'watched': int(row[0]),
+            'resume_seconds': int(row[1]),
+            'total_seconds': int(row[2]),
+        }
+        _cache[key] = state
+        return state
 
 
 def get_states(keys):
