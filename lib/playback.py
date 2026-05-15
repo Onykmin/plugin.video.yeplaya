@@ -74,23 +74,19 @@ def resolve_and_play(ident, name, token, state_key=None):
 
 
 def _build_state_key(params):
-    """Build state_key from play() params: episode → movie → file fallback."""
-    series = params.get('series')
-    season = params.get('season')
-    episode = params.get('episode')
-    if (series and season is not None and season != ''
-            and episode is not None and episode != ''):
-        try:
-            return "ep:{0}|S{1:02d}E{2:02d}".format(series, int(season), int(episode))
-        except (ValueError, TypeError):
-            pass
-    movie_key = params.get('movie_key')
-    if movie_key:
-        return "mv:{0}".format(movie_key)
-    ident = params.get('ident')
-    if ident:
-        return "file:{0}".format(ident)
-    return None
+    """Build state_key from play() params: episode → movie → file fallback.
+
+    Delegates to lib.state.state_key_for which normalizes dual-name
+    prefixes so the same content yields the same key across re-groupings.
+    """
+    from lib.state import state_key_for
+    return state_key_for({
+        'series_name': params.get('series'),
+        'season': params.get('season'),
+        'episode': params.get('episode'),
+        'canonical_key': params.get('movie_key'),
+        'ident': params.get('ident'),
+    })
 
 
 def play(params):

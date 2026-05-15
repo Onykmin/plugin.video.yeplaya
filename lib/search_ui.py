@@ -17,6 +17,7 @@ from lib.search import calculate_search_relevance
 from lib.logging import log_debug
 from lib.playback import toqueue
 from lib.ui import NONE_WHAT, CATEGORIES, SORTS
+from lib.favorites_ui import add_favorite_context_entry
 
 _handle = get_handle()
 _addon = get_addon()
@@ -246,7 +247,6 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             listitem = xbmcgui.ListItem(label=label)
             listitem.setArt({'icon': 'DefaultTVShows.png'})
 
-            from lib.favorites_ui import add_favorite_context_entry
             listitem.addContextMenuItems([add_favorite_context_entry({
                 'type': 'series',
                 'canonical_key': series_name,
@@ -284,9 +284,9 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            mv_state_key = "mv:{0}".format(movie_key)
-            state_cmds = apply_playback_state(listitem, mv_state_key)
-            from lib.favorites_ui import add_favorite_context_entry
+            from lib.state import build_mv_state_key
+            state_key = build_mv_state_key(movie_key)
+            state_cmds = apply_playback_state(listitem, state_key)
             fav_entry = add_favorite_context_entry({
                 'type': 'movie',
                 'canonical_key': movie_key,
@@ -387,7 +387,6 @@ def search(params):
         listitem.setArt({'icon': 'DefaultHardDisk.png'})
         xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=NONE_WHAT,sort=SORTS[3]), listitem, True)
 
-        from lib.favorites_ui import add_favorite_context_entry
         for s in history:
             listitem = xbmcgui.ListItem(label=s)
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
@@ -400,10 +399,17 @@ def search(params):
 
 
 def newsearch(params):
-    """Handle new search: keyboard prompt, store term, navigate to results."""
+    """Handle new search: keyboard prompt, store term, navigate to results.
+
+    Kodi contract: parent listitem in search() is is_folder=False, so
+    Kodi invokes this via PlayMedia, expecting setResolvedUrl. Calling
+    endOfDirectory here is the wrong contract; calling setResolvedUrl
+    with succeeded=False signals "no playable item, do nothing" so the
+    subsequent Container.Update wins without a parent-path race.
+    """
     what = ask(None)
     if what is None or what == '':
-        xbmcplugin.endOfDirectory(_handle, succeeded=False)
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return
     storesearch(what)
     clear_cache()
@@ -411,5 +417,5 @@ def newsearch(params):
     sort = SORTS[_setting_int('ssort', 0)]
     limit = _setting_int('slimit', 25)
     url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
-    xbmcplugin.endOfDirectory(_handle, succeeded=False)
+    xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
     xbmc.executebuiltin("Container.Update({})".format(url))

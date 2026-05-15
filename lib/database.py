@@ -83,6 +83,7 @@ def db(params):
         link = getlink(BACKUP_DB,token)
         if link is None:
             popinfo(_addon.getLocalizedString(30309), icon=xbmcgui.NOTIFICATION_ERROR)
+            xbmcplugin.endOfDirectory(_handle, succeeded=False)
             return
         dbfile = os.path.join(_profile,'db.zip')
         try:
@@ -97,12 +98,14 @@ def db(params):
             popinfo(_addon.getLocalizedString(30310), icon=xbmcgui.NOTIFICATION_ERROR)
             if os.path.exists(dbfile):
                 os.unlink(dbfile)
+            xbmcplugin.endOfDirectory(_handle, succeeded=False)
             return
 
         # Safely extract with validation
         if not safe_extract_zip(dbfile, _profile):
             popinfo(_addon.getLocalizedString(30311), icon=xbmcgui.NOTIFICATION_ERROR)
             os.unlink(dbfile)
+            xbmcplugin.endOfDirectory(_handle, succeeded=False)
             return
         os.unlink(dbfile)
     

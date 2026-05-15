@@ -86,10 +86,46 @@ def _reset_for_tests(path=None):
         _cache = {}
 
 
-def state_key_for(file_dict):
-    """Derive a state key for a file dict.
+def _normalize_series_key(series):
+    """Strip dual-name prefix to stabilize series state keys across fetches.
 
-    Priority: episode → movie → file fallback.
+    Dual-name detection in grouping.py produces canonical_keys like
+    "mestecko|south park" or "pandemic special cz|south park" — the prefix
+    depends on which alias appears in the current Webshare response, so the
+    same series can produce different keys across searches. The user-visible
+    "main" name is the segment AFTER the last "|"; using that alone
+    stabilizes the key so resume/watched state survives re-grouping.
+    """
+    if not series or '|' not in series:
+        return series
+    return series.rsplit('|', 1)[-1]
+
+
+def _normalize_movie_key(canonical):
+    """Strip dual-name prefix in a movie canonical_key, preserve trailing year.
+
+    Movie keys are "{name}|{year}" or "{dual_canonical}|{year}" where the
+    dual_canonical itself contains "|". Splitting on the LAST "|" peels off
+    the year; we then strip the dual-name prefix from the name part and
+    re-join with the year.
+    """
+    if not canonical or '|' not in canonical:
+        return canonical
+    name_part, _, year = canonical.rpartition('|')
+    return "{0}|{1}".format(_normalize_series_key(name_part), year)
+
+
+def build_mv_state_key(canonical_key):
+    """Build a stable movie state key from a (possibly drift-prone) canonical_key."""
+    return "mv:{0}".format(_normalize_movie_key(canonical_key))
+
+
+def state_key_for(file_dict):
+    """Derive a stable state key for a file dict.
+
+    Priority: episode → movie → file fallback. series_name and canonical_key
+    are normalized to strip dual-name prefixes so the SAME content yields
+    the SAME state key across re-groupings (canonical_key drift).
     """
     series = file_dict.get('series_name')
     season = file_dict.get('season')
@@ -98,12 +134,13 @@ def state_key_for(file_dict):
         try:
             s = int(season)
             e = int(episode)
-            return "ep:{0}|S{1:02d}E{2:02d}".format(series, s, e)
+            return "ep:{0}|S{1:02d}E{2:02d}".format(
+                _normalize_series_key(series), s, e)
         except (ValueError, TypeError):
             pass
     canonical = file_dict.get('canonical_key')
     if canonical:
-        return "mv:{0}".format(canonical)
+        return "mv:{0}".format(_normalize_movie_key(canonical))
     ident = file_dict.get('ident')
     if ident:
         return "file:{0}".format(ident)

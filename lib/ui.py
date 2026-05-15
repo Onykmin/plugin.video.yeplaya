@@ -174,17 +174,17 @@ def menu():
     listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
     xbmcplugin.addDirectoryItem(_handle, get_url(action='search'), listitem, True)
 
-    listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30202))
-    listitem.setArt({'icon': 'DefaultPlaylist.png'})
-    xbmcplugin.addDirectoryItem(_handle, get_url(action='queue'), listitem, True)
+    listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30420))
+    listitem.setArt({'icon': 'DefaultFavourites.png'})
+    xbmcplugin.addDirectoryItem(_handle, get_url(action='favorites'), listitem, True)
 
     listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30203))
     listitem.setArt({'icon': 'DefaultAddonsUpdates.png'})
     xbmcplugin.addDirectoryItem(_handle, get_url(action='history'), listitem, True)
 
-    listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30420))
-    listitem.setArt({'icon': 'DefaultFavourites.png'})
-    xbmcplugin.addDirectoryItem(_handle, get_url(action='favorites'), listitem, True)
+    listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30202))
+    listitem.setArt({'icon': 'DefaultPlaylist.png'})
+    xbmcplugin.addDirectoryItem(_handle, get_url(action='queue'), listitem, True)
 
     if 'true' == _addon.getSetting('experimental'):
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30412))
@@ -202,23 +202,29 @@ def menu():
 # ============================================================================
 
 def goto_page(params):
-    """Navigate to a page by replacing current directory (no stack)."""
-    log_debug("=== GOTO_PAGE CALLED ===")
-    log_debug("goto_page params: {}".format(params))
+    """Folder redirect: navigate the current container to target_url.
 
+    Kodi contract: must end the directory with succeeded=True before
+    issuing Container.Update — succeeded=False makes CGUIMediaWindow
+    auto-navigate back to the parent path, which races against (and
+    beats) the Container.Update. updateListing=True flags this as a
+    listing replacement so Kodi does not push a fresh history frame.
+    The `replace` flag on Container.Update is INTENTIONALLY OMITTED:
+    it would call SetHistoryForPath/ClearPathHistory and wipe the
+    back-stack entirely (Back would return to root, not previous page).
+    """
     if 'target_url' in params:
         target_url = params['target_url']
-        log_debug("Using target_url from params: {}".format(target_url))
     else:
         target_params = {k: v for k, v in params.items() if k != 'action'}
         if 'target_action' in target_params:
             target_params['action'] = target_params.pop('target_action')
         target_url = get_url(**target_params)
-        log_debug("Built target_url from params: {}".format(target_url))
 
-    log_debug("Executing Container.Update({}, replace)".format(target_url))
-    xbmc.executebuiltin('Container.Update({},replace)'.format(target_url))
-    log_debug("=== GOTO_PAGE FINISHED ===")
+    log_debug("goto_page → {}".format(target_url))
+    xbmcplugin.endOfDirectory(_handle, succeeded=True,
+                              updateListing=True, cacheToDisc=False)
+    xbmc.executebuiltin('Container.Update({})'.format(target_url))
 
 # ============================================================================
 # Settings Monitor
