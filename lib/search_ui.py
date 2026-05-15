@@ -22,6 +22,17 @@ _handle = get_handle()
 _addon = get_addon()
 
 
+def _setting_int(key, default):
+    """Read int setting with fallback for empty/garbage values."""
+    try:
+        raw = _addon.getSetting(key)
+        if raw is None or raw == '':
+            return default
+        return int(raw)
+    except (ValueError, TypeError):
+        return default
+
+
 def dosearch(token, what, category, sort, limit, offset, action, params=None):
     response = api('search',{'what':'' if what == NONE_WHAT else what, 'category':category, 'sort':sort, 'limit': limit, 'offset': offset, 'wst':token, 'maybe_removed':'true'})
     if response is None:
@@ -338,11 +349,9 @@ def search(params):
         log_debug("what from params: {}".format(what))
 
     if what is not None:
-        _addon.setSetting('slast', what)
-
-        category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
-        sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
-        limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
+        category = params['category'] if 'category' in params else CATEGORIES[_setting_int('scategory', 0)]
+        sort = params['sort'] if 'sort' in params else SORTS[_setting_int('ssort', 0)]
+        limit = int(params['limit']) if 'limit' in params else _setting_int('slimit', 25)
         offset = int(params['offset']) if 'offset' in params else 0
         if offset == 0 and what != NONE_WHAT:
             storesearch(what)
@@ -350,7 +359,6 @@ def search(params):
         dosearch(token, what, category, sort, limit, offset, 'search', params)
         return
     else:
-        _addon.setSetting('slast', '')
         history = loadsearch()
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30205))
         listitem.setArt({'icon': 'DefaultAddSource.png'})
@@ -381,11 +389,10 @@ def newsearch(params):
         xbmcplugin.endOfDirectory(_handle, succeeded=False)
         return
     storesearch(what)
-    _addon.setSetting('slast', what)
     clear_cache()
-    category = CATEGORIES[int(_addon.getSetting('scategory'))]
-    sort = SORTS[int(_addon.getSetting('ssort'))]
-    limit = int(_addon.getSetting('slimit'))
+    category = CATEGORIES[_setting_int('scategory', 0)]
+    sort = SORTS[_setting_int('ssort', 0)]
+    limit = _setting_int('slimit', 25)
     url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
     xbmcplugin.endOfDirectory(_handle, succeeded=False)
     xbmc.executebuiltin("Container.Update({})".format(url))

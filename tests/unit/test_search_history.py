@@ -324,7 +324,7 @@ class TestSearchUIWritesHistory(SearchHistoryTestBase):
         self._search_ui = search_ui
         self._NONE_WHAT = NONE_WHAT
 
-        # Bind search_ui's cached _addon to our fake so slast writes don't error.
+        # Bind search_ui's cached _addon to our fake addon for search() to consume.
         # Populate numeric settings consumed by search() (scategory/ssort/slimit).
         cache._addon.setSetting('scategory', '0')
         cache._addon.setSetting('ssort', '0')

@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unit tests for navigation and state management bugs.
+Unit tests for navigation and state management.
 
 Tests:
-- Back navigation state (slast) stability during pagination
 - Page bounds validation
 """
 
@@ -16,57 +15,6 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 # Mocks provided by conftest.py
-
-
-class TestBackNavigation(unittest.TestCase):
-    """Test back navigation state management."""
-
-    def setUp(self):
-        """Reset settings before each test."""
-        self._settings = {'slast': '', 'scategory': '0', 'ssort': '0', 'slimit': '25'}
-
-    def _getSetting(self, key):
-        return self._settings.get(key, '')
-
-    def _setSetting(self, key, value):
-        self._settings[key] = value
-
-    def test_slast_stable_during_pagination(self):
-        """slast should not change to NONE_WHAT on pagination."""
-        # Simulate first page of search
-        what = 'southpark'
-        self._setSetting('slast', what)
-
-        # Simulate pagination (offset present) - old buggy behavior would set NONE_WHAT
-        # Fixed behavior: slast stays as 'what'
-        if what is not None:
-            self._setSetting('slast', what)
-
-        self.assertEqual(self._getSetting('slast'), 'southpark',
-                        "slast should remain 'southpark' during pagination")
-
-    def test_slast_cleared_on_menu_return(self):
-        """slast should be cleared when returning to search menu."""
-        self._setSetting('slast', 'previous_search')
-
-        # Simulate returning to menu (what is None)
-        what = None
-        if what is None:
-            self._setSetting('slast', '')
-
-        self.assertEqual(self._getSetting('slast'), '',
-                        "slast should be empty on menu return")
-
-    def test_slast_set_on_new_search(self):
-        """slast should be set when starting new search."""
-        self._setSetting('slast', '')
-
-        # Simulate new search
-        what = 'game.of.thrones'
-        self._setSetting('slast', what)
-
-        self.assertEqual(self._getSetting('slast'), 'game.of.thrones',
-                        "slast should be set to search term")
 
 
 class TestPageBounds(unittest.TestCase):
