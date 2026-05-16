@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.7" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.9" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,14 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.0.9[/B]
+- fix: dual-name series state keyed by canonical name (cross-quality ✓ now works)
+- fix: search-result single-version play preserves resume/watched state
+- fix: movie state tracked in flat search list
+- fix: end-of-playback "watched" survives player-detach race
+- fix: per-concern tracking toggles (resume vs watched) honoured independently
+[B]1.0.8[/B]
+- add resume points + watched-state tracking (per-episode/per-movie)
 [B]1.0.7[/B]
 - fix search history stops persisting after ~20 entries
 - atomic write with unique tmp file to prevent concurrent-writer corruption
