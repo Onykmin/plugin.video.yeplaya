@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.9" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.1.0" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,13 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.1.0[/B]
+- add favorites: save searches, series, movies (top-level menu + context add/remove)
+- fix: drift-aware favorite toggle survives canonical_key drift
+- fix: state key normalization (dual-name prefix stripped)
+- fix: cache locking + read-under-lock + key fragmentation
+- fix: kodi handler contracts (PlayMedia vs GetDirectory)
+- fix: hardened search history loading + atomic writes
 [B]1.0.9[/B]
 - fix: dual-name series state keyed by canonical name (cross-quality ✓ now works)
 - fix: search-result single-version play preserves resume/watched state
