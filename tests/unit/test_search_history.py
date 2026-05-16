@@ -40,6 +40,9 @@ class _FakeAddon(object):
     def getAddonInfo(self, key):
         return 'TestAddon'
 
+    def getLocalizedString(self, sid):
+        return 'String_{}'.format(sid)
+
 
 class SearchHistoryTestBase(unittest.TestCase):
     """Per-test tmp profile + addon stub, restored in tearDown."""
@@ -193,6 +196,28 @@ class TestCorruptedJSON(SearchHistoryTestBase):
             f.write('')
         self.assertEqual(loadsearch(), [])
 
+    def test_null_json_returns_empty(self):
+        with io.open(self._history_path(), 'w', encoding='utf8') as f:
+            f.write('null')
+        self.assertEqual(loadsearch(), [])
+
+    def test_object_json_returns_empty(self):
+        with io.open(self._history_path(), 'w', encoding='utf8') as f:
+            f.write('{"a": 1}')
+        self.assertEqual(loadsearch(), [])
+
+    def test_scalar_json_returns_empty(self):
+        for content in ['123', 'true', '"hello"']:
+            with io.open(self._history_path(), 'w', encoding='utf8') as f:
+                f.write(content)
+            self.assertEqual(loadsearch(), [], 'failed for: {}'.format(content))
+
+    def test_non_list_overwritten_on_next_store(self):
+        with io.open(self._history_path(), 'w', encoding='utf8') as f:
+            f.write('null')
+        storesearch('first')
+        self.assertEqual(loadsearch(), ['first'])
+
 
 class TestReproducerScenario(SearchHistoryTestBase):
     """50 consecutive stores — user's bug scenario."""
@@ -281,6 +306,67 @@ class TestConcurrentSave(SearchHistoryTestBase):
 
         leftovers = [f for f in os.listdir(self._tmpdir) if f.endswith('.tmp')]
         self.assertEqual(leftovers, [])
+
+
+class TestSearchUIWritesHistory(SearchHistoryTestBase):
+    """Regression: search() with what= must write/bump history.
+
+    Covers b0178fe regression — storesearch was dropped from the
+    history-item-click / deep-link / pseudo-entry path.
+    """
+
+    def setUp(self):
+        super(TestSearchUIWritesHistory, self).setUp()
+        # Stub heavy deps so search_ui.search() runs without hitting Kodi/network.
+        # search_ui caches _addon/_handle at import — patch via the module.
+        import lib.search_ui as search_ui
+        from lib.ui import NONE_WHAT
+        self._search_ui = search_ui
+        self._NONE_WHAT = NONE_WHAT
+
+        # Bind search_ui's cached _addon to our fake addon for search() to consume.
+        # Populate numeric settings consumed by search() (scategory/ssort/slimit).
+        cache._addon.setSetting('scategory', '0')
+        cache._addon.setSetting('ssort', '0')
+        cache._addon.setSetting('slimit', '50')
+        self._saved_ui_addon = search_ui._addon
+        search_ui._addon = cache._addon
+
+        # Neutralize side-effecty calls inside search().
+        self._saved_revalidate = search_ui.revalidate
+        self._saved_dosearch = search_ui.dosearch
+        search_ui.revalidate = lambda: 'fake-token'
+        self._dosearch_calls = []
+        def _fake_dosearch(token, what, category, sort, limit, offset, action, params=None):
+            self._dosearch_calls.append((what, offset))
+        search_ui.dosearch = _fake_dosearch
+
+    def tearDown(self):
+        self._search_ui._addon = self._saved_ui_addon
+        self._search_ui.revalidate = self._saved_revalidate
+        self._search_ui.dosearch = self._saved_dosearch
+        super(TestSearchUIWritesHistory, self).tearDown()
+
+    def test_search_with_what_appends_history(self):
+        self._search_ui.search({'action': 'search', 'what': 'foo'})
+        self.assertEqual(loadsearch(), ['foo'])
+
+    def test_reclick_existing_term_moves_to_front(self):
+        storesearch('a')
+        storesearch('b')
+        storesearch('c')
+        # history is now ['c', 'b', 'a']
+        self._search_ui.search({'action': 'search', 'what': 'a'})
+        self.assertEqual(loadsearch(), ['a', 'c', 'b'])
+
+    def test_none_what_not_stored(self):
+        self._search_ui.search({'action': 'search', 'what': self._NONE_WHAT})
+        self.assertNotIn(self._NONE_WHAT, loadsearch())
+        self.assertEqual(loadsearch(), [])
+
+    def test_offset_gt_zero_not_stored(self):
+        self._search_ui.search({'action': 'search', 'what': 'foo', 'offset': '25'})
+        self.assertEqual(loadsearch(), [])
 
 
 if __name__ == '__main__':

@@ -330,8 +330,8 @@ msgid "No versions found"
 msgstr "Nenalezeny žádné verze"
 
 msgctxt "#30409"
-msgid "Movie not found in cache"
-msgstr "Film nenalezen v mezipaměti"
+msgid "Movie not found"
+msgstr "Film nenalezen"
 
 msgctxt "#30410"
 msgid "MOVIES"
@@ -421,3 +421,31 @@ msgstr "Zapamatovat body pokračování"
 msgctxt "#30292"
 msgid "Track watched status"
 msgstr "Zapamatovat zhlédnuté"
+
+msgctxt "#30420"
+msgid "Favorites"
+msgstr "Oblíbené"
+
+msgctxt "#30421"
+msgid "Add to Ye-Playa list"
+msgstr "Přidat do seznamu Ye-Playa"
+
+msgctxt "#30422"
+msgid "Remove from Ye-Playa list"
+msgstr "Odebrat ze seznamu Ye-Playa"
+
+msgctxt "#30426"
+msgid "[Search]"
+msgstr "[Hledat]"
+
+msgctxt "#30427"
+msgid "[Series]"
+msgstr "[Seriál]"
+
+msgctxt "#30428"
+msgid "[Movie]"
+msgstr "[Film]"
+
+msgctxt "#30431"
+msgid "Series not found"
+msgstr "Seriál nenalezen"

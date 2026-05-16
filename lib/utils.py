@@ -9,6 +9,8 @@ import xbmcgui
 import xbmcaddon
 import xbmcplugin
 
+from lib.logging import log_debug
+
 try:
     from urllib.parse import urlencode
 except ImportError:
@@ -179,8 +181,8 @@ def set_webshare_id(listitem, ident):
             # Kodi < 20: use deprecated method
             try:
                 listitem.setUniqueIDs({'webshare': ident}, 'webshare')
-            except Exception:
-                pass
+            except Exception as e:
+                log_debug("set_webshare_id: setUniqueIDs failed ({}): {}".format(type(e).__name__, e))
 
 
 def apply_playback_state(listitem, state_key):
@@ -194,7 +196,9 @@ def apply_playback_state(listitem, state_key):
     try:
         from lib import state as _state
         st = _state.get_state(state_key)
-    except Exception:
+    except Exception as e:
+        log_debug("apply_playback_state: get_state failed for {} ({}): {}".format(
+            state_key, type(e).__name__, e))
         st = None
     info = {}
     if st and st.get('watched'):
@@ -236,7 +240,8 @@ def tolistitem(file, addcommands=[]):
     try:
         from lib.state import state_key_for
         state_key = state_key_for(file)
-    except Exception:
+    except Exception as e:
+        log_debug("tolistitem: state_key_for failed ({}): {}".format(type(e).__name__, e))
         state_key = None
     state_cmds = apply_playback_state(listitem, state_key)
 
