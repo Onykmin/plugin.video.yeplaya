@@ -11,6 +11,7 @@ from lib.search_ui import search, newsearch
 from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version
 from lib.playback import play, download, queue
 from lib.database import db
+from lib.favorites_ui import favorites, add_favorite_action, remove_favorite_action
 
 try:
     from urllib.parse import parse_qsl
@@ -66,6 +67,12 @@ def router(paramstring):
             _state_action(params, 'mark_unwatched')
         elif params['action'] == 'clear_resume':
             _state_action(params, 'clear_resume')
+        elif params['action'] == 'favorites':
+            favorites(params)
+        elif params['action'] == 'add_favorite':
+            add_favorite_action(params)
+        elif params['action'] == 'remove_favorite':
+            remove_favorite_action(params)
         else:
             menu()
     else:

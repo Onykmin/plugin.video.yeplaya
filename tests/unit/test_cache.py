@@ -240,5 +240,63 @@ class TestCacheIntegration(unittest.TestCase):
         self.assertIn('Southpark', result['series'])
 
 
+class TestCacheKeyNormalization(unittest.TestCase):
+    """build_cache_key normalizes NONE_WHAT/None and casing."""
+
+    def test_build_cache_key_normalizes_none_what(self):
+        """NONE_WHAT sentinel should collapse to '' so Newest queries share a key."""
+        from lib.cache import _NONE_WHAT
+        key = build_cache_key(_NONE_WHAT, 'video', 'recent')
+        self.assertEqual(key, '_video_recent')
+
+    def test_build_cache_key_normalizes_none(self):
+        """None should collapse to '' (no fragment)."""
+        key = build_cache_key(None, 'video', 'recent')
+        self.assertEqual(key, '_video_recent')
+
+    def test_build_cache_key_lowercases(self):
+        """Mixed-case queries should share one cache entry."""
+        a = build_cache_key('SouthPark', 'video', '')
+        b = build_cache_key('southpark', 'video', '')
+        self.assertEqual(a, b)
+
+    def test_build_cache_key_strips_whitespace(self):
+        """Whitespace around query should not fragment cache."""
+        a = build_cache_key('  southpark  ', 'video', '')
+        b = build_cache_key('southpark', 'video', '')
+        self.assertEqual(a, b)
+
+
+class TestFlockNoop(unittest.TestCase):
+    """_flock / _funlock must never raise."""
+
+    def test_flock_noop_on_no_locking_backend(self):
+        """If neither fcntl nor msvcrt available, lock helpers must no-op."""
+        import lib.cache as cache_mod
+        saved_fcntl = cache_mod._HAS_FCNTL
+        saved_msvcrt = cache_mod._HAS_MSVCRT
+        try:
+            cache_mod._HAS_FCNTL = False
+            cache_mod._HAS_MSVCRT = False
+            # Pass garbage 'file' object; should still not raise.
+            cache_mod._flock(object(), exclusive=True)
+            cache_mod._funlock(object())
+        finally:
+            cache_mod._HAS_FCNTL = saved_fcntl
+            cache_mod._HAS_MSVCRT = saved_msvcrt
+
+    def test_flock_swallows_oserror(self):
+        """OSError from underlying locking call must not propagate."""
+        import lib.cache as cache_mod
+
+        class BadFile:
+            def fileno(self):
+                raise OSError("bad fd")
+
+        # Should not raise regardless of which backend is enabled.
+        cache_mod._flock(BadFile(), exclusive=True)
+        cache_mod._funlock(BadFile())
+
+
 if __name__ == '__main__':
     unittest.main()

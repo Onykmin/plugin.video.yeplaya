@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.6" provider-name="onykmin">
+<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.0.7" provider-name="onykmin">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.18.4"/>
@@ -20,6 +20,11 @@
             <icon>resources/icon.png</icon>
         </assets>
         <news>
+[B]1.0.7[/B]
+- fix search history stops persisting after ~20 entries
+- atomic write with unique tmp file to prevent concurrent-writer corruption
+- guard malformed shistory setting with 20-item fallback
+- strip [FLE]/[YIFY]/etc bracket release tags from movie canonical keys
 [B]1.0.6[/B]
 - fix grouping bugs: dedup, orphan merge, cross-year, genre words, ep marker
 - refactor UI into search_ui and series_ui modules

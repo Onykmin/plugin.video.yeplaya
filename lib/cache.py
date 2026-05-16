@@ -19,12 +19,27 @@ except ImportError:
     _HAS_FCNTL = False
 
 try:
+    import msvcrt
+    _HAS_MSVCRT = True
+except ImportError:
+    _HAS_MSVCRT = False
+
+try:
     from xbmcvfs import translatePath
 except ImportError:
     from xbmc import translatePath
 
 _addon = xbmcaddon.Addon()
 _profile = translatePath(_addon.getAddonInfo('profile'))
+
+# NONE_WHAT sentinel from lib.ui — duplicated here to avoid circular import.
+_NONE_WHAT = '%#NONE#%'
+
+
+def refresh_cache_addon():
+    """Re-bind module-level _addon. Call from SettingsMonitor on settings change."""
+    global _addon
+    _addon = xbmcaddon.Addon()
 
 SEARCH_HISTORY = 'search_history'
 
@@ -109,7 +124,16 @@ def clear_cache():
 
 
 def build_cache_key(what, category='', sort_val=''):
-    """Build consistent cache key from search parameters."""
+    """Build consistent cache key from search parameters.
+
+    NONE_WHAT (the Newest/Biggest browse sentinel) and None collapse to ''
+    so all such requests share one cache entry. Lowercase + strip on `what`
+    prevents fragmentation across casing differences.
+    """
+    if what is None or what == _NONE_WHAT:
+        what = ''
+    else:
+        what = str(what).lower().strip()
     return '{0}_{1}_{2}'.format(what, category, sort_val)
 
 
@@ -137,16 +161,32 @@ def get_or_fetch_grouped(params, token, check_key=None, check_type='series'):
     return cache_key, grouped
 
 
+# Windows msvcrt.locking takes a byte count, not a range. Use max int32
+# to cover the whole file rather than the original 1-byte lock, which
+# left concurrent writers free to corrupt search history / favorites.
+_MSVCRT_LOCK_LEN = 0x7FFFFFFF
+
+
 def _flock(f, exclusive=False):
-    """Acquire file lock if available (Unix). No-op on Windows/Android."""
-    if _HAS_FCNTL:
-        fcntl.flock(f, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+    """Acquire file lock if available. Best-effort; never crashes the addon."""
+    try:
+        if _HAS_FCNTL:
+            fcntl.flock(f, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        elif _HAS_MSVCRT:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, _MSVCRT_LOCK_LEN)
+    except (OSError, IOError, ValueError):
+        pass
 
 
 def _funlock(f):
-    """Release file lock if available."""
-    if _HAS_FCNTL:
-        fcntl.flock(f, fcntl.LOCK_UN)
+    """Release file lock if available. Best-effort."""
+    try:
+        if _HAS_FCNTL:
+            fcntl.flock(f, fcntl.LOCK_UN)
+        elif _HAS_MSVCRT:
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, _MSVCRT_LOCK_LEN)
+    except (OSError, IOError, ValueError):
+        pass
 
 
 def loadsearch():
@@ -166,6 +206,9 @@ def loadsearch():
             finally:
                 _funlock(f)
         history = json.loads(raw) if raw else []
+        if not isinstance(history, list):
+            log_warning("loadsearch: non-list JSON on disk ({}), resetting".format(type(history).__name__))
+            history = []
         log_debug("loadsearch: {} items, file={} bytes".format(len(history), len(raw)))
     except (IOError, OSError) as e:
         log_warning("loadsearch: IO error ({}): {}".format(path, e))

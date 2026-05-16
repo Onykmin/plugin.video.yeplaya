@@ -26,17 +26,11 @@ class TestSettingsXML:
             "group_movies should not have enable dependency"
         assert group_movies.get('default') == 'true'
 
-    def test_slast_default_empty(self, settings_xml):
-        """slast default should be empty string."""
-        slast = None
+    def test_slast_removed(self, settings_xml):
+        """slast setting must not be present (removed in audit-favorites)."""
         for setting in settings_xml.iter('setting'):
-            if setting.get('id') == 'slast':
-                slast = setting
-                break
-
-        assert slast is not None
-        assert slast.get('default') == '', \
-            "slast default should be empty string, not sentinel"
+            assert setting.get('id') != 'slast', \
+                "slast setting should be removed from settings.xml"
 
     def test_duuid_hidden(self, settings_xml):
         """duuid should be hidden (visible=false)."""
@@ -85,3 +79,24 @@ class TestSettingsReading:
         mock_addon.setSetting('key', 'value1')
         mock_addon.setSetting('key', 'value2')
         assert mock_addon.getSetting('key') == 'value2'
+
+
+class TestSettingsMonitor:
+    """Settings change must propagate to cache module addon."""
+
+    def test_settings_monitor_refreshes_cache_addon(self):
+        """SettingsMonitor.onSettingsChanged must call refresh_cache_addon."""
+        import lib.ui as ui_mod
+        import lib.cache as cache_mod
+
+        called = []
+        saved = cache_mod.refresh_cache_addon
+        try:
+            cache_mod.refresh_cache_addon = lambda: called.append('refresh')
+            ui_mod.refresh_cache_addon = cache_mod.refresh_cache_addon
+            monitor = ui_mod.SettingsMonitor()
+            monitor.onSettingsChanged()
+            assert 'refresh' in called, "refresh_cache_addon was not invoked"
+        finally:
+            cache_mod.refresh_cache_addon = saved
+            ui_mod.refresh_cache_addon = saved

@@ -17,9 +17,21 @@ from lib.search import calculate_search_relevance
 from lib.logging import log_debug
 from lib.playback import toqueue
 from lib.ui import NONE_WHAT, CATEGORIES, SORTS
+from lib.favorites_ui import add_favorite_context_entry
 
 _handle = get_handle()
 _addon = get_addon()
+
+
+def _setting_int(key, default):
+    """Read int setting with fallback for empty/garbage values."""
+    try:
+        raw = _addon.getSetting(key)
+        if raw is None or raw == '':
+            return default
+        return int(raw)
+    except (ValueError, TypeError):
+        return default
 
 
 def dosearch(token, what, category, sort, limit, offset, action, params=None):
@@ -235,6 +247,13 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             listitem = xbmcgui.ListItem(label=label)
             listitem.setArt({'icon': 'DefaultTVShows.png'})
 
+            listitem.addContextMenuItems([add_favorite_context_entry({
+                'type': 'series',
+                'canonical_key': series_name,
+                'display_name': display_name,
+                'search_query': what,
+            })])
+
             url_params = {'action': 'browse_series'}
             if series_name:
                 url_params['series'] = series_name
@@ -265,10 +284,17 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            mv_state_key = "mv:{0}".format(movie_key)
-            state_cmds = apply_playback_state(listitem, mv_state_key)
-            if state_cmds:
-                listitem.addContextMenuItems(state_cmds)
+            from lib.state import build_mv_state_key
+            state_key = build_mv_state_key(movie_key)
+            state_cmds = apply_playback_state(listitem, state_key)
+            fav_entry = add_favorite_context_entry({
+                'type': 'movie',
+                'canonical_key': movie_key,
+                'display_name': display_name,
+                'search_query': what,
+                'year': year,
+            })
+            listitem.addContextMenuItems((state_cmds or []) + [fav_entry])
 
             if len(versions) == 1:
                 listitem.setProperty('IsPlayable', 'true')
@@ -337,44 +363,17 @@ def search(params):
         what = params['what']
         log_debug("what from params: {}".format(what))
 
-    if 'ask' in params:
-        slast = _addon.getSetting('slast')
-        log_debug("ask=1, slast='{}', what={}".format(slast, what))
-        if what is None and slast == '':
-            log_debug("Showing search dialog")
-            xbmcplugin.endOfDirectory(_handle)
-            what = ask(what)
-            log_debug("Dialog result: {}".format(what))
-            if what is not None:
-                storesearch(what)
-                _addon.setSetting('slast', what)
-                clear_cache()
-                log_debug("Stored search, set slast='{}', cleared cache".format(what))
-                category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
-                sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
-                limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
-                offset = int(params['offset']) if 'offset' in params else 0
-                url = get_url(action='search',what=what,category=category,sort=sort,limit=limit,offset=offset)
-                xbmc.executebuiltin("Container.Update({})".format(url))
-                return
-            else:
-                log_debug("Search cancelled, clearing slast")
-                _addon.setSetting('slast', '')
-                updateListing=True
-        else:
-            log_debug("Skipping dialog, slast='{}' indicates previous interaction".format(slast))
-
     if what is not None:
-        _addon.setSetting('slast', what)
-
-        category = params['category'] if 'category' in params else CATEGORIES[int(_addon.getSetting('scategory'))]
-        sort = params['sort'] if 'sort' in params else SORTS[int(_addon.getSetting('ssort'))]
-        limit = int(params['limit']) if 'limit' in params else int(_addon.getSetting('slimit'))
+        category = params['category'] if 'category' in params else CATEGORIES[_setting_int('scategory', 0)]
+        sort = params['sort'] if 'sort' in params else SORTS[_setting_int('ssort', 0)]
+        limit = int(params['limit']) if 'limit' in params else _setting_int('slimit', 25)
         offset = int(params['offset']) if 'offset' in params else 0
+        if offset == 0 and what != NONE_WHAT:
+            storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)
+        return
     else:
-        _addon.setSetting('slast', '')
         history = loadsearch()
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30205))
         listitem.setArt({'icon': 'DefaultAddSource.png'})
@@ -393,20 +392,30 @@ def search(params):
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
             commands = []
             commands.append(( _addon.getLocalizedString(30213), 'Container.Update(' + get_url(action='search',remove=s) + ')'))
+            commands.append(add_favorite_context_entry({'type': 'search', 'query': s}))
             listitem.addContextMenuItems(commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=s), listitem, True)
-    xbmcplugin.endOfDirectory(_handle, updateListing=updateListing)
+        xbmcplugin.endOfDirectory(_handle, updateListing=updateListing, cacheToDisc=False)
 
 
 def newsearch(params):
-    """Handle new search - show keyboard and navigate to results without creating history entry."""
+    """Handle new search: keyboard prompt, store term, navigate to results.
+
+    Kodi contract: parent listitem in search() is is_folder=False, so
+    Kodi invokes this via PlayMedia, expecting setResolvedUrl. Calling
+    endOfDirectory here is the wrong contract; calling setResolvedUrl
+    with succeeded=False signals "no playable item, do nothing" so the
+    subsequent Container.Update wins without a parent-path race.
+    """
     what = ask(None)
-    if what is not None:
-        storesearch(what)
-        _addon.setSetting('slast', what)
-        clear_cache()
-        category = CATEGORIES[int(_addon.getSetting('scategory'))]
-        sort = SORTS[int(_addon.getSetting('ssort'))]
-        limit = int(_addon.getSetting('slimit'))
-        url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
-        xbmc.executebuiltin("Container.Update({})".format(url))
+    if what is None or what == '':
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+        return
+    storesearch(what)
+    clear_cache()
+    category = CATEGORIES[_setting_int('scategory', 0)]
+    sort = SORTS[_setting_int('ssort', 0)]
+    limit = _setting_int('slimit', 25)
+    url = get_url(action='search', what=what, category=category, sort=sort, limit=limit, offset=0)
+    xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+    xbmc.executebuiltin("Container.Update({})".format(url))

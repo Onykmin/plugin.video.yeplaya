@@ -69,6 +69,47 @@ class TestStateKeyFor:
         assert harness.state.state_key_for({}) is None
 
 
+class TestStateKeyDriftNormalization:
+    """State keys must survive dual-name canonical_key drift.
+
+    Dual-name detection in grouping.py produces different canonical_keys
+    across fetches when different alias files are present. If state keys
+    drifted with them, resume/watched would split across multiple rows.
+    Normalization strips the dual-name prefix (everything before the last
+    "|" in a series key; preserves trailing |year for movies).
+    """
+
+    def test_episode_simple_key_unchanged(self, harness):
+        key = harness.state.state_key_for({
+            'series_name': 'south park', 'season': 1, 'episode': 5,
+        })
+        assert key == 'ep:south park|S01E05'
+
+    def test_episode_dual_name_prefix_stripped(self, harness):
+        """mestecko|south park drifts to pandemic special cz|south park;
+        both must yield the SAME normalized state key."""
+        k1 = harness.state.state_key_for({
+            'series_name': 'mestecko|south park', 'season': 1, 'episode': 5,
+        })
+        k2 = harness.state.state_key_for({
+            'series_name': 'pandemic special cz|south park', 'season': 1, 'episode': 5,
+        })
+        assert k1 == k2 == 'ep:south park|S01E05'
+
+    def test_movie_simple_key_unchanged(self, harness):
+        key = harness.state.state_key_for({'canonical_key': 'inception|2010'})
+        assert key == 'mv:inception|2010'
+
+    def test_movie_dual_name_prefix_stripped_preserves_year(self, harness):
+        k1 = harness.state.state_key_for({'canonical_key': 'tucnak|penguin|2022'})
+        k2 = harness.state.state_key_for({'canonical_key': 'penguin tucnak alias|penguin|2022'})
+        assert k1 == k2 == 'mv:penguin|2022'
+
+    def test_build_mv_state_key_helper(self, harness):
+        assert harness.state.build_mv_state_key('inception|2010') == 'mv:inception|2010'
+        assert harness.state.build_mv_state_key('tucnak|penguin|2022') == 'mv:penguin|2022'
+
+
 class TestMigration:
     def test_idempotent(self, harness):
         harness.state._connect()
@@ -154,6 +195,66 @@ class TestGetStates:
         assert harness.state.get_states([]) == {}
         assert harness.state.get_states([None, '']) == {}
 
+    def test_populates_cache_for_hits_and_misses(self, harness):
+        """get_states must prime _cache so a subsequent get_state hits memory
+        — both for stored rows (state dict) and unknown keys (None)."""
+        harness.state.record_playback('ep:a|S01E01', 500, 1000)
+        harness.state._cache.clear()
+        harness.state.get_states(['ep:a|S01E01', 'ep:missing|S01E01'])
+        assert 'ep:a|S01E01' in harness.state._cache
+        assert harness.state._cache['ep:a|S01E01']['resume_seconds'] == 500
+        assert 'ep:missing|S01E01' in harness.state._cache
+        assert harness.state._cache['ep:missing|S01E01'] is None
+
+
+class TestMarkWatchedAtomicity:
+    """mark_watched must perform read+upsert atomically under one lock so a
+    concurrent record_playback cannot insert a new total between the SELECT
+    and the upsert (TOCTOU race)."""
+
+    def test_read_and_write_share_single_lock_acquisition(self, harness):
+        state = harness.state
+        # Seed a known total so SELECT path is exercised.
+        state.record_playback('ep:atom|S01E01', 500, 1000)
+        state._cache.clear()
+
+        events = []
+        real_lock = state._db_lock
+
+        class TrackingLock:
+            def __enter__(self_inner):
+                events.append('acquire')
+                real_lock.acquire()
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                real_lock.release()
+                events.append('release')
+
+            def acquire(self_inner, *a, **kw):
+                events.append('acquire')
+                return real_lock.acquire(*a, **kw)
+
+            def release(self_inner):
+                real_lock.release()
+                events.append('release')
+
+        state._db_lock = TrackingLock()
+        try:
+            state.mark_watched('ep:atom|S01E01')
+        finally:
+            state._db_lock = real_lock
+
+        # Single contiguous critical section: acquire then release, no
+        # interleaving release/acquire pair between SELECT and upsert.
+        assert events == ['acquire', 'release'], (
+            "mark_watched must hold the lock across SELECT+upsert, "
+            "got events={}".format(events))
+        # And the watched flag actually landed.
+        st = state.get_state('ep:atom|S01E01')
+        assert st['watched'] == 1
+        assert st['total_seconds'] == 1000
+
 
 class TestThreadSafety:
     def test_concurrent_upserts(self, harness):
@@ -186,3 +287,46 @@ class TestCacheInvalidation:
         second = harness.state.get_state('ep:x|S01E01')
         assert second['watched'] == 1
         assert second['resume_seconds'] == 0
+
+
+class TestGetStateLockOrder:
+    def test_cache_read_under_lock(self, harness):
+        """get_state must read _cache only while holding _db_lock.
+
+        Detect by replacing _db_lock with a wrapper that records acquisition,
+        then asserting that the cache hit was returned only after acquire().
+        """
+        import threading as _th
+        state = harness.state
+
+        # Prime cache with a known entry.
+        state.record_playback('ep:lock|S01E01', 100, 1000)
+        _ = state.get_state('ep:lock|S01E01')  # populates _cache
+
+        events = []
+        real_lock = state._db_lock
+
+        class TrackingLock:
+            def __enter__(self):
+                events.append('acquire')
+                real_lock.acquire()
+                return self
+            def __exit__(self, *exc):
+                real_lock.release()
+                events.append('release')
+            def acquire(self, *a, **kw):
+                events.append('acquire')
+                return real_lock.acquire(*a, **kw)
+            def release(self):
+                real_lock.release()
+                events.append('release')
+
+        state._db_lock = TrackingLock()
+        try:
+            result = state.get_state('ep:lock|S01E01')
+            assert result is not None
+            # Lock must have been acquired before returning the cached value.
+            assert events and events[0] == 'acquire', \
+                "expected lock acquired before cache read, got events={}".format(events)
+        finally:
+            state._db_lock = real_lock

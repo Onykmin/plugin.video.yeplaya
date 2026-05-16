@@ -10,7 +10,7 @@ import xbmcplugin
 
 from lib.api import revalidate
 from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
-from lib.state import state_key_for
+from lib.state import state_key_for, build_mv_state_key
 from lib.parsing import parse_quality_metadata
 from lib.cache import get_or_fetch_grouped
 from lib.grouping import deduplicate_versions
@@ -36,24 +36,42 @@ def browse_series(params):
     token = revalidate()
     cache_key, grouped = get_or_fetch_grouped(params, token, check_key=series_name, check_type='series')
 
-    if grouped and series_name in grouped.get('series', {}):
-        series_data = grouped['series'][series_name]
+    # Dual-name detection can produce a different canonical_key from one
+    # fetch to the next (e.g. "mestecko|south park" vs
+    # "pandemic special cz|south park"). When a favorite's stored key is
+    # not in the current grouping, fall back to a display_name substring
+    # match within the same bucket.
+    if grouped and series_name not in grouped.get('series', {}):
+        target = (params.get('fav_display_name') or '').lower()
+        if target:
+            for k, v in grouped.get('series', {}).items():
+                display = (v.get('display_name') or '').lower()
+                if display and (target in display or display in target):
+                    series_name = k
+                    break
 
-        for season_num in sorted(series_data['seasons'].keys()):
-            episodes = series_data['seasons'][season_num]
-            episode_count = len(episodes)
-            episode_word = _addon.getLocalizedString(30416 if episode_count == 1 else 30417)
-            label = _addon.getLocalizedString(30403).format(
-                season_num, episode_count, episode_word)
+    if not grouped or series_name not in grouped.get('series', {}):
+        popinfo(_addon.getLocalizedString(30431), icon=xbmcgui.NOTIFICATION_WARNING)
+        xbmcplugin.endOfDirectory(_handle)
+        return
 
-            listitem = xbmcgui.ListItem(label=label)
-            listitem.setArt({'icon': 'DefaultTVShows.png'})
+    series_data = grouped['series'][series_name]
 
-            url = get_url(action='browse_season', series=series_name,
-                         season=season_num, what=params['what'],
-                         category=params.get('category'),
-                         sort=params.get('sort'))
-            xbmcplugin.addDirectoryItem(_handle, url, listitem, True)
+    for season_num in sorted(series_data['seasons'].keys()):
+        episodes = series_data['seasons'][season_num]
+        episode_count = len(episodes)
+        episode_word = _addon.getLocalizedString(30416 if episode_count == 1 else 30417)
+        label = _addon.getLocalizedString(30403).format(
+            season_num, episode_count, episode_word)
+
+        listitem = xbmcgui.ListItem(label=label)
+        listitem.setArt({'icon': 'DefaultTVShows.png'})
+
+        url = get_url(action='browse_season', series=series_name,
+                     season=season_num, what=params['what'],
+                     category=params.get('category'),
+                     sort=params.get('sort'))
+        xbmcplugin.addDirectoryItem(_handle, url, listitem, True)
 
     xbmcplugin.endOfDirectory(_handle)
 
@@ -183,6 +201,9 @@ def show_version_dialog(params):
 
     if not versions:
         xbmcgui.Dialog().ok(_addon.getLocalizedString(30407), _addon.getLocalizedString(30408))
+        # Non-folder/IsPlayable contract: must call setResolvedUrl(False)
+        # on every error path or Kodi shows "Couldn't play item" spinner.
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return
 
     versions = deduplicate_versions(versions)
@@ -239,8 +260,20 @@ def select_movie_version(params):
 
     cache_key, grouped = get_or_fetch_grouped(params, token, check_key=movie_key, check_type='movies')
 
+    # Drifted canonical_key fallback — see browse_series for context.
+    if grouped and movie_key not in grouped.get('movies', {}):
+        target = (params.get('fav_display_name') or '').lower()
+        if target:
+            for k, v in grouped.get('movies', {}).items():
+                display = (v.get('display_name') or '').lower()
+                if display and (target in display or display in target):
+                    movie_key = k
+                    break
+
     if not grouped or movie_key not in grouped.get('movies', {}):
         xbmcgui.Dialog().ok(_addon.getLocalizedString(30407), _addon.getLocalizedString(30409))
+        # Non-folder/IsPlayable contract: setResolvedUrl(False) on error.
+        xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return
 
     movie_data = grouped['movies'][movie_key]
@@ -274,8 +307,8 @@ def select_movie_version(params):
     if selected >= 0:
         selected_version = versions[selected]
         log_debug('Playing movie: {} [ident={}]'.format(selected_version['name'], selected_version['ident']))
-        mv_state_key = "mv:{0}".format(movie_key)
-        resolve_and_play(selected_version['ident'], selected_version['name'], token, state_key=mv_state_key)
+        state_key = build_mv_state_key(movie_key)
+        resolve_and_play(selected_version['ident'], selected_version['name'], token, state_key=state_key)
     else:
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
@@ -319,8 +352,8 @@ def browse_other(params):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            mv_state_key = "mv:{0}".format(canonical_key)
-            state_cmds = apply_playback_state(listitem, mv_state_key)
+            state_key = build_mv_state_key(canonical_key)
+            state_cmds = apply_playback_state(listitem, state_key)
             if state_cmds:
                 listitem.addContextMenuItems(state_cmds)
             if len(versions) == 1:
