@@ -224,8 +224,10 @@ def find_favorite_by_name(type_, display_name):
     so the context-menu toggle correctly shows Remove instead of Add and
     avoids creating a duplicate entry on click.
 
-    Substring match (case-insensitive) on display_name so minor casing /
-    suffix differences between the saved and current grouping resolve.
+    Match is case-insensitive exact equality. The drift this function exists
+    for is in canonical_key, not display_name — display_name is stable across
+    re-groupings. A looser substring match wrongly conflated sibling titles
+    like "Panic" and "Panic at the Disco" and removed the wrong favorite.
     """
     if type_ not in ('series', 'movie') or not display_name:
         return None
@@ -234,6 +236,6 @@ def find_favorite_by_name(type_, display_name):
         if it.get('type') != type_:
             continue
         existing = (it.get('display_name') or '').lower()
-        if existing and (target in existing or existing in target):
+        if existing and existing == target:
             return it
     return None

@@ -147,21 +147,26 @@ def state_key_for(file_dict):
     return None
 
 
+def _upsert_locked(key, watched, resume, total):
+    """UPSERT body; caller must hold _db_lock."""
+    conn = _connect()
+    conn.execute('''
+        INSERT INTO playback_state (state_key, watched, resume_seconds, total_seconds, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(state_key) DO UPDATE SET
+            watched=excluded.watched,
+            resume_seconds=excluded.resume_seconds,
+            total_seconds=excluded.total_seconds,
+            updated_at=excluded.updated_at
+    ''', (key, int(watched), int(resume), int(total), int(time.time())))
+    conn.commit()
+    _cache.pop(key, None)
+
+
 def _upsert(key, watched, resume, total):
     """Single UPSERT; invalidates cache entry."""
     with _db_lock:
-        conn = _connect()
-        conn.execute('''
-            INSERT INTO playback_state (state_key, watched, resume_seconds, total_seconds, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(state_key) DO UPDATE SET
-                watched=excluded.watched,
-                resume_seconds=excluded.resume_seconds,
-                total_seconds=excluded.total_seconds,
-                updated_at=excluded.updated_at
-        ''', (key, int(watched), int(resume), int(total), int(time.time())))
-        conn.commit()
-        _cache.pop(key, None)
+        _upsert_locked(key, watched, resume, total)
 
 
 def record_playback(key, pos, total):
@@ -196,7 +201,7 @@ def mark_watched(key):
         cur = conn.execute('SELECT total_seconds FROM playback_state WHERE state_key=?', (key,))
         row = cur.fetchone()
         total = row[0] if row else 0
-    _upsert(key, 1, 0, total)
+        _upsert_locked(key, 1, 0, total)
 
 
 def mark_unwatched(key):
@@ -213,9 +218,9 @@ def clear_resume(key):
         cur = conn.execute(
             'SELECT watched, total_seconds FROM playback_state WHERE state_key=?', (key,))
         row = cur.fetchone()
-    if row is None:
-        return
-    _upsert(key, row[0], 0, row[1])
+        if row is None:
+            return
+        _upsert_locked(key, row[0], 0, row[1])
 
 
 def get_state(key):
@@ -243,7 +248,10 @@ def get_state(key):
 
 
 def get_states(keys):
-    """Batch read; returns {key: state_dict} only for stored keys."""
+    """Batch read; returns {key: state_dict} only for stored keys.
+
+    Also primes _cache so subsequent get_state() calls hit memory.
+    """
     if not keys:
         return {}
     unique = list({k for k in keys if k})
@@ -257,11 +265,13 @@ def get_states(keys):
             'FROM playback_state WHERE state_key IN (%s)' % placeholders,
             unique)
         rows = cur.fetchall()
-    result = {}
-    for r in rows:
-        result[r[0]] = {
-            'watched': int(r[1]),
-            'resume_seconds': int(r[2]),
-            'total_seconds': int(r[3]),
-        }
+        result = {}
+        for r in rows:
+            result[r[0]] = {
+                'watched': int(r[1]),
+                'resume_seconds': int(r[2]),
+                'total_seconds': int(r[3]),
+            }
+        for k in unique:
+            _cache[k] = result.get(k)
     return result

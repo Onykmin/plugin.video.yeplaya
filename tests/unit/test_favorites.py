@@ -343,6 +343,30 @@ class TestFavoritedByName(FavoritesTestBase):
         # series favorite missing → no match even though display_name matches a movie.
         self.assertIsNone(self.find('series', 'South Park'))
 
+    def test_find_no_bidirectional_substring_collision(self):
+        """`Panic` must not match `Panic at the Disco` — bare substring
+        matching wrongly returned a sibling favorite, causing the toggle
+        to remove the wrong entry."""
+        add_favorite({'type': 'series',
+                      'canonical_key': 'panic at the disco||',
+                      'display_name': 'Panic at the Disco'})
+        self.assertIsNone(self.find('series', 'Panic'))
+
+    def test_find_no_collision_other_direction(self):
+        add_favorite({'type': 'series',
+                      'canonical_key': 'panic||',
+                      'display_name': 'Panic'})
+        # Live row is "Panic at the Disco" — must not match the stored "Panic".
+        self.assertIsNone(self.find('series', 'Panic at the Disco'))
+
+    def test_find_is_case_insensitive_exact_match(self):
+        """display_name match is case-insensitive but otherwise exact —
+        avoids the bidirectional-substring family of collisions."""
+        add_favorite({'type': 'series', 'canonical_key': 'south park||',
+                      'display_name': 'South Park'})
+        self.assertIsNotNone(self.find('series', 'south park'))
+        self.assertIsNotNone(self.find('series', 'SOUTH PARK'))
+
 
 class TestContextMenuDriftToggle(FavoritesTestBase):
     """Regression: add_favorite_context_entry must show Remove (not Add)

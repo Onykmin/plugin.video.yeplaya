@@ -161,13 +161,19 @@ def get_or_fetch_grouped(params, token, check_key=None, check_type='series'):
     return cache_key, grouped
 
 
+# Windows msvcrt.locking takes a byte count, not a range. Use max int32
+# to cover the whole file rather than the original 1-byte lock, which
+# left concurrent writers free to corrupt search history / favorites.
+_MSVCRT_LOCK_LEN = 0x7FFFFFFF
+
+
 def _flock(f, exclusive=False):
     """Acquire file lock if available. Best-effort; never crashes the addon."""
     try:
         if _HAS_FCNTL:
             fcntl.flock(f, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
         elif _HAS_MSVCRT:
-            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, _MSVCRT_LOCK_LEN)
     except (OSError, IOError, ValueError):
         pass
 
@@ -178,7 +184,7 @@ def _funlock(f):
         if _HAS_FCNTL:
             fcntl.flock(f, fcntl.LOCK_UN)
         elif _HAS_MSVCRT:
-            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, _MSVCRT_LOCK_LEN)
     except (OSError, IOError, ValueError):
         pass
 
