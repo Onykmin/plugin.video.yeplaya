@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Pytest configuration with Kodi module mocks."""
 import sys
+import pytest
 from unittest.mock import MagicMock, patch
 
 
@@ -124,6 +125,10 @@ def setup_kodi_mocks():
     xbmcvfs.translatePath = lambda x: x
     xbmcvfs.exists = MagicMock(return_value=True)
 
+    # Sentinel so the autouse guard can detect if an integration test has
+    # since replaced this module with its own bare mock.
+    xbmc._yeplaya_canonical_mock = True
+
     sys.modules['xbmc'] = xbmc
     sys.modules['xbmcaddon'] = xbmcaddon
     sys.modules['xbmcgui'] = xbmcgui
@@ -135,6 +140,54 @@ def setup_kodi_mocks():
 
 # Setup mocks before any imports
 _mock_addon = setup_kodi_mocks()
+
+# Snapshot the canonical Kodi mock module objects so the autouse guard can
+# restore the SAME objects (lib.* modules captured these at import time, so
+# restoring the identical objects keeps their references valid).
+_CANONICAL_KODI = {name: sys.modules[name] for name in
+                   ('xbmc', 'xbmcaddon', 'xbmcgui', 'xbmcplugin', 'xbmcvfs')}
+
+
+def _preimport_lib_modules():
+    """Import lib.* under the canonical mocks NOW, before any integration test
+    file (collected first, alphabetically) can swap in its bare mocks.
+
+    lib modules capture Kodi handles at import time (``import xbmc``,
+    ``_addon = get_addon()``). Caching them canonical-bound here means later
+    integration-time ``sys.modules['xbmc'] = MockXBMC`` cannot rebind them,
+    so unit tests always see canonical-bound lib modules — no per-test purge
+    needed (which would split module identity for tests that patch by path).
+    """
+    for name in ('lib.utils', 'lib.cache', 'lib.keys', 'lib.state',
+                 'lib.grouping', 'lib.playback', 'lib.favorites',
+                 'lib.favorites_ui', 'lib.search_ui', 'lib.series_ui',
+                 'lib.ui', 'lib.routing'):
+        try:
+            __import__(name)
+        except Exception:
+            pass  # best-effort; skip any module that can't import standalone
+
+
+_preimport_lib_modules()
+
+
+@pytest.fixture(autouse=True)
+def _restore_canonical_kodi_mocks():
+    """Guarantee every test sees the canonical Kodi mocks.
+
+    Integration tests install their own bare ``MockXBMC`` into ``sys.modules``
+    at import time and never restore it, which would leak into tests run in
+    the same session. Before each test, if the canonical xbmc mock has been
+    clobbered, restore the snapshot — the SAME objects the (pre-imported)
+    lib.* modules already reference, so no module reload is needed.
+    """
+    if sys.modules.get('xbmc') is not _CANONICAL_KODI['xbmc']:
+        sys.modules.update(_CANONICAL_KODI)
+        # Re-point Addon in place WITHOUT purging lib.* (purging would split
+        # module identity for tests that patch by dotted path).
+        _mock_addon._settings = {}
+        _CANONICAL_KODI['xbmcaddon'].Addon = MagicMock(return_value=_mock_addon)
+    yield
 
 
 def get_mock_addon():
