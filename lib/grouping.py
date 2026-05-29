@@ -5,7 +5,7 @@
 
 import xbmc
 import xbmcaddon
-from lib.logging import log_debug, log_error
+from lib.logging import log_debug, log_error, log_warning
 from lib.parsing import (parse_episode_info, parse_movie_info,
                          extract_language_tag, extract_dual_names, get_display_name,
                          get_s00e00_pattern, get_0x00_pattern, get_word_set_key)
@@ -30,10 +30,13 @@ except ImportError:
 _PATTERN_S00E00 = get_s00e00_pattern()
 _PATTERN_0x00 = get_0x00_pattern()
 
-# Pattern to detect S##E## markers for movie vs series disambiguation
-# Use [\b_] boundaries to also match underscore-separated markers like _S01E06_
+# Pattern to detect an episode marker (S##E## or ##x##) ANYWHERE for the
+# movie-vs-series gate. Permissive about surrounding chars — accepts ()/[]/:/
+# etc. wrappers — so a bracketed marker on a file that also carries a year
+# ("Westworld 2016 (S01E01)") is still routed to series parsing (#1).
 import re
-_PATTERN_EPISODE_MARKER = re.compile(r'(?:^|[_\s.\-,])[Ss]\d{1,2}[Ee]\d{1,3}(?:[_\s.\-,]|$)')
+_PATTERN_EPISODE_MARKER = re.compile(
+    r'(?<![A-Za-z0-9])(?:[Ss]\d{1,2}[Ee]\d{1,3}|\d{1,2}x\d{1,3})(?![A-Za-z0-9])')
 
 # Compiled patterns for display name cleaning (used in pick_best_display_name_from_list)
 _RE_FILE_EXT = re.compile(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', re.IGNORECASE)
@@ -53,6 +56,77 @@ _RE_MULTI_DASH = re.compile(r'-{2,}')
 
 _RE_YEAR_TOKEN = re.compile(r'^\d{4}$')
 _FILTER_STOP_WORDS = {'the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'is', 'it', 'by'}
+
+
+def _dual_canonical(name1, name2):
+    """Build (canonical_key, display_name) from a dual-name pair.
+
+    Uses csfd_scraper.create_canonical_from_dual_names when available, else
+    replicates its exact algorithm (clean both, substring→longer, otherwise
+    pipe-join sorted) so the canonical key is IDENTICAL regardless of whether
+    the optional csfd module is importable — a series must not split in two
+    just because csfd is absent (audit finding #18). Returns (None, None) when
+    the pair is not a usable dual name.
+    """
+    from lib.parsing import clean_series_name
+    if DUAL_NAMES_AVAILABLE:
+        try:
+            r = create_canonical_from_dual_names(name1, name2)
+            if r:
+                return r.get('canonical_key'), r.get('display_name')
+            return None, None
+        except Exception as e:
+            log_error(f'Dual names processing error: {e}')
+            # fall through to the deterministic fallback
+    c1 = clean_series_name(name1)
+    c2 = clean_series_name(name2)
+    if not c1 or not c2 or c1 == c2:
+        return None, None
+    if c1 in c2:
+        return c2, name2
+    if c2 in c1:
+        return c1, name1
+    return '|'.join(sorted([c1, c2])), '{} / {}'.format(name1, name2)
+
+
+def _safe_size(v):
+    """Parse a file dict's 'size' into an int, tolerating bad API data.
+
+    'size' comes verbatim from the Webshare XML via todict(); it may be a
+    non-numeric string, a list (duplicated <size> tags), None, or absent.
+    Returns 0 for anything unparseable so version sorts never crash the
+    whole grouping pass.
+    """
+    s = v.get('size') if isinstance(v, dict) else v
+    if isinstance(s, (list, tuple)):
+        s = s[0] if s else None
+    if s is None:
+        return 0
+    try:
+        return int(str(s).strip())
+    except (ValueError, TypeError):
+        return 0
+
+
+def _version_sort_key(v):
+    """Sort key for a version: quality_score DESC, then size DESC.
+
+    Higher quality first (the documented 'quality score ranks dupes'
+    contract), size as the tiebreaker. quality_score is derived from the
+    filename via parse_quality_metadata. Negated so a plain reverse=False
+    sort or reverse=True both behave; callers use reverse=True with size,
+    so we return a tuple already ordered for reverse=True.
+    """
+    from lib.parsing import parse_quality_metadata
+    name = v.get('name', '') if isinstance(v, dict) else ''
+    meta = v.get('quality_meta') if isinstance(v, dict) else None
+    score = meta.get('quality_score') if isinstance(meta, dict) else None
+    if score is None:
+        try:
+            score = parse_quality_metadata(name).get('quality_score', 50)
+        except Exception:
+            score = 50
+    return (score, _safe_size(v))
 
 # Module-level unidecode for _filter_irrelevant (avoid re-import per call)
 try:
@@ -87,15 +161,42 @@ def _filter_irrelevant(files, query):
         elif w.endswith('s') and len(w) > 3:
             stems.add(w[:-1])
 
+    def _acronyms(words):
+        # Join maximal runs of single-character tokens so a dotted acronym
+        # ("C.S.I." -> c,s,i) matches the query "csi" — without matching "her"
+        # inside "mother" (which is a single multi-char token, no letter run).
+        out, run = set(), []
+        for w in words:
+            if len(w) == 1:
+                run.append(w)
+            else:
+                if len(run) >= 2:
+                    out.add(''.join(run))
+                run = []
+        if len(run) >= 2:
+            out.add(''.join(run))
+        return out
+
+    def _matches(stem, words, acronyms):
+        # Token-level match (word equality, word-prefix, or acronym). Avoids the
+        # substring false-KEEP ("her" in "mother") while fixing the punctuation
+        # false-DROP ("csi" vs "C.S.I."). Prefix needs >=4 chars to be safe.
+        for w in words:
+            if w == stem or (len(stem) >= 4 and w.startswith(stem)):
+                return True
+        return stem in acronyms
+
     filtered = []
     for f in files:
         name = f.get('name', '')
         # Strip leading bracket tags (fansub/release groups like "[Blade]", "(Lena)")
         # so they don't false-match the query
         stripped = re.sub(r'^[\(\[][^\)\]]*[\)\]]\s*', '', name)
-        name_lower = _unidecode_filter(stripped).lower()
-        # Keep if any query word/stem appears as substring in filename
-        if any(qw in name_lower for qw in stems):
+        folded = _unidecode_filter(stripped).lower()
+        # Tokenize on any non-alphanumeric run ("c.s.i. new york" -> c,s,i,new,york)
+        words = [w for w in re.split(r'[^a-z0-9]+', folded) if w]
+        acronyms = _acronyms(words)
+        if any(_matches(s, words, acronyms) for s in stems):
             filtered.append(f)
 
     dropped = len(files) - len(filtered)
@@ -142,19 +243,23 @@ def merge_substring_series(grouped):
                 continue
 
             if short_words.issubset(long_words):
-                # Safety: if both groups have significant episodes and the extra
-                # words are short (likely sequel/spinoff markers like Z, GT, Super),
-                # don't merge — these are different series
+                # Defer the spinoff guard to merge time (it depends on episode
+                # counts that change as merges happen — #22). Record the extra
+                # words so the guard can be re-evaluated then.
                 extra_words = long_words - short_words
-                short_eps = series[short_key]['total_episodes']
-                long_eps = series[long_key]['total_episodes']
-                if min(short_eps, long_eps) >= 3 and all(len(w) <= 5 for w in extra_words):
-                    continue
-                keys_to_merge.append((short_key, long_key))
+                keys_to_merge.append((short_key, long_key, extra_words))
 
     # Perform merges
-    for short_key, long_key in keys_to_merge:
+    for short_key, long_key, extra_words in keys_to_merge:
         if short_key not in series or long_key not in series:
+            continue
+
+        # Spinoff protection, re-checked against CURRENT counts: if both groups
+        # now have significant episodes and the extra words are short (likely
+        # sequel/spinoff markers like Z, GT, Super), they are distinct series.
+        short_eps = series[short_key]['total_episodes']
+        long_eps = series[long_key]['total_episodes']
+        if min(short_eps, long_eps) >= 3 and all(len(w) <= 5 for w in extra_words):
             continue
 
         merge_season_data(series[short_key], series[long_key])
@@ -198,9 +303,12 @@ def merge_word_order_series(grouped):
         if len(keys) < 2:
             continue
 
-        # Use first key as target
-        target = keys[0]
-        for source in keys[1:]:
+        # Deterministic target so the surviving canonical_key does NOT depend on
+        # the order files arrived from the API (#20). Prefer the key with the
+        # most episodes (richest group), tie-break lexicographically.
+        target = max(keys, key=lambda k: (series[k]['total_episodes'], k))
+        sources = [k for k in keys if k != target]
+        for source in sources:
             if source not in series or target not in series:
                 continue
 
@@ -373,7 +481,12 @@ def pick_best_display_name_from_list(names):
         return None
 
     def clean_name(name):
-        """Aggressively clean a display name."""
+        """Aggressively clean a name to a GROUPING-vote key.
+
+        Strips quality/codec/lang/trailing-number so different encodings of the
+        same title vote together. NOT shown to the user — see _light_clean for
+        the display string.
+        """
         cleaned = name
         cleaned = _RE_FILE_EXT.sub('', cleaned)
         # Replace dots and underscores with spaces (scene naming: "Movie.Name.2010")
@@ -393,36 +506,59 @@ def pick_best_display_name_from_list(names):
         cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
         return cleaned.strip()
 
-    # Clean all names
-    cleaned_map = {}  # original -> cleaned
-    for name in names:
-        cleaned = clean_name(name)
-        if cleaned and len(cleaned) >= 2:
-            if cleaned not in cleaned_map:
-                cleaned_map[cleaned] = name
+    def _light_clean(name):
+        """Cleaning for the USER-FACING string.
 
-    if not cleaned_map:
-        return names[0] if names else None
+        Strips unambiguous METADATA (file-extension, episode markers, quality/
+        source/codec/language tags, bracketed release/year tags, separators)
+        but KEEPS title numbers — sequel/season numbers and number-titles like
+        "Cobra Kai 3", "The 4400", "Blade Runner 2049" — by NOT applying the
+        trailing-number strip. This keeps the displayed title faithful
+        (#8/#26/#3) while still dropping "1080p BluRay" noise."""
+        cleaned = _RE_FILE_EXT.sub('', name)
+        cleaned = cleaned.replace('.', ' ').replace('_', ' ')
+        cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
+        cleaned = _RE_QUALITY.sub('', cleaned)
+        cleaned = _RE_SOURCE.sub('', cleaned)
+        cleaned = _RE_CODEC.sub('', cleaned)
+        cleaned = _RE_LANG_LABEL.sub('', cleaned)
+        cleaned = _RE_LANG_CODE.sub('', cleaned)
+        cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
+        cleaned = _RE_SE_MARKER.sub('', cleaned)
+        cleaned = _RE_NxN_MARKER.sub('', cleaned)
+        cleaned = _RE_TRAILING_SEP.sub('', cleaned)
+        cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
+        return cleaned.strip()
 
-    # Find most common cleaned name (appears most in originals)
+    # Vote on the heavily-cleaned form (groups encodings of one title), but
+    # remember a representative ORIGINAL for each so we can return a faithful
+    # display string rather than the stripped vote key.
     from collections import Counter
     cleaned_list = [clean_name(n) for n in names]
     cleaned_counts = Counter(c for c in cleaned_list if c and len(c) >= 2)
+    rep_original = {}  # cleaned -> first original that produced it
+    for orig, c in zip(names, cleaned_list):
+        if c and len(c) >= 2 and c not in rep_original:
+            rep_original[c] = orig
 
     if not cleaned_counts:
-        return names[0]
+        # Every candidate cleaned to nothing usable — fall back to the lightly
+        # cleaned first candidate, not the raw filename (#29).
+        return _light_clean(names[0]) or names[0]
 
     # Sort by: count (desc), then length (asc), then alphabetically
     sorted_names = sorted(
         cleaned_counts.items(),
         key=lambda x: (-x[1], len(x[0]), x[0])
     )
-
     best_cleaned = sorted_names[0][0]
 
-    log_debug(f'Name picker: "{best_cleaned}" (appeared {sorted_names[0][1]}x from {len(names)} candidates)')
-
-    return best_cleaned
+    # Return a faithful, lightly-cleaned ORIGINAL for the winning group.
+    display = _light_clean(rep_original.get(best_cleaned, best_cleaned))
+    if not display:
+        display = best_cleaned
+    log_debug(f'Name picker: "{display}" (group "{best_cleaned}" x{sorted_names[0][1]} of {len(names)})')
+    return display
 
 
 def pick_best_display_name(name1, name2):
@@ -488,20 +624,24 @@ def deduplicate_versions(versions):
     for v in versions:
         is_duplicate = False
 
-        # Check by ident (primary)
+        # Primary: by ident (valid, non-'unknown'). A distinct ident is a
+        # distinct file — do NOT fall through to the name+size check, or two
+        # genuine mirrors of the same scene release (same name+size, different
+        # ident) would be collapsed and a live copy dropped for a dead one.
         ident = v.get('ident')
-        if ident and ident != 'unknown':
+        has_ident = bool(ident) and ident != 'unknown'
+        if has_ident:
             if ident in seen_idents:
                 is_duplicate = True
             else:
                 seen_idents.add(ident)
-
-        # Check by name+size (fallback)
-        if not is_duplicate:
+        else:
+            # Fallback only when ident is absent/unknown: dedup by name+size,
+            # or by name alone when size is missing. Sizes are normalized to a
+            # hashable int (a list/garbage size never raises here).
             name = v.get('name')
-            size = v.get('size')
-            if name and size:
-                key = (name, size)
+            if name:
+                key = (name, _safe_size(v))
                 if key in seen_name_size:
                     is_duplicate = True
                 else:
@@ -572,8 +712,11 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
         # This prevents movies from being misclassified as series
         movie_info = parse_movie_info(filename)
 
-        # Only try episode parsing if NOT a movie pattern
-        # Exception: allow S##E## patterns even with years (e.g., "Series.S01E01.2010.mkv")
+        # Try episode parsing when it's not a movie, OR when the filename has a
+        # genuine episode marker even alongside a year ("Series 2016 (S01E01)").
+        # Use the parsing S##E##/##x## patterns (which accept ()/[] wrappers) —
+        # the old local _PATTERN_EPISODE_MARKER only matched _ space . - , and
+        # silently misrouted bracketed-marker episodes to movies (#1).
         ep_info = None
         if not movie_info or _PATTERN_EPISODE_MARKER.search(filename):
             ep_info = parse_episode_info(filename)
@@ -599,18 +742,13 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
                 dual_names = extract_dual_names(raw_name)
 
                 # Priority 1: Dual names in filename
-                if dual_names and DUAL_NAMES_AVAILABLE:
-                    try:
-                        dual_result = create_canonical_from_dual_names(dual_names[0], dual_names[1])
-                        if dual_result:
-                            canonical_key = dual_result['canonical_key']
-                            display_name = dual_result['display_name']
-                            log_debug(f'Dual names detected: {dual_names[0]} / {dual_names[1]}')
-                        else:
-                            # Fallback: use normalized series name
-                            log_debug(f'Dual names returned None, using fallback: {dual_names[0]} / {dual_names[1]}')
-                    except Exception as e:
-                        log_error(f'Dual names processing error: {e}')
+                if dual_names:
+                    dual_ck, dual_dn = _dual_canonical(dual_names[0], dual_names[1])
+                    if dual_ck:
+                        canonical_key = dual_ck
+                        if dual_dn:
+                            display_name = dual_dn
+                        log_debug(f'Dual names detected: {dual_names[0]} / {dual_names[1]}')
 
                 # CSFD lookup removed (feature disabled)
 
@@ -694,7 +832,7 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
                 series_data['seasons'][season_num][ep_num] = deduplicated
 
                 # Sort versions by size DESC (largest first)
-                deduplicated.sort(key=lambda v: int(v.get('size', 0)) if v.get('size') else 0, reverse=True)
+                deduplicated.sort(key=_version_sort_key, reverse=True)
 
                 # Track unique episodes
                 unique_episodes.add((season_num, ep_num))
@@ -730,7 +868,7 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             for ep_num, versions in episodes.items():
                 episodes[ep_num] = deduplicate_versions(versions)
                 episodes[ep_num].sort(
-                    key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                    key=_version_sort_key,
                     reverse=True)
                 unique_episodes.add((season_num, ep_num))
         series_data['total_episodes'] = len(unique_episodes)
@@ -746,15 +884,20 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             movies_result = group_movies(result['non_series'])
             result['movies'] = movies_result['movies']
 
-            # Update non_series to exclude grouped movies
+            # Update non_series to exclude grouped movies. Use .get('ident')
+            # throughout: a file with no <ident> (removed/edge entries under
+            # maybe_removed) must not abort the whole exclusion step (which
+            # would leave grouped movies duplicated in the flat list).
             grouped_movie_idents = set()
             for movie_data in movies_result['movies'].values():
                 for version in movie_data['versions']:
-                    grouped_movie_idents.add(version['ident'])
+                    ident = version.get('ident')
+                    if ident:
+                        grouped_movie_idents.add(ident)
 
             result['non_series'] = [
                 f for f in result['non_series']
-                if f['ident'] not in grouped_movie_idents
+                if f.get('ident') not in grouped_movie_idents
             ]
 
             # CSFD movie enrichment removed (feature disabled)
@@ -786,7 +929,7 @@ def group_movies(files):
     result = {'movies': {}}
 
     for file_dict in files:
-        movie_info = parse_movie_info(file_dict['name'])
+        movie_info = parse_movie_info(file_dict.get('name', ''))
 
         if not movie_info:
             continue  # Not a movie pattern
@@ -794,21 +937,15 @@ def group_movies(files):
         # Create canonical key: "title|year"
         canonical_key = f"{movie_info['title']}|{movie_info['year']}"
 
-        # Handle dual names
+        # Handle dual names (deterministic regardless of csfd availability).
         display_name = movie_info['raw_title']
-        if movie_info['dual_names'] and DUAL_NAMES_AVAILABLE:
-            try:
-                dual_result = create_canonical_from_dual_names(
-                    movie_info['dual_names'][0],
-                    movie_info['dual_names'][1]
-                )
-                if dual_result:
-                    canonical_key = f"{dual_result['canonical_key']}|{movie_info['year']}"
-                    display_name = dual_result['display_name']
-                else:
-                    log_debug(f'Movie dual names returned None: {movie_info["dual_names"]}')
-            except Exception as e:
-                log_error(f'Movie dual names error: {e}')
+        if movie_info['dual_names']:
+            dual_ck, dual_dn = _dual_canonical(
+                movie_info['dual_names'][0], movie_info['dual_names'][1])
+            if dual_ck:
+                canonical_key = f"{dual_ck}|{movie_info['year']}"
+                if dual_dn:
+                    display_name = dual_dn
 
         # Initialize movie entry
         if canonical_key not in result['movies']:
@@ -829,7 +966,7 @@ def group_movies(files):
 
         # Sort by size
         movie_data['versions'].sort(
-            key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+            key=_version_sort_key,
             reverse=True
         )
 
@@ -902,7 +1039,7 @@ def merge_dual_key_movies(result):
             movies[target]['versions'].extend(movies[dual_key]['versions'])
             movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
             movies[target]['versions'].sort(
-                key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                key=_version_sort_key,
                 reverse=True)
             log_debug(f'Dual-key movie merge: "{dual_key}" → "{target}"')
             keys_to_delete.add(dual_key)
@@ -921,7 +1058,7 @@ def merge_dual_key_movies(result):
                 movies[target]['versions'].extend(movies[key]['versions'])
                 movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
                 movies[target]['versions'].sort(
-                    key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                    key=_version_sort_key,
                     reverse=True)
                 log_debug(f'Spaceless movie merge: "{key}" → "{target}"')
                 keys_to_delete.add(key)
@@ -989,7 +1126,7 @@ def merge_orphan_movies(result):
             movies[best_target]['versions'].extend(movies[orphan_key]['versions'])
             movies[best_target]['versions'] = deduplicate_versions(movies[best_target]['versions'])
             movies[best_target]['versions'].sort(
-                key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                key=_version_sort_key,
                 reverse=True)
             keys_to_delete.add(orphan_key)
 
@@ -1111,7 +1248,7 @@ def merge_crossyear_movies(result, max_gap=3):
                     movies[target_key]['versions'].extend(movies[source_key]['versions'])
                     movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
                     movies[target_key]['versions'].sort(
-                        key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+                        key=_version_sort_key,
                         reverse=True)
                     log_debug(f'Cross-year merge: "{source_key}" → "{target_key}"')
                     keys_to_delete.add(source_key)
@@ -1225,7 +1362,7 @@ def merge_substring_movies(result):
         # Deduplicate and re-sort
         movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
         movies[target_key]['versions'].sort(
-            key=lambda v: int(v.get('size', 0)) if v.get('size') else 0,
+            key=_version_sort_key,
             reverse=True
         )
 
@@ -1264,15 +1401,19 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
     offset = 0
     page = 0
 
+    NONE_WHAT = _get_none_what()
+    # Relevance filtering is meaningless for the browse sentinel — pass '' so
+    # group_by_series does not run _filter_irrelevant against the literal
+    # '%#NONE#%' token (wasted work; would drop everything but for a fallback).
+    filter_query = '' if what == NONE_WHAT else what
+
     # Use pre-fetched first page if provided
     if first_page_files is not None:
         all_files.extend(first_page_files)
         if first_page_total is not None and len(first_page_files) >= first_page_total:
-            return group_by_series(all_files, token=token, enable_csfd=False, search_query=what) if all_files else None
+            return group_by_series(all_files, token=token, enable_csfd=False, search_query=filter_query) if all_files else None
         offset = len(first_page_files)
         page = 1
-
-    NONE_WHAT = _get_none_what()
 
     consecutive_short = 0
 
@@ -1310,27 +1451,38 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
 
         all_files.extend(page_files)
 
-        # Early stopping: if pages are returning very few results, stop
-        if len(page_files) < limit * 0.1:
+        # Read the server's total result count.
+        try:
+            total = int(xml.find('total').text)
+        except (AttributeError, ValueError, TypeError):
+            total = None
+
+        # Advance by the ACTUAL number of files returned, not by `limit`. The
+        # server may hand back a short page mid-stream; advancing by `limit`
+        # would skip the unreturned [len(page_files), limit) slice (#10).
+        offset += len(page_files)
+        page += 1
+
+        # Done when we've reached the reported total.
+        if total is not None and offset >= total:
+            break
+
+        # Runaway guard (NOT the old aggressive <10% early-stop, which dropped
+        # legitimate mid-stream short pages — #11): only stop early if several
+        # consecutive pages are essentially empty AND we have no total to trust.
+        if len(page_files) < 5:
             consecutive_short += 1
-            if consecutive_short >= 2:
-                log_debug('fetch_and_group_series: early stop (diminishing results)')
+            if consecutive_short >= 3 and total is None:
+                log_debug('fetch_and_group_series: stop (tiny pages, no total)')
                 break
         else:
             consecutive_short = 0
 
-        # Check if more pages
-        try:
-            total = int(xml.find('total').text)
-        except (AttributeError, ValueError, TypeError):
-            break
-
-        if offset + limit >= total:
-            break
-
-        offset += limit
-        page += 1
+    # Warn when the page cap truncated a larger result set (#12).
+    if page >= max_pages:
+        log_warning('fetch_and_group_series: hit max_pages={} cap at {} files; '
+                    'results may be incomplete'.format(max_pages, len(all_files)))
 
     # Group by series and movies
-    return group_by_series(all_files, token=token, enable_csfd=False, search_query=what) if all_files else None
+    return group_by_series(all_files, token=token, enable_csfd=False, search_query=filter_query) if all_files else None
 
