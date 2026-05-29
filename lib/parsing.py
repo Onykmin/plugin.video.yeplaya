@@ -8,6 +8,10 @@ import re
 
 _CURRENT_YEAR = datetime.datetime.now().year
 
+# Max filename length fed to the lazy `(.+?)[sep]+` parsing regexes. Beyond
+# this they backtrack quadratically; real Webshare filenames are < 260 chars.
+_MAX_PARSE_LEN = 300
+
 try:
     from unidecode import unidecode
 except ImportError:
@@ -139,6 +143,73 @@ def parse_quality_metadata(filename):
 # Dual Name Detection
 # ============================================================================
 
+_RE_EP_TITLE_ARTICLE = re.compile(r'^(a|an|the)\s', re.IGNORECASE)
+
+
+def _norm_title_eq(name1, name2):
+    """True if two names are the same title written differently.
+
+    Folds to ASCII lowercase AND strips punctuation + leading article so
+    "Spider-Man"=="SpiderMan", "Batman"=="The Batman" register as equal and
+    don't get treated as a bogus dual-name pair (audit finding #32).
+    """
+    from unicodedata import normalize
+
+    def norm(s):
+        s = normalize('NFKD', s.lower()).encode('ASCII', 'ignore').decode()
+        s = re.sub(r'[^a-z0-9]+', '', _RE_EP_TITLE_ARTICLE.sub('', s))
+        return s
+
+    return norm(name1) == norm(name2)
+
+
+def _looks_like_episode_title(name2):
+    """Heuristic: is name2 a descriptive episode title rather than a CzSk alias?
+
+    Dual-name aliases are short title-like phrases (1-2 words, e.g. "Tucnak",
+    "The Penguin"); episode titles after " - " are wordy ("A Study in Pink",
+    "The Blind Banker", "The Great Game"). Use word count (>=3) as the signal —
+    NOT the leading article alone, since legit aliases like "The Penguin" are
+    article-led too.
+    """
+    return len(name2.split()) >= 3
+
+
+def _strip_episode_title_suffix(raw_name):
+    """Drop a descriptive ' - <episode title>' suffix from a series name.
+
+    "Sherlock - A Study in Pink" -> "Sherlock". Only fires when the suffix is a
+    wordy episode title (>=3 words) AND the pair is NOT a dual-name alias, so
+    legit dual names ("The Penguin - Tucnak") and short suffixes are untouched.
+    Prevents one series fragmenting into one canonical key per episode (#16).
+    """
+    if ' - ' not in raw_name:
+        return raw_name
+    head, _, tail = raw_name.partition(' - ')
+    if (head.strip() and _looks_like_episode_title(tail.strip())
+            and not extract_dual_names(raw_name)):
+        return head.strip()
+    return raw_name
+
+
+def _dual_name2_is_false_positive(name2):
+    """True if the second half of a candidate dual-name pair is actually
+    metadata (episode number/marker, quality/codec, year) or an episode title
+    rather than a real alias."""
+    if re.match(r'^\d{1,3}(\.\d)?(\s+[A-Z]{2})?(\s+\d+\.\s*serie)?$', name2, re.IGNORECASE):
+        return True
+    if re.match(r'^[Ss]\d{1,2}[Ee]\d{1,3}', name2):
+        return True
+    if re.match(r'^(?:19|20)\d{2}$', name2):
+        return True
+    quality_keywords = ['720p', '1080p', '2160p', '4k', 'x264', 'x265', 'hevc',
+                        'h264', 'h265', 'bluray', 'webrip', 'webdl', 'hdtv',
+                        'aac', 'dts', 'ac3']
+    if any(kw in name2.lower() for kw in quality_keywords):
+        return True
+    return _looks_like_episode_title(name2)
+
+
 def extract_dual_names(raw_name):
     """Detect and extract dual names from filename.
 
@@ -192,10 +263,7 @@ def extract_dual_names(raw_name):
             if re.search(r'[IVX]+\s*\(\d+\)', name1):
                 return None
 
-            from unicodedata import normalize
-            norm1 = normalize('NFKD', name1.lower()).encode('ASCII', 'ignore').decode()
-            norm2 = normalize('NFKD', name2.lower()).encode('ASCII', 'ignore').decode()
-            if norm1 == norm2:
+            if _norm_title_eq(name1, name2):
                 return None
 
             # Filter false positives in name2:
@@ -209,8 +277,13 @@ def extract_dual_names(raw_name):
             is_quality = any(kw in name2.lower() for kw in quality_keywords)
             # Years: "2009", "2024"
             is_year = bool(re.match(r'^(?:19|20)\d{2}$', name2))
+            # Descriptive EPISODE TITLE (not a CzSk alias): a dual-name alias is
+            # a short title-like phrase, whereas "Sherlock - A Study in Pink" has
+            # a wordy / article-led suffix. Reject name2 that is >=3 words or
+            # starts with an English article.
+            is_episode_title = _looks_like_episode_title(name2)
 
-            if is_episode_num or is_episode_marker or is_quality or is_year:
+            if is_episode_num or is_episode_marker or is_quality or is_year or is_episode_title:
                 return None
 
             if name1 and name2 and len(name1) > 1 and len(name2) > 1:
@@ -243,7 +316,12 @@ def extract_dual_names(raw_name):
         if len(parts) == 2:
             name1 = parts[0].strip()
             name2 = parts[1].strip()
-            if name1 and name2 and len(name1) > 1 and len(name2) > 1:
+            # Apply the same false-positive guards as the other branches: a
+            # slash before metadata ("Inception / 1080p", "/ 2010", "/ S01E01")
+            # or an episode title is not a dual-name pair (audit finding #33).
+            if (name1 and name2 and len(name1) > 1 and len(name2) > 1
+                    and not _norm_title_eq(name1, name2)
+                    and not _dual_name2_is_false_positive(name2)):
                 return (name1, name2)
 
     # Try multi-space separator (2+ spaces)
@@ -320,22 +398,27 @@ def clean_series_name(name):
     # Normalize Roman numerals to Arabic (only standalone: I, II, III, IV, V, etc.)
     name = _normalize_roman_numerals(name)
 
-    # Strip articles from START
-    if name.startswith('the '):
-        name = name[4:]
-    elif name.startswith('a '):
-        name = name[2:]
-    elif name.startswith('an '):
-        name = name[3:]
-
-    # Strip articles from END (handles "Name, The" patterns)
-    for suffix in [', the', ', a', ', an', ' the', ' a', ' an']:
-        if name.endswith(suffix):
-            name = name[:-len(suffix)]
+    # Strip a leading English article — but only if a non-trivial remainder is
+    # left, so short titles aren't eaten ("A Team"->"team" yes; "A-ha"->"a ha"
+    # kept because "ha" is too short; "A.I."->"a i" kept).
+    for article, cut in (('the ', 4), ('a ', 2), ('an ', 3)):
+        if name.startswith(article):
+            remainder = name[cut:]
+            if len(remainder.replace(' ', '')) >= 3:
+                name = remainder
             break
 
-    # Remove inline articles
-    name = name.replace(' the ', ' ').replace(' a ', ' ').replace(' an ', ' ')
+    # Strip a trailing reordered 'the' ("Walking Dead The" / "Walking Dead,
+    # The" -> reorder of "The Walking Dead"; the comma is already a space by
+    # now via _PATTERN_SEPARATORS). Trailing 'a'/'an' are NOT stripped — a
+    # title ending in "a" is common (esp. Czech) and rarely a reorder artifact.
+    if name.endswith(' the'):
+        name = name[:-4]
+
+    # Remove inline ' the ' (rarely meaningful). Do NOT remove inline ' a '/
+    # ' an ': in Czech/Slovak 'a' is the conjunction "and" ("Tom a Jerry"),
+    # and English titles use 'a' meaningfully ("King a Queen").
+    name = name.replace(' the ', ' ')
     name = ' '.join(name.split())
 
     return name.strip()
@@ -364,7 +447,7 @@ def get_display_name(filename):
     """Extract display-friendly series name (preserves case)."""
     match = _PATTERN_S00E00.match(filename) or _PATTERN_0x00.match(filename)
     if match:
-        raw_name = match.group(1)
+        raw_name = _strip_episode_title_suffix(match.group(1))
         name = raw_name.replace('.', ' ').replace('_', ' ')
         name = _PATTERN_QUALITY.sub('', name)
         name = _PATTERN_CODEC.sub('', name)
@@ -404,13 +487,14 @@ def extract_season_from_text(filename):
     if season is None:
         return None, filename
 
-    # Remove the season text from filename for clean series name extraction
-    cleaned = filename[:match.start()] + filename[match.end():]
-    # Clean up any double separators left behind
-    cleaned = re.sub(r'[\s\-]+', ' ', cleaned).strip()
-    # Restore dash if it was the separator
-    if ' - ' in filename:
-        cleaned = re.sub(r'\s+', ' - ', cleaned, count=1)
+    # Remove the season text span, keeping the head (series name) and tail
+    # (episode separator + number) intact. Tidy ONLY the seam left by the
+    # removal — do NOT collapse separators across the whole string, which
+    # corrupted the episode dash and re-inserted it at the wrong position (#34).
+    head = filename[:match.start()].rstrip(' -_.')
+    tail = filename[match.end():].lstrip(' _.')  # keep a leading '-' on the tail
+    cleaned = '{} {}'.format(head, tail) if (head and tail) else (head or tail)
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
 
     return season, cleaned
 
@@ -438,6 +522,12 @@ def parse_episode_info(filename):
         'original_name': filename
     }
     """
+    # Cap length before regex work: the lazy `(.+?)[\s_.\-]+` patterns below
+    # backtrack O(n^2) on pathological separator runs. Real filenames are well
+    # under this; the cap keeps a crafted/decorative name from freezing the UI.
+    if filename and len(filename) > _MAX_PARSE_LEN:
+        filename = filename[:_MAX_PARSE_LEN]
+
     # Strip leading release group tags like "[SubsPlease] " or "(Lena) "
     # Only strips if at the very start of filename
     filename = re.sub(r'^[\(\[]([^)\]]+)[\)\]]\s*', '', filename)
@@ -451,7 +541,7 @@ def parse_episode_info(filename):
             episode = int(match.group(3))
         except (ValueError, TypeError):
             return None
-        series_name = clean_series_name(raw_name)
+        series_name = clean_series_name(_strip_episode_title_suffix(raw_name))
         return {
             'is_series': True,
             'series_name': series_name,
@@ -495,7 +585,7 @@ def parse_episode_info(filename):
             episode = int(match.group(3))
         except (ValueError, TypeError):
             return None
-        series_name = clean_series_name(raw_name)
+        series_name = clean_series_name(_strip_episode_title_suffix(raw_name))
         return {
             'is_series': True,
             'series_name': series_name,
@@ -571,6 +661,14 @@ def parse_episode_info(filename):
             if len(words) == 1 and len(series_name) < 6:
                 return None
 
+            # Reject movie-sequel-like names ("Avatar 2", "Top Gun 2"): a single
+            # non-zero digit with NO dash separator and NO ep marker is almost
+            # always a sequel number, not an absolute episode (which are
+            # zero-padded "01", multi-digit, dash-separated, or marker-tagged).
+            gap = cleaned_filename[match.end(1):match.start(2)]
+            if ('-' not in gap and len(episode_str) == 1 and episode_str != '0'):
+                return None
+
         return {
             'is_series': True,
             'series_name': series_name,
@@ -582,6 +680,50 @@ def parse_episode_info(filename):
     return None
 
 
+# A 4-digit (19xx|20xx) token, with optional surrounding ()/[]; used to find
+# the RELEASE year rather than a title-embedded number like "2049"/"2000".
+_RE_YEAR_TOKEN_SCAN = re.compile(r'[\(\[]?((?:19|20)\d{2})[\)\]]?')
+_RE_BRACKETED_YEAR = re.compile(r'[\(\[]((?:19|20)\d{2})[\)\]]')
+
+
+def _select_movie_year(filename):
+    """Pick the release year and the title text preceding it.
+
+    Returns (raw_title, year) or None. Resolution order, designed so an
+    in-title number ("Blade Runner 2049", "Death Race 2000") is NOT mistaken
+    for the release year:
+      1. A bracketed/parenthesized (19|20)\\d{2} anywhere = the release year
+         (uploaders wrap the real year: "Death Race 2000 (1975)" -> 1975).
+      2. Otherwise the LAST plausible (19|20)\\d{2} token that is <= current+2,
+         with the title being everything before it.
+    A leading implausible-future number ("2049") is left in the title.
+    """
+    # Strip leading release-group tags ("[FLE] ", "(Lena) ", "[FLE][YIFY] ")
+    # so they don't leak into the title or get mistaken for the year token.
+    filename = re.sub(r'^(?:[\(\[][^)\]]*[\)\]]\s*)+', '', filename)
+
+    # 1. bracketed year wins (it's an explicit release-year tag)
+    bm = _RE_BRACKETED_YEAR.search(filename)
+    if bm:
+        year = int(bm.group(1))
+        if year <= _CURRENT_YEAR + 2:
+            raw_title = filename[:bm.start()].strip(' .-_([')
+            if raw_title:
+                return raw_title, year
+
+    # 2. choose the rightmost plausible bare year token; everything before it
+    #    is the title. This keeps in-title numbers in the title when a later
+    #    real year exists, and avoids binding to an early title number.
+    candidates = [(m.start(), int(m.group(1))) for m in _RE_YEAR_TOKEN_SCAN.finditer(filename)]
+    plausible = [(pos, y) for pos, y in candidates if y <= _CURRENT_YEAR + 2]
+    if plausible:
+        pos, year = plausible[-1]
+        raw_title = filename[:pos].strip(' .-_([')
+        if raw_title:
+            return raw_title, year
+    return None
+
+
 def parse_movie_info(filename):
     """Extract movie title and year from filename.
 
@@ -589,19 +731,16 @@ def parse_movie_info(filename):
         {'is_movie': True, 'title': str, 'year': int, 'raw_title': str, 'dual_names': tuple|None}
         or None if not a movie pattern
     """
-    match = _PATTERN_MOVIE_YEAR.match(filename)
-    if match:
-        raw_title = match.group(1)
-        year = int(match.group(2))
+    if filename and len(filename) > _MAX_PARSE_LEN:
+        filename = filename[:_MAX_PARSE_LEN]
+    selected = _select_movie_year(filename)
+    if selected:
+        raw_title, year = selected
 
         # Validate title: must have at least 2 alphanumeric chars
         # Rejects malformed extractions like "(", "13-", "9|"
         alnum_chars = sum(1 for c in raw_title if c.isalnum())
         if alnum_chars < 2:
-            return None
-
-        # Validate year is reasonable (not future)
-        if year > _CURRENT_YEAR + 2:
             return None
 
         clean_title = clean_series_name(raw_title)
