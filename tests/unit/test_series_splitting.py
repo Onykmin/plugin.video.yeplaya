@@ -26,17 +26,26 @@ class TestArticleStripping:
         assert clean_series_name('An American Horror Story') == 'american horror story'
 
     def test_article_stripping_end(self):
-        """Articles at end should be stripped (Name, The pattern)."""
+        """Trailing 'the' (reorder of "The Name") is stripped.
+
+        Trailing 'a'/'an' are PRESERVED: a title ending in "a" is common,
+        especially in Czech, and is rarely a "Name, A" reorder artifact
+        (audit finding #31). Only 'the' is reliably an article here."""
         assert clean_series_name('Walking Dead, The') == 'walking dead'
-        assert clean_series_name('Quiet Place, A') == 'quiet place'
-        assert clean_series_name('American Horror Story, An') == 'american horror story'
-        # Trailing article without comma
         assert clean_series_name('Walking Dead The') == 'walking dead'
+        # Trailing a/an intentionally kept (Czech-safe).
+        assert clean_series_name('Quiet Place, A') == 'quiet place a'
+        assert clean_series_name('American Horror Story, An') == 'american horror story an'
 
     def test_article_stripping_inline(self):
-        """Inline articles should be removed."""
+        """Inline 'the' is removed; inline 'a' is PRESERVED.
+
+        In Czech/Slovak 'a' is the conjunction "and" ("Tom a Jerry"), so inline
+        'a' must not be stripped (audit finding #14). Inline 'the' is still
+        removed."""
         assert clean_series_name('Return of the King') == 'return of king'
-        assert clean_series_name('Attack on a Titan') == 'attack on titan'
+        assert clean_series_name('Tom a Jerry') == 'tom a jerry'
+        assert clean_series_name('Lilo a Stitch') == 'lilo a stitch'
 
     def test_article_all_positions(self):
         """Combined test for all article positions."""

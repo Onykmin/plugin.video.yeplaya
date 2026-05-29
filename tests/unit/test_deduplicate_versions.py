@@ -36,15 +36,31 @@ def test_duplicate_by_ident():
     assert result[0]['name'] == 'file1.mkv'  # First kept
 
 
-def test_duplicate_by_name_size():
-    """Duplicates detected by name+size."""
+def test_distinct_idents_with_same_name_size_are_kept():
+    """Two valid DIFFERENT idents are distinct files (mirrors), even with the
+    same name+size — keep both so a live copy isn't dropped for a dead one.
+
+    name+size is a FALLBACK, used only when ident is absent/'unknown' (per the
+    function docstring). The old behaviour deduped distinct-ident mirrors,
+    contradicting that contract (audit finding #9)."""
     versions = [
         {'ident': 'abc', 'name': 'file.mkv', 'size': 1000},
-        {'ident': 'def', 'name': 'file.mkv', 'size': 1000},  # Same name+size
+        {'ident': 'def', 'name': 'file.mkv', 'size': 1000},  # mirror, different ident
+    ]
+    result = deduplicate_versions(versions)
+    assert len(result) == 2
+    assert [v['ident'] for v in result] == ['abc', 'def']
+
+
+def test_name_size_dedup_only_when_ident_absent():
+    """When neither file has a usable ident, same name+size IS deduped."""
+    versions = [
+        {'name': 'file.mkv', 'size': 1000},
+        {'name': 'file.mkv', 'size': 1000},
+        {'ident': 'unknown', 'name': 'file.mkv', 'size': 1000},
     ]
     result = deduplicate_versions(versions)
     assert len(result) == 1
-    assert result[0]['ident'] == 'abc'  # First kept
 
 
 def test_different_files_kept():
@@ -113,17 +129,15 @@ def test_order_preserved():
 
 
 def test_mixed_duplicate_types():
-    """Handle mix of ident-based and name+size duplicates."""
+    """Ident collisions dedup; distinct idents are kept even at same name+size."""
     versions = [
         {'ident': 'abc', 'name': 'file1.mkv', 'size': 1000},
-        {'ident': 'abc', 'name': 'file2.mkv', 'size': 2000},  # Dup by ident
-        {'ident': 'def', 'name': 'file1.mkv', 'size': 1000},  # Dup by name+size
-        {'ident': 'ghi', 'name': 'file3.mkv', 'size': 3000},  # Unique
+        {'ident': 'abc', 'name': 'file2.mkv', 'size': 2000},  # dup by ident -> dropped
+        {'ident': 'def', 'name': 'file1.mkv', 'size': 1000},  # distinct ident -> kept (mirror)
+        {'ident': 'ghi', 'name': 'file3.mkv', 'size': 3000},  # unique
     ]
     result = deduplicate_versions(versions)
-    assert len(result) == 2
-    assert result[0]['ident'] == 'abc'
-    assert result[1]['ident'] == 'ghi'
+    assert [v['ident'] for v in result] == ['abc', 'def', 'ghi']
 
 
 if __name__ == '__main__':
