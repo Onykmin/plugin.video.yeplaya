@@ -123,6 +123,77 @@ class TestMigration:
         assert cur.fetchone() is not None
 
 
+class TestMigrationV1ToV2:
+    """v1→v2 rewrites legacy un-normalized ep:/mv: keys so pre-upgrade
+    watched/resume state for dual-name content is not orphaned."""
+
+    def _seed_v1_db(self, harness, rows):
+        """Create a user_version=1 DB with the given (key, w, r, t, updated) rows."""
+        import sqlite3
+        conn = sqlite3.connect(harness.dbpath)
+        conn.execute('''CREATE TABLE playback_state (
+            state_key TEXT PRIMARY KEY, watched INTEGER NOT NULL DEFAULT 0,
+            resume_seconds INTEGER NOT NULL DEFAULT 0,
+            total_seconds INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)''')
+        conn.executemany(
+            'INSERT INTO playback_state VALUES (?,?,?,?,?)', rows)
+        conn.execute('PRAGMA user_version = 1')
+        conn.commit()
+        conn.close()
+
+    def test_legacy_dual_episode_key_rewritten(self, harness):
+        self._seed_v1_db(harness, [
+            ('ep:mestecko|south park|S01E05', 1, 0, 1200, 100),
+        ])
+        harness.state._reset_for_tests(harness.dbpath)
+        harness.state._get_db_path = lambda: harness.dbpath
+        # Reading the normalized key must find the migrated row.
+        st = harness.state.get_state('ep:south park|S01E05')
+        assert st is not None and st['watched'] == 1 and st['total_seconds'] == 1200
+        # Old key gone.
+        assert harness.state.get_state('ep:mestecko|south park|S01E05') is None
+
+    def test_legacy_dual_movie_key_rewritten_keeps_year(self, harness):
+        self._seed_v1_db(harness, [
+            ('mv:tucnak|penguin|2022', 0, 540, 6000, 100),
+        ])
+        harness.state._reset_for_tests(harness.dbpath)
+        harness.state._get_db_path = lambda: harness.dbpath
+        st = harness.state.get_state('mv:penguin|2022')
+        assert st is not None and st['resume_seconds'] == 540
+
+    def test_simple_keys_untouched(self, harness):
+        self._seed_v1_db(harness, [
+            ('ep:south park|S01E05', 1, 0, 1200, 100),
+            ('mv:inception|2010', 0, 30, 7000, 100),
+            ('file:deadbeef', 1, 0, 100, 100),
+        ])
+        harness.state._reset_for_tests(harness.dbpath)
+        harness.state._get_db_path = lambda: harness.dbpath
+        assert harness.state.get_state('ep:south park|S01E05')['watched'] == 1
+        assert harness.state.get_state('mv:inception|2010')['resume_seconds'] == 30
+        assert harness.state.get_state('file:deadbeef')['watched'] == 1
+
+    def test_collision_keeps_freshest(self, harness):
+        # Legacy dual key and an already-normalized key collide; newer wins.
+        self._seed_v1_db(harness, [
+            ('ep:mestecko|south park|S01E05', 1, 0, 1200, 100),  # older legacy
+            ('ep:south park|S01E05', 0, 333, 1200, 200),         # newer normalized
+        ])
+        harness.state._reset_for_tests(harness.dbpath)
+        harness.state._get_db_path = lambda: harness.dbpath
+        st = harness.state.get_state('ep:south park|S01E05')
+        assert st['resume_seconds'] == 333 and st['watched'] == 0
+        assert harness.state.get_state('ep:mestecko|south park|S01E05') is None
+
+    def test_user_version_bumped(self, harness):
+        self._seed_v1_db(harness, [('ep:south park|S01E05', 1, 0, 1200, 100)])
+        harness.state._reset_for_tests(harness.dbpath)
+        harness.state._get_db_path = lambda: harness.dbpath
+        conn = harness.state._connect()
+        assert conn.execute('PRAGMA user_version').fetchone()[0] == 2
+
+
 class TestRecordPlayback:
     def test_short_video_skip(self, harness):
         harness.state.record_playback('ep:x|S01E01', 5, 9)

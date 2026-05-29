@@ -17,6 +17,9 @@ import xbmc
 import xbmcaddon
 import xbmcvfs
 
+from lib.keys import normalize_series_key as _normalize_series_key
+from lib.keys import normalize_movie_key as _normalize_movie_key
+
 try:
     from xbmcvfs import translatePath
 except ImportError:
@@ -25,7 +28,7 @@ except ImportError:
 
 _LOG = "YAWsP.state: "
 _WATCHED_THRESHOLD = 0.90
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 _db_lock = threading.RLock()
 _conn = None
@@ -70,6 +73,64 @@ def _migrate(conn):
         ''')
         cur.execute('PRAGMA user_version = 1')
         conn.commit()
+    if ver < 2:
+        _migrate_normalize_keys(cur)
+        cur.execute('PRAGMA user_version = 2')
+        conn.commit()
+
+
+def _migrate_normalize_keys(cur):
+    """v1→v2: rewrite legacy un-normalized ep:/mv: keys in place.
+
+    Pre-v2 rows stored the raw (dual-prefixed) canonical_key, e.g.
+    "ep:mestecko|south park|S01E05". state_key_for now strips the dual-name
+    prefix, so those rows would be orphaned. Rewrite each legacy key to its
+    normalized form; if the normalized key already exists (a row written by
+    a newer code path), keep whichever was updated most recently.
+    """
+    cur.execute('SELECT state_key, watched, resume_seconds, total_seconds, '
+                'updated_at FROM playback_state')
+    rows = cur.fetchall()
+    for state_key, watched, resume, total, updated_at in rows:
+        new_key = _renormalize_state_key(state_key)
+        if new_key is None or new_key == state_key:
+            continue
+        cur.execute('SELECT updated_at FROM playback_state WHERE state_key=?',
+                    (new_key,))
+        existing = cur.fetchone()
+        if existing is not None and existing[0] >= updated_at:
+            # A fresher normalized row already exists; drop the stale legacy one.
+            cur.execute('DELETE FROM playback_state WHERE state_key=?', (state_key,))
+            continue
+        # Move the legacy row onto the normalized key (replace if present).
+        cur.execute('DELETE FROM playback_state WHERE state_key=?', (state_key,))
+        cur.execute('''
+            INSERT INTO playback_state
+                (state_key, watched, resume_seconds, total_seconds, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(state_key) DO UPDATE SET
+                watched=excluded.watched,
+                resume_seconds=excluded.resume_seconds,
+                total_seconds=excluded.total_seconds,
+                updated_at=excluded.updated_at
+        ''', (new_key, watched, resume, total, updated_at))
+
+
+def _renormalize_state_key(state_key):
+    """Return the normalized form of a legacy ep:/mv: key, or None if N/A."""
+    if not state_key:
+        return None
+    if state_key.startswith('ep:'):
+        # "ep:{series}|S00E00" — normalize only the series part.
+        body = state_key[3:]
+        marker_at = body.rfind('|S')
+        if marker_at == -1:
+            return None
+        series, marker = body[:marker_at], body[marker_at + 1:]
+        return "ep:{0}|{1}".format(_normalize_series_key(series), marker)
+    if state_key.startswith('mv:'):
+        return "mv:{0}".format(_normalize_movie_key(state_key[3:]))
+    return None
 
 
 def _reset_for_tests(path=None):
@@ -84,35 +145,6 @@ def _reset_for_tests(path=None):
         _conn = None
         _db_path = path
         _cache = {}
-
-
-def _normalize_series_key(series):
-    """Strip dual-name prefix to stabilize series state keys across fetches.
-
-    Dual-name detection in grouping.py produces canonical_keys like
-    "mestecko|south park" or "pandemic special cz|south park" — the prefix
-    depends on which alias appears in the current Webshare response, so the
-    same series can produce different keys across searches. The user-visible
-    "main" name is the segment AFTER the last "|"; using that alone
-    stabilizes the key so resume/watched state survives re-grouping.
-    """
-    if not series or '|' not in series:
-        return series
-    return series.rsplit('|', 1)[-1]
-
-
-def _normalize_movie_key(canonical):
-    """Strip dual-name prefix in a movie canonical_key, preserve trailing year.
-
-    Movie keys are "{name}|{year}" or "{dual_canonical}|{year}" where the
-    dual_canonical itself contains "|". Splitting on the LAST "|" peels off
-    the year; we then strip the dual-name prefix from the name part and
-    re-join with the year.
-    """
-    if not canonical or '|' not in canonical:
-        return canonical
-    name_part, _, year = canonical.rpartition('|')
-    return "{0}|{1}".format(_normalize_series_key(name_part), year)
 
 
 def build_mv_state_key(canonical_key):

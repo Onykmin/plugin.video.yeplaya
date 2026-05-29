@@ -24,6 +24,7 @@ import unittest
 import unittest.mock
 
 import lib.favorites as favorites
+import lib.cache as cache
 from lib.favorites import (
     load_favorites, save_favorites, add_favorite, remove_favorite,
     is_favorited, FAVORITES, MAX_FAVORITES, ENVELOPE_VERSION,
@@ -31,16 +32,20 @@ from lib.favorites import (
 
 
 class FavoritesTestBase(unittest.TestCase):
-    """Per-test tmp profile, restored on tearDown."""
+    """Per-test tmp profile, restored on tearDown.
+
+    Favorites delegates persistence to lib.cache helpers, which resolve the
+    profile dir from cache._profile, so redirect that for the test.
+    """
 
     def setUp(self):
         self._tmpdir = tempfile.mkdtemp(prefix='yeplaya_fav_test_')
-        self._saved_profile = favorites._profile_path
-        favorites._profile_path = lambda: self._tmpdir
+        self._saved_profile = cache._profile
+        cache._profile = self._tmpdir
         favorites.invalidate_cache()
 
     def tearDown(self):
-        favorites._profile_path = self._saved_profile
+        cache._profile = self._saved_profile
         shutil.rmtree(self._tmpdir, ignore_errors=True)
         favorites.invalidate_cache()
 
@@ -83,6 +88,51 @@ class TestAddDedup(FavoritesTestBase):
                       'display_name': 'The Office (UK)', 'year': 2001})
         items = load_favorites()
         self.assertEqual(len(items), 2)
+
+
+class TestNormalizedIdentity(FavoritesTestBase):
+    """Series/movie identity is the normalized canonical_key, so dual-name
+    drift collapses to one favorite while different-year movies stay distinct."""
+
+    def test_series_drift_dedupes_to_one(self):
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko|south park',
+                      'display_name': 'South Park'})
+        add_favorite({'type': 'series',
+                      'canonical_key': 'pandemic special cz|south park',
+                      'display_name': 'South Park'})
+        # Both normalize to "south park" → single favorite.
+        self.assertEqual(len(load_favorites()), 1)
+
+    def test_series_is_favorited_after_drift(self):
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko|south park',
+                      'display_name': 'South Park'})
+        self.assertTrue(is_favorited('series', 'pandemic special cz|south park'))
+        self.assertTrue(is_favorited('series', 'south park'))
+
+    def test_movie_same_title_different_year_distinct(self):
+        add_favorite({'type': 'movie', 'canonical_key': 'dune|1984',
+                      'display_name': 'Dune', 'year': 1984})
+        add_favorite({'type': 'movie', 'canonical_key': 'dune|2021',
+                      'display_name': 'Dune', 'year': 2021})
+        self.assertEqual(len(load_favorites()), 2)
+
+    def test_remove_one_year_keeps_other(self):
+        # #1 regression: removing the un-favorited-year row must not delete
+        # the favorited other-year entry.
+        add_favorite({'type': 'movie', 'canonical_key': 'dune|1984',
+                      'display_name': 'Dune', 'year': 1984})
+        # The 2021 row was never favorited; is_favorited must be False.
+        self.assertFalse(is_favorited('movie', 'dune|2021'))
+        # Removing the 2021 key must NOT remove the 1984 favorite.
+        self.assertFalse(remove_favorite('movie', 'dune|2021'))
+        self.assertTrue(is_favorited('movie', 'dune|1984'))
+
+    def test_movie_dual_name_drift_dedupes(self):
+        add_favorite({'type': 'movie', 'canonical_key': 'tucnak|penguin|2022',
+                      'display_name': 'Penguin', 'year': 2022})
+        add_favorite({'type': 'movie', 'canonical_key': 'alias cz|penguin|2022',
+                      'display_name': 'Penguin', 'year': 2022})
+        self.assertEqual(len(load_favorites()), 1)
 
 
 class TestLoadCorruption(FavoritesTestBase):
@@ -145,11 +195,10 @@ class TestSaveAtomic(FavoritesTestBase):
 
 class TestConcurrent(FavoritesTestBase):
     def test_concurrent_add_no_data_loss(self):
-        """Concurrent add_favorite must not corrupt JSON.
+        """Concurrent add_favorite must not lose updates.
 
-        Note: add_favorite is load-modify-save without an exclusive cross-process
-        lock, so some adds will overwrite each other (last-writer-wins on disk).
-        The contract we test: file remains valid JSON, never raises.
+        Each add runs its read-modify-write under file_lock (threading + file
+        lock), so all distinct entries survive — no last-writer-wins loss.
         """
         def writer(prefix):
             for i in range(5):
@@ -162,6 +211,13 @@ class TestConcurrent(FavoritesTestBase):
             t.start()
         for t in threads:
             t.join()
+
+        favorites.invalidate_cache()
+        items = load_favorites()
+        queries = {it['query'] for it in items}
+        expected = {'w{}_{}'.format(w, i) for w in range(6) for i in range(5)}
+        self.assertEqual(queries, expected,
+                         'lost updates: missing {}'.format(expected - queries))
 
         # File parses as envelope, items list is sane.
         parsed = json.loads(self._read_raw())
@@ -284,6 +340,32 @@ class TestClickUrl(unittest.TestCase):
         self.assertIn('action=select_movie_version', url)
         self.assertIn('movie_key=mov', url.replace('%20', '+'))
 
+    def test_click_url_series_carries_category_and_sort(self):
+        """#6: the favorite click must reproduce the originating search's
+        category/sort so the re-fetch hits the same result set / cache key."""
+        url = self.ui._click_url({
+            'type': 'series', 'canonical_key': 'south park||',
+            'display_name': 'South Park', 'search_query': 'south',
+            'category': 'video', 'sort': 'recent'})
+        self.assertIn('category=video', url)
+        self.assertIn('sort=recent', url)
+
+    def test_click_url_movie_carries_category_and_sort(self):
+        url = self.ui._click_url({
+            'type': 'movie', 'canonical_key': 'mov||2020',
+            'display_name': 'Mov', 'search_query': 'mov', 'year': 2020,
+            'category': 'video', 'sort': 'largest'})
+        self.assertIn('category=video', url)
+        self.assertIn('sort=largest', url)
+
+    def test_click_url_series_omits_empty_category_sort(self):
+        url = self.ui._click_url({
+            'type': 'series', 'canonical_key': 'south park||',
+            'display_name': 'South Park', 'search_query': 'south',
+            'category': '', 'sort': ''})
+        self.assertNotIn('category=', url)
+        self.assertNotIn('sort=', url)
+
 
 class TestInMemoryCache(FavoritesTestBase):
     """load_favorites caches in-memory; save_favorites invalidates."""
@@ -291,7 +373,8 @@ class TestInMemoryCache(FavoritesTestBase):
     def test_load_favorites_caches_in_memory(self):
         add_favorite({'type': 'search', 'query': 'a'})  # primes cache via save
         favorites.invalidate_cache()
-        with unittest.mock.patch('lib.favorites.io.open',
+        # Persistence reads go through lib.cache; patch its io.open.
+        with unittest.mock.patch('lib.cache.io.open',
                                  wraps=io.open) as mopen:
             load_favorites()
             load_favorites()
@@ -378,7 +461,8 @@ class TestContextMenuDriftToggle(FavoritesTestBase):
         self.ui = favorites_ui
 
     def test_context_entry_recognizes_drifted_series(self):
-        # Saved under one key, looked up under a drifted live key.
+        # Saved under one key, looked up under a drifted live key. Both
+        # normalize to "south park", so the toggle recognizes it as favorited.
         add_favorite({'type': 'series', 'canonical_key': 'mestecko|south park',
                       'display_name': 'South Park'})
         label, cmd = self.ui.add_favorite_context_entry({
@@ -386,11 +470,60 @@ class TestContextMenuDriftToggle(FavoritesTestBase):
             'canonical_key': 'pandemic special cz|south park',  # drifted
             'display_name': 'South Park',
         })
-        # Must offer Remove (30422 == _STR_REMOVE_FAV) against the
-        # STORED key, not Add (30421).
+        # Must offer Remove (30422 == _STR_REMOVE_FAV), not Add (30421).
         self.assertEqual(label, 'String_30422')
         self.assertIn('action=remove_favorite', cmd)
-        self.assertIn('mestecko', cmd.replace('%7C', '|'))
+
+    def test_context_entry_remove_url_actually_removes_drifted(self):
+        """The Remove command must remove the stored favorite even though it
+        carries a drifted key (removal normalizes the key)."""
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko|south park',
+                      'display_name': 'South Park'})
+        # Removing by the drifted live key still matches the stored entry.
+        self.assertTrue(
+            remove_favorite('series', 'pandemic special cz|south park'))
+        self.assertEqual(len(load_favorites()), 0)
+
+    def test_context_entry_add_when_not_favorited(self):
+        label, cmd = self.ui.add_favorite_context_entry({
+            'type': 'series', 'canonical_key': 'breaking bad||',
+            'display_name': 'Breaking Bad',
+        })
+        self.assertEqual(label, 'String_30421')  # Add
+        self.assertIn('action=add_favorite', cmd)
+
+    def test_add_context_entry_carries_category_sort(self):
+        label, cmd = self.ui.add_favorite_context_entry({
+            'type': 'series', 'canonical_key': 'south park||',
+            'display_name': 'South Park', 'search_query': 'south',
+            'category': 'video', 'sort': 'recent',
+        })
+        self.assertIn('category=video', cmd)
+        self.assertIn('sort=recent', cmd)
+
+
+class TestCategorySortPersistence(FavoritesTestBase):
+    """#6: category/sort survive the add round-trip and reach the click URL."""
+
+    def setUp(self):
+        super().setUp()
+        from lib import favorites_ui
+        self.ui = favorites_ui
+
+    def test_add_action_persists_category_sort(self):
+        self.ui.add_favorite_action({
+            'type': 'series', 'key': 'south park||',
+            'display_name': 'South Park', 'search_query': 'south',
+            'category': 'video', 'sort': 'recent',
+        })
+        items = load_favorites()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['category'], 'video')
+        self.assertEqual(items[0]['sort'], 'recent')
+        # And the click URL reproduces them.
+        url = self.ui._click_url(items[0])
+        self.assertIn('category=video', url)
+        self.assertIn('sort=recent', url)
 
 
 class TestGotoPageContract(unittest.TestCase):
