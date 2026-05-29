@@ -5,25 +5,19 @@
 
 """Persistent favorites: search queries, series, movies.
 
-Mirrors lib.cache search-history reliability: atomic write via tempfile +
-os.replace, advisory file locking, isinstance hardening, corruption recovery.
+Persistence (atomic write, locked read, profile dir) is shared with
+lib.cache. Series/movie identity is normalized via lib.keys so favorites
+survive dual-name canonical_key drift the same way playback state does.
 """
 
-import io
 import os
 import json
 import time
-import tempfile
 
-import xbmcaddon
-
-from lib.cache import _flock, _funlock
+from lib.cache import (locked_read_text, atomic_write_text, profile_dir,
+                       file_lock)
+from lib.keys import normalize_series_key, normalize_movie_key
 from lib.logging import log_warning, log_error, log_debug
-
-try:
-    from xbmcvfs import translatePath
-except ImportError:
-    from xbmc import translatePath
 
 
 FAVORITES = 'favorites'
@@ -43,22 +37,40 @@ def invalidate_cache():
     _cached_items = None
 
 
-def _profile_path():
-    addon = xbmcaddon.Addon()
-    return translatePath(addon.getAddonInfo('profile'))
-
-
 def _favorites_path():
-    return os.path.join(_profile_path(), FAVORITES)
+    return os.path.join(profile_dir(), FAVORITES)
+
+
+def _normalize_canonical(type_, canonical_key):
+    """Normalized identity for a series/movie canonical_key.
+
+    canonical_key drifts across fetches (dual-name detection emits a different
+    pipe-prefix depending on which alias files are present). Comparing the
+    NORMALIZED form — the same function the playback-state layer uses — makes
+    add/remove/is_favorited drift-resistant and removes the reliance on the
+    volatile display_name. Movie keys keep their trailing |year so different-
+    year releases of the same title stay distinct (no wrong-year removal).
+    """
+    if not canonical_key:
+        return canonical_key
+    if type_ == 'series':
+        return normalize_series_key(canonical_key)
+    if type_ == 'movie':
+        return normalize_movie_key(canonical_key)
+    return canonical_key
 
 
 def _entry_key(entry):
-    """Return the dedup key for an entry: (type, query|canonical_key)."""
+    """Return the dedup/identity key for an entry: (type, normalized-key).
+
+    Search favorites key on the user-typed query (stable). Series/movie key on
+    the normalized canonical_key so dual-name drift collapses to one identity.
+    """
     t = entry.get('type')
     if t == 'search':
         return ('search', entry.get('query'))
     if t in ('series', 'movie'):
-        return (t, entry.get('canonical_key'))
+        return (t, _normalize_canonical(t, entry.get('canonical_key')))
     return None
 
 
@@ -77,47 +89,24 @@ def _is_valid_entry(entry):
     return False
 
 
-def load_favorites():
-    """Load favorites from disk. Handles missing/corrupt/legacy formats.
+def _target_key(type_, key):
+    """Identity tuple for a (type, raw key) lookup — normalized to match
+    _entry_key so drifted canonical_keys still resolve to the stored entry."""
+    if type_ == 'search':
+        return ('search', key)
+    if type_ in ('series', 'movie'):
+        return (type_, _normalize_canonical(type_, key))
+    return None
 
-    Returns a list of valid entries (may be empty).
-    Legacy bare-list format is accepted; rewrite happens on next save.
-    Invalid individual entries are dropped with a warning.
-    Caches the result in memory; invalidated by save_favorites.
-    """
-    global _cached_items
-    if _cached_items is not None:
-        return list(_cached_items)
 
-    profile = _profile_path()
-    try:
-        os.makedirs(profile, exist_ok=True)
-    except OSError as e:
-        log_error("favorites: failed to create profile dir: {}".format(e))
-
-    path = _favorites_path()
-    raw = ''
-    try:
-        with io.open(path, 'r', encoding='utf8') as f:
-            _flock(f)
-            try:
-                raw = f.read()
-            finally:
-                _funlock(f)
-    except (IOError, OSError) as e:
-        log_warning("load_favorites: IO error ({}): {}".format(path, e))
-        _cached_items = []
-        return []
-
+def _parse_favorites_raw(raw):
+    """Parse stored JSON text into a list of valid entries (best-effort)."""
     if not raw:
-        _cached_items = []
         return []
-
     try:
         data = json.loads(raw)
     except ValueError as e:
         log_warning("load_favorites: corrupt JSON: {}".format(e))
-        _cached_items = []
         return []
 
     if isinstance(data, list):
@@ -127,12 +116,10 @@ def load_favorites():
         if not isinstance(items, list):
             log_warning("load_favorites: 'items' not a list ({}); resetting".format(
                 type(items).__name__))
-            _cached_items = []
             return []
     else:
         log_warning("load_favorites: top-level not list/dict ({}); resetting".format(
             type(data).__name__))
-        _cached_items = []
         return []
 
     valid = []
@@ -142,35 +129,61 @@ def load_favorites():
         else:
             log_warning("load_favorites: dropping invalid entry: {!r}".format(entry))
     log_debug("load_favorites: {} valid items".format(len(valid)))
-    _cached_items = valid
-    return list(valid)
+    return valid
+
+
+def _cached_list():
+    """Return the in-memory favorites list WITHOUT copying (read-only callers).
+
+    load_favorites() copies defensively for mutators; the predicate helpers
+    (is_favorited / find_favorite_by_name) only read, so they use this to
+    avoid allocating a fresh list per call — they are invoked once per menu
+    row, so the copy churn was O(rows) for no benefit.
+    """
+    global _cached_items
+    if _cached_items is None:
+        _cached_items = _parse_favorites_raw(locked_read_text(_favorites_path()))
+    return _cached_items
+
+
+def load_favorites():
+    """Load favorites from disk. Handles missing/corrupt/legacy formats.
+
+    Returns a (copied) list of valid entries (may be empty). The copy lets
+    callers mutate freely without disturbing the in-memory cache.
+    Legacy bare-list format is accepted; rewrite happens on next save.
+    Invalid individual entries are dropped with a warning.
+    Caches the result in memory; invalidated by save_favorites.
+    """
+    return list(_cached_list())
 
 
 def save_favorites(items):
     """Atomic write of envelope {version, items} to disk."""
     invalidate_cache()
-    profile = _profile_path()
-    try:
-        os.makedirs(profile, exist_ok=True)
-        path = _favorites_path()
-        envelope = {'version': ENVELOPE_VERSION, 'items': items}
-        fd, tmp = tempfile.mkstemp(dir=profile,
-                                   prefix=FAVORITES + '.',
-                                   suffix='.tmp')
-        try:
-            with os.fdopen(fd, 'w', encoding='utf8') as f:
-                f.write(json.dumps(envelope))
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp, path)
-        except Exception:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
-    except (IOError, OSError) as e:
-        log_error("save_favorites: write failed: {}".format(e))
+    envelope = {'version': ENVELOPE_VERSION, 'items': items}
+    atomic_write_text(_favorites_path(), json.dumps(envelope))
+
+
+def _mutate(fn):
+    """Run a read-modify-write of the favorites list under a cross-process lock.
+
+    fn(items) receives the current list and returns (new_list, result). The
+    whole load→modify→save runs while holding an exclusive lock on a sidecar
+    lock file, so concurrent add/remove in separate Kodi processes cannot lose
+    each other's update (last-writer-wins). The in-memory cache cannot help
+    here — each Kodi action is a fresh process.
+    """
+    with file_lock(_favorites_path() + '.lock'):
+        invalidate_cache()  # force a fresh read from disk inside the lock
+        items = _parse_favorites_raw(locked_read_text(_favorites_path()))
+        new_items, result = fn(items)
+        if new_items is not None:
+            atomic_write_text(_favorites_path(),
+                              json.dumps({'version': ENVELOPE_VERSION,
+                                          'items': new_items}))
+        invalidate_cache()
+        return result
 
 
 def add_favorite(entry):
@@ -180,59 +193,64 @@ def add_favorite(entry):
         return False
     entry = dict(entry)
     entry.setdefault('added_at', int(time.time()))
-
-    items = load_favorites()
     key = _entry_key(entry)
-    items = [it for it in items if _entry_key(it) != key]
-    items.insert(0, entry)
-    if len(items) > MAX_FAVORITES:
-        items = items[:MAX_FAVORITES]
-    save_favorites(items)
-    return True
+
+    def _do(items):
+        items = [it for it in items if _entry_key(it) != key]
+        items.insert(0, entry)
+        if len(items) > MAX_FAVORITES:
+            items = items[:MAX_FAVORITES]
+        return items, True
+
+    return _mutate(_do)
 
 
 def remove_favorite(type_, key):
     """Remove the favorite identified by (type, canonical_key|query)."""
     if type_ not in _VALID_TYPES or not key:
         return False
-    items = load_favorites()
-    target = (type_, key)
-    new_items = [it for it in items if _entry_key(it) != target]
-    if len(new_items) == len(items):
-        return False
-    save_favorites(new_items)
-    return True
+    target = _target_key(type_, key)
+
+    def _do(items):
+        new_items = [it for it in items if _entry_key(it) != target]
+        if len(new_items) == len(items):
+            return None, False
+        return new_items, True
+
+    return _mutate(_do)
 
 
 def is_favorited(type_, key):
     """Boolean lookup, used by UI to toggle context-menu label."""
     if type_ not in _VALID_TYPES or not key:
         return False
-    items = load_favorites()
-    target = (type_, key)
-    for it in items:
+    target = _target_key(type_, key)
+    for it in _cached_list():
         if _entry_key(it) == target:
             return True
     return False
 
 
 def find_favorite_by_name(type_, display_name):
-    """Drift-aware favorite lookup by (type, display_name).
+    """Secondary drift fallback: match a favorite by (type, display_name).
 
-    Returns the matching entry dict or None. Used by the UI to detect
-    "this series/movie is already favorited under a drifted canonical_key"
-    so the context-menu toggle correctly shows Remove instead of Add and
-    avoids creating a duplicate entry on click.
+    Returns the matching entry dict or None. The primary identity is the
+    normalized canonical_key (see is_favorited / _entry_key), which is
+    drift-resistant. This name match is a last resort for the fundamental
+    case where the available aliases differ so much that the normalized keys
+    cannot bridge (e.g. an English-only fetch keyed "the penguin" vs a
+    Czech-only fetch keyed "tucnak").
 
-    Match is case-insensitive exact equality. The drift this function exists
-    for is in canonical_key, not display_name — display_name is stable across
-    re-groupings. A looser substring match wrongly conflated sibling titles
-    like "Panic" and "Panic at the Disco" and removed the wrong favorite.
+    Match is case-insensitive EXACT equality — never substring. A substring
+    match wrongly conflated sibling titles like "Panic" and "Panic at the
+    Disco" and removed the wrong favorite. Note display_name itself can drift
+    across groupings (grouping picks it by file-frequency), so this is best-
+    effort only and is intentionally behind the normalized-key check.
     """
     if type_ not in ('series', 'movie') or not display_name:
         return None
     target = display_name.lower()
-    for it in load_favorites():
+    for it in _cached_list():
         if it.get('type') != type_:
             continue
         existing = (it.get('display_name') or '').lower()

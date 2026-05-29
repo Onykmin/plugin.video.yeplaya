@@ -68,16 +68,22 @@ def _click_url(entry):
     t = entry.get('type')
     if t == 'search':
         return get_url(action='search', what=entry.get('query', ''))
-    if t == 'series':
-        return get_url(action='browse_series',
-                       series=entry.get('canonical_key', ''),
-                       what=entry.get('search_query', '') or entry.get('display_name', ''),
-                       fav_display_name=entry.get('display_name', ''))
-    if t == 'movie':
-        return get_url(action='select_movie_version',
-                       movie_key=entry.get('canonical_key', ''),
-                       what=entry.get('search_query', '') or entry.get('display_name', ''),
-                       fav_display_name=entry.get('display_name', ''))
+    if t in ('series', 'movie'):
+        action = 'browse_series' if t == 'series' else 'select_movie_version'
+        key_arg = 'series' if t == 'series' else 'movie_key'
+        url_params = {
+            'action': action,
+            key_arg: entry.get('canonical_key', ''),
+            'what': entry.get('search_query', '') or entry.get('display_name', ''),
+            'fav_display_name': entry.get('display_name', ''),
+        }
+        # Reproduce the original search's category/sort so the re-fetch hits
+        # the same result set (and cache key) the favorite was created from.
+        if entry.get('category'):
+            url_params['category'] = entry['category']
+        if entry.get('sort'):
+            url_params['sort'] = entry['sort']
+        return get_url(**url_params)
     return get_url(action='favorites')
 
 
@@ -121,7 +127,8 @@ def favorites(params):
 def add_favorite_action(params):
     """Add-favorite route handler.
 
-    Accepts params: type, query|key, display_name, search_query, year.
+    Accepts params: type, query|key, display_name, search_query, year,
+    category, sort.
     """
     t = params.get('type')
     entry = {'type': t}
@@ -132,6 +139,12 @@ def add_favorite_action(params):
         entry['display_name'] = params.get('display_name', '')
         if params.get('search_query'):
             entry['search_query'] = params['search_query']
+        # Preserve the originating search's category/sort so the favorite
+        # click reproduces the same result set / cache key.
+        if params.get('category'):
+            entry['category'] = params['category']
+        if params.get('sort'):
+            entry['sort'] = params['sort']
         if t == 'movie' and params.get('year'):
             try:
                 entry['year'] = int(params['year'])
@@ -159,21 +172,25 @@ def add_favorite_context_entry(entry):
     key_field = 'query' if t == 'search' else 'canonical_key'
     key = entry.get(key_field, '')
 
-    # Drift-aware lookup: canonical_keys produced by dual-name detection
-    # are not stable across fetches, so a series may already be favorited
-    # under a different key. Match by display_name as well so the toggle
-    # correctly shows Remove (and the remove URL targets the STORED key).
-    existing_key = key
-    if not is_favorited(t, key) and t in ('series', 'movie'):
+    # is_favorited normalizes the key, so it already recognizes a favorite
+    # stored under a drifted canonical_key — pass the current key to remove
+    # (it normalizes back to the same identity). find_favorite_by_name is a
+    # last resort for when the aliases differ so much the normalized keys
+    # can't bridge (English-only vs Czech-only fetch); there we must remove
+    # by the STORED key, since the current key won't normalize to a match.
+    remove_key = None
+    if is_favorited(t, key):
+        remove_key = key
+    elif t in ('series', 'movie'):
         existing = find_favorite_by_name(t, entry.get('display_name', ''))
         if existing:
-            existing_key = existing.get('canonical_key', key)
+            remove_key = existing.get('canonical_key', key)
 
-    if is_favorited(t, existing_key):
+    if remove_key is not None:
         return (
             _addon.getLocalizedString(_STR_REMOVE_FAV),
             'RunPlugin(' + get_url(action='remove_favorite',
-                                   type=t, key=existing_key) + ')'
+                                   type=t, key=remove_key) + ')'
         )
 
     url_params = {'action': 'add_favorite', 'type': t, 'key': key}
@@ -181,6 +198,10 @@ def add_favorite_context_entry(entry):
         url_params['display_name'] = entry['display_name']
     if entry.get('search_query'):
         url_params['search_query'] = entry['search_query']
+    if entry.get('category'):
+        url_params['category'] = entry['category']
+    if entry.get('sort'):
+        url_params['sort'] = entry['sort']
     if entry.get('year'):
         url_params['year'] = str(entry['year'])
     return (
