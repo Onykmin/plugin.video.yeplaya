@@ -21,7 +21,7 @@ _addon = get_addon()
 from lib.playback import toqueue
 
 # Constants
-NONE_WHAT = '%#NONE#%'
+from lib.keys import NONE_WHAT  # single source of truth (also used by cache)
 CATEGORIES = ['','video','images','audio','archives','docs','adult']
 SORTS = ['','recent','rating','largest','smallest']
 

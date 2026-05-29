@@ -12,6 +12,7 @@ import xbmcplugin
 from lib.api import api, parse_xml, is_ok, revalidate
 from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
 from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, cache_set, clear_cache
+from lib.state import build_mv_state_key, get_states
 from lib.grouping import fetch_and_group_series
 from lib.search import calculate_search_relevance
 from lib.logging import log_debug
@@ -184,6 +185,10 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
 
     # Display items for current page
     page_items = all_items[start_idx:end_idx]
+    # Prime playback state for this page's movie rows in one batched query.
+    _movie_keys = [k for t, k, _d, _s in page_items if t == 'movie']
+    if _movie_keys:
+        get_states([build_mv_state_key(k) for k in _movie_keys])
     for item_type, key, data, score in page_items:
         if item_type == 'series':
             series_name = key
@@ -252,6 +257,8 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
                 'canonical_key': series_name,
                 'display_name': display_name,
                 'search_query': what,
+                'category': category,
+                'sort': sort,
             })])
 
             url_params = {'action': 'browse_series'}
@@ -284,7 +291,6 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            from lib.state import build_mv_state_key
             state_key = build_mv_state_key(movie_key)
             state_cmds = apply_playback_state(listitem, state_key)
             fav_entry = add_favorite_context_entry({
@@ -293,6 +299,8 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
                 'display_name': display_name,
                 'search_query': what,
                 'year': year,
+                'category': category,
+                'sort': sort,
             })
             listitem.addContextMenuItems((state_cmds or []) + [fav_entry])
 
@@ -368,7 +376,11 @@ def search(params):
         sort = params['sort'] if 'sort' in params else SORTS[_setting_int('ssort', 0)]
         limit = int(params['limit']) if 'limit' in params else _setting_int('slimit', 25)
         offset = int(params['offset']) if 'offset' in params else 0
-        if offset == 0 and what != NONE_WHAT:
+        # Store history only on the genuine first entry to a search — NOT on
+        # pagination. The series view paginates via 'page' (offset stays 0),
+        # the flat view via 'offset'; either present means a later page.
+        is_first_page = offset == 0 and 'page' not in params
+        if is_first_page and what != NONE_WHAT:
             storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
         dosearch(token, what, category, sort, limit, offset, 'search', params)

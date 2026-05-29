@@ -22,6 +22,14 @@ from pathlib import Path
 
 # === KODI MOCKS ===
 class MockXBMC:
+    class Player:  # lib.player subclasses xbmc.Player at import time
+        def __init__(self, *a, **k):
+            pass
+    class Monitor:  # lib.ui subclasses xbmc.Monitor at import time
+        def __init__(self, *a, **k):
+            pass
+        def waitForAbort(self, timeout=None):
+            return True
     LOGDEBUG = 0
     LOGINFO = 1
     LOGWARNING = 2

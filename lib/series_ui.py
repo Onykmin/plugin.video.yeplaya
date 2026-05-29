@@ -10,7 +10,8 @@ import xbmcplugin
 
 from lib.api import revalidate
 from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
-from lib.state import state_key_for, build_mv_state_key
+from lib.state import state_key_for, build_mv_state_key, get_states
+from lib.keys import normalize_series_key, normalize_movie_key
 from lib.parsing import parse_quality_metadata
 from lib.cache import get_or_fetch_grouped
 from lib.grouping import deduplicate_versions
@@ -21,6 +22,39 @@ from lib.ui import _build_version_metadata
 
 _handle = get_handle()
 _addon = get_addon()
+
+
+def _resolve_drifted_key(bucket, stored_key, fav_display_name, normalize):
+    """Resolve a favorite's (possibly drifted) key to a live grouping bucket key.
+
+    Dual-name detection can emit a different canonical_key from one fetch to
+    the next, so a favorite's stored key may be absent from the current
+    `bucket` (grouped['series'] or grouped['movies']). Resolution order:
+
+    1. Normalized-key equality — the same identity the favorites/state layers
+       use; collapses dual-name prefix drift (e.g. "mestecko|south park" and
+       "tucnak|south park" both normalize to "south park").
+    2. Case-insensitive EXACT display_name match — last resort for the case
+       where the aliases differ so much the normalized keys can't bridge.
+
+    Substring matching is deliberately NOT used: it wrongly conflated sibling
+    titles like "Panic" and "Panic at the Disco". Returns the matched live key,
+    or the original stored_key if nothing matches.
+    """
+    if not bucket:
+        return stored_key
+    target_norm = normalize(stored_key) if stored_key else None
+    if target_norm:
+        for k in bucket:
+            if normalize(k) == target_norm:
+                return k
+    target_name = (fav_display_name or '').lower()
+    if target_name:
+        for k, v in bucket.items():
+            display = (v.get('display_name') or '').lower()
+            if display and display == target_name:
+                return k
+    return stored_key
 
 
 def browse_series(params):
@@ -36,19 +70,13 @@ def browse_series(params):
     token = revalidate()
     cache_key, grouped = get_or_fetch_grouped(params, token, check_key=series_name, check_type='series')
 
-    # Dual-name detection can produce a different canonical_key from one
-    # fetch to the next (e.g. "mestecko|south park" vs
-    # "pandemic special cz|south park"). When a favorite's stored key is
-    # not in the current grouping, fall back to a display_name substring
-    # match within the same bucket.
+    # A favorite's stored canonical_key may have drifted out of the current
+    # grouping (dual-name detection). Resolve it to a live bucket key via the
+    # shared normalized-key / exact-name resolver.
     if grouped and series_name not in grouped.get('series', {}):
-        target = (params.get('fav_display_name') or '').lower()
-        if target:
-            for k, v in grouped.get('series', {}).items():
-                display = (v.get('display_name') or '').lower()
-                if display and (target in display or display in target):
-                    series_name = k
-                    break
+        series_name = _resolve_drifted_key(
+            grouped.get('series', {}), series_name,
+            params.get('fav_display_name'), normalize_series_key)
 
     if not grouped or series_name not in grouped.get('series', {}):
         popinfo(_addon.getLocalizedString(30431), icon=xbmcgui.NOTIFICATION_WARNING)
@@ -262,13 +290,9 @@ def select_movie_version(params):
 
     # Drifted canonical_key fallback — see browse_series for context.
     if grouped and movie_key not in grouped.get('movies', {}):
-        target = (params.get('fav_display_name') or '').lower()
-        if target:
-            for k, v in grouped.get('movies', {}).items():
-                display = (v.get('display_name') or '').lower()
-                if display and (target in display or display in target):
-                    movie_key = k
-                    break
+        movie_key = _resolve_drifted_key(
+            grouped.get('movies', {}), movie_key,
+            params.get('fav_display_name'), normalize_movie_key)
 
     if not grouped or movie_key not in grouped.get('movies', {}):
         xbmcgui.Dialog().ok(_addon.getLocalizedString(30407), _addon.getLocalizedString(30409))
@@ -331,6 +355,11 @@ def browse_other(params):
         listitem = xbmcgui.ListItem(label='[B]{}[/B]'.format(_addon.getLocalizedString(30410)))
         listitem.setArt({'icon': 'DefaultMovies.png'})
         xbmcplugin.addDirectoryItem(_handle, get_url(action='separator'), listitem, False)
+
+        # Prime playback state for all movie rows in one batched query so
+        # per-row apply_playback_state hits the in-memory cache (one SELECT
+        # instead of one per movie).
+        get_states([build_mv_state_key(k) for k in grouped['movies'].keys()])
 
         # Sort movies: most versions first (best match), then by year desc
         for canonical_key in sorted(grouped['movies'].keys(),
