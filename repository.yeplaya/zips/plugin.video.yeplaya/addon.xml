@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.1.1" provider-name="onykmin">
+<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.1.2" provider-name="onykmin">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.18.4"/>
@@ -20,6 +20,17 @@
             <icon>resources/icon.png</icon>
         </assets>
         <news>
+[B]1.1.2[/B]
+- fix: movie sequels (Avatar 2, Top Gun 2) no longer shown as fake TV episodes
+- fix: episode-titled releases (Show - Episode Title S01E01) group into one series
+- fix: bracketed markers (Westworld 2016 (S01E01)) correctly listed under Series
+- fix: movie year detection — Blade Runner 2049 / Death Race 2000 use the real release year
+- fix: Czech titles with "a" (Tom a Jerry) no longer mangled
+- fix: version dialog ranks by quality (x265 BluRay above bloated x264)
+- fix: display names keep sequel numbers (Cobra Kai 3)
+- fix: search relevance — csi finds C.S.I.; "her" no longer pulls in Mother
+- fix: large series no longer drop episodes mid-list (pagination)
+- fix: bad/missing file fields no longer crash or duplicate grouping
 [B]1.1.1[/B]
 - fix: favorites identity normalized (lib/keys) — same-title different-year movies no longer remove the wrong favorite
 - fix: dual-name canonical_key drift collapses to one favorite (no duplicates)

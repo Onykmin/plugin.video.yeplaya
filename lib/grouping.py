@@ -8,7 +8,8 @@ import xbmcaddon
 from lib.logging import log_debug, log_error, log_warning
 from lib.parsing import (parse_episode_info, parse_movie_info,
                          extract_language_tag, extract_dual_names, get_display_name,
-                         get_s00e00_pattern, get_0x00_pattern, get_word_set_key)
+                         get_s00e00_pattern, get_0x00_pattern, get_word_set_key,
+                         parse_quality_metadata)
 from lib.api import api, parse_xml, is_ok
 from lib.utils import todict
 
@@ -62,11 +63,13 @@ def _dual_canonical(name1, name2):
     """Build (canonical_key, display_name) from a dual-name pair.
 
     Uses csfd_scraper.create_canonical_from_dual_names when available, else
-    replicates its exact algorithm (clean both, substring→longer, otherwise
-    pipe-join sorted) so the canonical key is IDENTICAL regardless of whether
-    the optional csfd module is importable — a series must not split in two
-    just because csfd is absent (audit finding #18). Returns (None, None) when
-    the pair is not a usable dual name.
+    falls back to the same core algorithm (clean both, substring→longer,
+    otherwise pipe-join sorted) so a series does not split in two merely
+    because the optional csfd module is absent (audit finding #18). The keys
+    track csfd's output but are not guaranteed byte-identical if csfd's
+    cleaning ever diverges from clean_series_name; the goal is stable grouping
+    within a single run (the chosen backend does not change mid-run). Returns
+    (None, None) when the pair is not a usable dual name.
     """
     from lib.parsing import clean_series_name
     if DUAL_NAMES_AVAILABLE:
@@ -109,23 +112,26 @@ def _safe_size(v):
 
 
 def _version_sort_key(v):
-    """Sort key for a version: quality_score DESC, then size DESC.
+    """Sort key for a version: (quality_score, size), used with reverse=True
+    so higher quality wins and size breaks ties.
 
-    Higher quality first (the documented 'quality score ranks dupes'
-    contract), size as the tiebreaker. quality_score is derived from the
-    filename via parse_quality_metadata. Negated so a plain reverse=False
-    sort or reverse=True both behave; callers use reverse=True with size,
-    so we return a tuple already ordered for reverse=True.
+    quality_score is derived from the filename via parse_quality_metadata. The
+    result is CACHED on the version dict under 'quality_meta' the first time it
+    is computed, so the many re-sorts across the grouping/merge passes do not
+    re-run the parse for the same file (audit round-2 #7/#34 — the cache it
+    checked was never populated, so every sort re-parsed). series_ui later reads
+    the same 'quality_meta' field, so populating it here is purely beneficial.
     """
-    from lib.parsing import parse_quality_metadata
-    name = v.get('name', '') if isinstance(v, dict) else ''
-    meta = v.get('quality_meta') if isinstance(v, dict) else None
-    score = meta.get('quality_score') if isinstance(meta, dict) else None
-    if score is None:
+    if not isinstance(v, dict):
+        return (50, 0)
+    meta = v.get('quality_meta')
+    if not isinstance(meta, dict):
         try:
-            score = parse_quality_metadata(name).get('quality_score', 50)
+            meta = parse_quality_metadata(v.get('name', '') or '')
         except Exception:
-            score = 50
+            meta = {'quality_score': 50}
+        v['quality_meta'] = meta
+    score = meta.get('quality_score', 50)
     return (score, _safe_size(v))
 
 # Module-level unidecode for _filter_irrelevant (avoid re-import per call)
@@ -180,9 +186,12 @@ def _filter_irrelevant(files, query):
     def _matches(stem, words, acronyms):
         # Token-level match (word equality, word-prefix, or acronym). Avoids the
         # substring false-KEEP ("her" in "mother") while fixing the punctuation
-        # false-DROP ("csi" vs "C.S.I."). Prefix needs >=4 chars to be safe.
+        # false-DROP ("csi" vs "C.S.I."). Prefix is anchored at the WORD START,
+        # so a 3-char query ("man") still matches "Manifest" without re-opening
+        # the "her" in "mother" hole — "mother" does not start with "her"
+        # (audit round-2 #6 — short-query prefix matches were being dropped).
         for w in words:
-            if w == stem or (len(stem) >= 4 and w.startswith(stem)):
+            if w == stem or (len(stem) >= 3 and w.startswith(stem)):
                 return True
         return stem in acronyms
 
@@ -249,16 +258,23 @@ def merge_substring_series(grouped):
                 extra_words = long_words - short_words
                 keys_to_merge.append((short_key, long_key, extra_words))
 
+    # Snapshot episode counts BEFORE any merge runs. The spinoff guard below
+    # must see each group's ORIGINAL episode count; reading the live
+    # total_episodes makes the decision depend on merge order, because an
+    # earlier merge into `short_key` inflates the count that a later guard reads
+    # (audit round-2 #4/#11 — order-dependent merge decisions).
+    eps_snapshot = {k: series[k].get('total_episodes', 0) for k in series}
+
     # Perform merges
     for short_key, long_key, extra_words in keys_to_merge:
         if short_key not in series or long_key not in series:
             continue
 
-        # Spinoff protection, re-checked against CURRENT counts: if both groups
-        # now have significant episodes and the extra words are short (likely
-        # sequel/spinoff markers like Z, GT, Super), they are distinct series.
-        short_eps = series[short_key]['total_episodes']
-        long_eps = series[long_key]['total_episodes']
+        # Spinoff protection against the PRE-MERGE counts: if both groups had
+        # significant episodes and the extra words are short (likely sequel/
+        # spinoff markers like Z, GT, Super), they are distinct series.
+        short_eps = eps_snapshot.get(short_key, 0)
+        long_eps = eps_snapshot.get(long_key, 0)
         if min(short_eps, long_eps) >= 3 and all(len(w) <= 5 for w in extra_words):
             continue
 
@@ -466,6 +482,40 @@ def merge_similar_series(grouped):
     return grouped
 
 
+def _strip_display_metadata(name, strip_trailing_num):
+    """Strip filename metadata (extension, quality/source/codec/language tags,
+    bracketed release/year tags, episode markers, separators) from a name.
+
+    The single shared cleaning pipeline behind both display-name passes (audit
+    round-2 #13/#28 — the two were near-identical copies). The ONLY difference
+    is `strip_trailing_num`:
+      - True  -> GROUPING-vote key: also strips a trailing number so different
+                 encodings of one title vote together. NOT shown to the user.
+      - False -> USER-FACING string: KEEPS title numbers (sequel/season numbers
+                 and number-titles like "Cobra Kai 3", "The 4400",
+                 "Blade Runner 2049") so the displayed title stays faithful
+                 (#8/#26/#3) while still dropping "1080p BluRay" noise.
+    """
+    cleaned = _RE_FILE_EXT.sub('', name)
+    # Replace dots and underscores with spaces (scene naming: "Movie.Name.2010")
+    cleaned = cleaned.replace('.', ' ').replace('_', ' ')
+    # Normalize multiple dashes/hyphens to single space
+    cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
+    cleaned = _RE_QUALITY.sub('', cleaned)
+    cleaned = _RE_SOURCE.sub('', cleaned)
+    cleaned = _RE_CODEC.sub('', cleaned)
+    cleaned = _RE_LANG_LABEL.sub('', cleaned)
+    cleaned = _RE_LANG_CODE.sub('', cleaned)
+    cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
+    if strip_trailing_num:
+        cleaned = _RE_TRAILING_NUM.sub('', cleaned)
+    cleaned = _RE_SE_MARKER.sub('', cleaned)
+    cleaned = _RE_NxN_MARKER.sub('', cleaned)
+    cleaned = _RE_TRAILING_SEP.sub('', cleaned)
+    cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
+    return cleaned.strip()
+
+
 def pick_best_display_name_from_list(names):
     """Pick best display name from a list of candidates.
 
@@ -481,54 +531,10 @@ def pick_best_display_name_from_list(names):
         return None
 
     def clean_name(name):
-        """Aggressively clean a name to a GROUPING-vote key.
-
-        Strips quality/codec/lang/trailing-number so different encodings of the
-        same title vote together. NOT shown to the user — see _light_clean for
-        the display string.
-        """
-        cleaned = name
-        cleaned = _RE_FILE_EXT.sub('', cleaned)
-        # Replace dots and underscores with spaces (scene naming: "Movie.Name.2010")
-        cleaned = cleaned.replace('.', ' ').replace('_', ' ')
-        # Normalize multiple dashes/hyphens to single space
-        cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
-        cleaned = _RE_QUALITY.sub('', cleaned)
-        cleaned = _RE_SOURCE.sub('', cleaned)
-        cleaned = _RE_CODEC.sub('', cleaned)
-        cleaned = _RE_LANG_LABEL.sub('', cleaned)
-        cleaned = _RE_LANG_CODE.sub('', cleaned)
-        cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
-        cleaned = _RE_TRAILING_NUM.sub('', cleaned)
-        cleaned = _RE_SE_MARKER.sub('', cleaned)
-        cleaned = _RE_NxN_MARKER.sub('', cleaned)
-        cleaned = _RE_TRAILING_SEP.sub('', cleaned)
-        cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
-        return cleaned.strip()
+        return _strip_display_metadata(name, strip_trailing_num=True)
 
     def _light_clean(name):
-        """Cleaning for the USER-FACING string.
-
-        Strips unambiguous METADATA (file-extension, episode markers, quality/
-        source/codec/language tags, bracketed release/year tags, separators)
-        but KEEPS title numbers — sequel/season numbers and number-titles like
-        "Cobra Kai 3", "The 4400", "Blade Runner 2049" — by NOT applying the
-        trailing-number strip. This keeps the displayed title faithful
-        (#8/#26/#3) while still dropping "1080p BluRay" noise."""
-        cleaned = _RE_FILE_EXT.sub('', name)
-        cleaned = cleaned.replace('.', ' ').replace('_', ' ')
-        cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
-        cleaned = _RE_QUALITY.sub('', cleaned)
-        cleaned = _RE_SOURCE.sub('', cleaned)
-        cleaned = _RE_CODEC.sub('', cleaned)
-        cleaned = _RE_LANG_LABEL.sub('', cleaned)
-        cleaned = _RE_LANG_CODE.sub('', cleaned)
-        cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
-        cleaned = _RE_SE_MARKER.sub('', cleaned)
-        cleaned = _RE_NxN_MARKER.sub('', cleaned)
-        cleaned = _RE_TRAILING_SEP.sub('', cleaned)
-        cleaned = _RE_MULTI_SPACE.sub(' ', cleaned)
-        return cleaned.strip()
+        return _strip_display_metadata(name, strip_trailing_num=False)
 
     # Vote on the heavily-cleaned form (groups encodings of one title), but
     # remember a representative ORIGINAL for each so we can return a faithful
@@ -827,12 +833,10 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
         unique_episodes = set()
         for season_num, episodes in series_data['seasons'].items():
             for ep_num, versions in episodes.items():
-                # Deduplicate versions (final cleanup)
-                deduplicated = deduplicate_versions(versions)
-                series_data['seasons'][season_num][ep_num] = deduplicated
-
-                # Sort versions by size DESC (largest first)
-                deduplicated.sort(key=_version_sort_key, reverse=True)
+                # Deduplicate versions (final cleanup). Sorting is deferred to
+                # the single post-merge pass below — sorting here too would just
+                # be redone after merges (audit round-2 #8/#19 — double sort).
+                series_data['seasons'][season_num][ep_num] = deduplicate_versions(versions)
 
                 # Track unique episodes
                 unique_episodes.add((season_num, ep_num))
@@ -990,6 +994,23 @@ def group_movies(files):
     return result
 
 
+def _finalize_merged_versions(movies, target_keys, keys_to_delete):
+    """Dedup + quality-sort each merge target's versions exactly once.
+
+    Movie merges extend a target's version list possibly many times (one source
+    at a time). Doing the dedup+sort inside that inner loop is O(k^2) over the
+    growing list and re-parses quality metadata each pass; instead the merge
+    loops collect their touched targets and call this once afterwards (audit
+    round-2 #9/#27). Skips targets that were themselves merged away.
+    """
+    for key in target_keys:
+        if key in keys_to_delete or key not in movies:
+            continue
+        versions = deduplicate_versions(movies[key].get('versions', []))
+        versions.sort(key=_version_sort_key, reverse=True)
+        movies[key]['versions'] = versions
+
+
 def merge_dual_key_movies(result):
     """Merge dual-name movie keys into matching simple keys.
 
@@ -1016,6 +1037,7 @@ def merge_dual_key_movies(result):
             simple_keys[(key, year)] = key
 
     keys_to_delete = set()
+    touched_targets = set()
     for dual_key in dual_keys:
         if dual_key in keys_to_delete:
             continue
@@ -1036,11 +1058,9 @@ def merge_dual_key_movies(result):
                 break
 
         if target and target in movies and dual_key in movies:
+            # Extend only; dedup+sort once per target after the loops (#9).
             movies[target]['versions'].extend(movies[dual_key]['versions'])
-            movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
-            movies[target]['versions'].sort(
-                key=_version_sort_key,
-                reverse=True)
+            touched_targets.add(target)
             log_debug(f'Dual-key movie merge: "{dual_key}" → "{target}"')
             keys_to_delete.add(dual_key)
 
@@ -1056,12 +1076,11 @@ def merge_dual_key_movies(result):
             target = simple_keys[(spaced, year)]
             if target in movies and key in movies:
                 movies[target]['versions'].extend(movies[key]['versions'])
-                movies[target]['versions'] = deduplicate_versions(movies[target]['versions'])
-                movies[target]['versions'].sort(
-                    key=_version_sort_key,
-                    reverse=True)
+                touched_targets.add(target)
                 log_debug(f'Spaceless movie merge: "{key}" → "{target}"')
                 keys_to_delete.add(key)
+
+    _finalize_merged_versions(movies, touched_targets, keys_to_delete)
 
     for key in keys_to_delete:
         if key in movies:
@@ -1093,6 +1112,7 @@ def merge_orphan_movies(result):
         return result
 
     keys_to_delete = set()
+    touched_targets = set()
     for orphan_key, orphan_data in orphans.items():
         if orphan_key in keys_to_delete:
             continue
@@ -1123,12 +1143,12 @@ def merge_orphan_movies(result):
                     best_versions = versions
 
         if best_target and best_target in movies:
+            # Extend only; dedup+sort once per target after the loop (#9).
             movies[best_target]['versions'].extend(movies[orphan_key]['versions'])
-            movies[best_target]['versions'] = deduplicate_versions(movies[best_target]['versions'])
-            movies[best_target]['versions'].sort(
-                key=_version_sort_key,
-                reverse=True)
+            touched_targets.add(best_target)
             keys_to_delete.add(orphan_key)
+
+    _finalize_merged_versions(movies, touched_targets, keys_to_delete)
 
     for key in keys_to_delete:
         if key in movies:
@@ -1223,6 +1243,7 @@ def merge_crossyear_movies(result, max_gap=3):
         by_title.setdefault(title, []).append(entry)
 
     keys_to_delete = set()
+    touched_targets = set()
     for title, entries in by_title.items():
         if len(entries) < 2:
             continue
@@ -1245,13 +1266,15 @@ def merge_crossyear_movies(result, max_gap=3):
                 if smaller >= 3 and smaller * 4 >= larger:
                     continue
                 if target_key in movies and source_key in movies:
+                    # Extend only; defer the dedup+sort to one pass per target
+                    # after the loop (audit round-2 #9 — was O(k^2) re-dedup and
+                    # re-sort of the whole growing list on every absorbed source).
                     movies[target_key]['versions'].extend(movies[source_key]['versions'])
-                    movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
-                    movies[target_key]['versions'].sort(
-                        key=_version_sort_key,
-                        reverse=True)
+                    touched_targets.add(target_key)
                     log_debug(f'Cross-year merge: "{source_key}" → "{target_key}"')
                     keys_to_delete.add(source_key)
+
+    _finalize_merged_versions(movies, touched_targets, keys_to_delete)
 
     for key in keys_to_delete:
         if key in movies:
@@ -1352,19 +1375,15 @@ def merge_substring_movies(result):
                         break  # key1 is now a merge source, don't check more
 
     # Perform merges
+    touched_targets = set()
     for target_key, source_key in merges:
         if target_key not in movies or source_key not in movies:
             continue
 
-        # Merge versions
+        # Merge versions (extend only; dedup+sort once per target after the
+        # loop — a target can absorb several sources, audit round-2 #9).
         movies[target_key]['versions'].extend(movies[source_key]['versions'])
-
-        # Deduplicate and re-sort
-        movies[target_key]['versions'] = deduplicate_versions(movies[target_key]['versions'])
-        movies[target_key]['versions'].sort(
-            key=_version_sort_key,
-            reverse=True
-        )
+        touched_targets.add(target_key)
 
         # Pick shorter/cleaner display name
         target_display = movies[target_key].get('display_name', target_key)
@@ -1372,6 +1391,8 @@ def merge_substring_movies(result):
         movies[target_key]['display_name'] = _pick_cleaner_movie_name(target_display, source_display)
 
         log_debug(f'Movie merge: "{source_key}" → "{target_key}"')
+
+    _finalize_merged_versions(movies, touched_targets, keys_to_delete)
 
     # Delete merged movies
     for key in keys_to_delete:
@@ -1416,11 +1437,18 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
         page = 1
 
     consecutive_short = 0
+    # True once the fetch stopped for a NATURAL/error reason (reached the
+    # reported total, empty/short pages, cancellation, API error) rather than
+    # by hitting the page cap. Used to suppress a spurious truncation warning
+    # on a clean, complete fetch that happened to use the last allowed page
+    # (audit round-2 #12 — warning fired even when nothing was truncated).
+    reached_end = False
 
     while page < max_pages:
         # Check for cancellation
         if cancel_callback and cancel_callback():
             log_debug('fetch_and_group_series: cancelled by callback')
+            reached_end = True
             break
 
         response = api('search', {
@@ -1434,10 +1462,12 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
         })
 
         if response is None:
+            reached_end = True
             break
 
         xml = parse_xml(response.content)
         if not is_ok(xml):
+            reached_end = True
             break
 
         # Collect files from this page
@@ -1447,6 +1477,7 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
             page_files.append(item)
 
         if not page_files:
+            reached_end = True
             break
 
         all_files.extend(page_files)
@@ -1465,6 +1496,7 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
 
         # Done when we've reached the reported total.
         if total is not None and offset >= total:
+            reached_end = True
             break
 
         # Runaway guard (NOT the old aggressive <10% early-stop, which dropped
@@ -1474,12 +1506,16 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
             consecutive_short += 1
             if consecutive_short >= 3 and total is None:
                 log_debug('fetch_and_group_series: stop (tiny pages, no total)')
+                reached_end = True
                 break
         else:
             consecutive_short = 0
 
-    # Warn when the page cap truncated a larger result set (#12).
-    if page >= max_pages:
+    # Warn ONLY when the page cap actually truncated a larger result set — i.e.
+    # the loop exited because it ran out of allowed pages, not because the fetch
+    # completed naturally (audit round-2 #12 — was warning on every clean fetch
+    # that reached the last allowed page).
+    if page >= max_pages and not reached_end:
         log_warning('fetch_and_group_series: hit max_pages={} cap at {} files; '
                     'results may be incomplete'.format(max_pages, len(all_files)))
 

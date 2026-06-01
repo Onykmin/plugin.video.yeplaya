@@ -266,24 +266,11 @@ def extract_dual_names(raw_name):
             if _norm_title_eq(name1, name2):
                 return None
 
-            # Filter false positives in name2:
-            # Episode numbers: "07", "01 CZ", "06.5"
-            is_episode_num = bool(re.match(r'^\d{1,3}(\.\d)?(\s+[A-Z]{2})?(\s+\d+\.\s*serie)?$', name2, re.IGNORECASE))
-            # Episode markers: "S01E02...", "01x05..."
-            is_episode_marker = bool(re.match(r'^[Ss]\d{1,2}[Ee]\d{1,3}', name2))
-            # Quality/codec: contains resolution, codec, source keywords
-            quality_keywords = ['720p', '1080p', '2160p', '4k', 'x264', 'x265', 'hevc', 'h264', 'h265',
-                               'bluray', 'webrip', 'webdl', 'hdtv', 'aac', 'dts', 'ac3']
-            is_quality = any(kw in name2.lower() for kw in quality_keywords)
-            # Years: "2009", "2024"
-            is_year = bool(re.match(r'^(?:19|20)\d{2}$', name2))
-            # Descriptive EPISODE TITLE (not a CzSk alias): a dual-name alias is
-            # a short title-like phrase, whereas "Sherlock - A Study in Pink" has
-            # a wordy / article-led suffix. Reject name2 that is >=3 words or
-            # starts with an English article.
-            is_episode_title = _looks_like_episode_title(name2)
-
-            if is_episode_num or is_episode_marker or is_quality or is_year or is_episode_title:
+            # Reject name2 that is actually metadata (episode number/marker,
+            # quality/codec, year) or a descriptive episode title rather than a
+            # CzSk alias. Single source of truth: _dual_name2_is_false_positive
+            # (audit round-2 #5/#10 — was duplicated inline here).
+            if _dual_name2_is_false_positive(name2):
                 return None
 
             if name1 and name2 and len(name1) > 1 and len(name2) > 1:
@@ -298,10 +285,10 @@ def extract_dual_names(raw_name):
         if re.search(r'[IVX]+\s*\(\d+\)', name1):
             return None
 
-        from unicodedata import normalize
-        norm1 = normalize('NFKD', name1.lower()).encode('ASCII', 'ignore').decode()
-        norm2 = normalize('NFKD', name2.lower()).encode('ASCII', 'ignore').decode()
-        if norm1 == norm2:
+        # Same-title-written-differently and metadata false positives must be
+        # rejected here too — this branch previously had no metadata guard and
+        # used a raw NFKD compare instead of the shared helpers (round-2 #5/#20).
+        if _norm_title_eq(name1, name2) or _dual_name2_is_false_positive(name2):
             return None
 
         if (name1 and name2 and len(name1) > 1 and len(name2) > 1 and
@@ -333,10 +320,10 @@ def extract_dual_names(raw_name):
         if (name1 and name2 and len(name1) > 1 and len(name2) > 1 and
             any(c.isupper() for c in name1) and any(c.isupper() for c in name2)):
 
-            from unicodedata import normalize
-            norm1 = normalize('NFKD', name1.lower()).encode('ASCII', 'ignore').decode()
-            norm2 = normalize('NFKD', name2.lower()).encode('ASCII', 'ignore').decode()
-            if norm1 != norm2:
+            # Reject same-title and metadata false positives via the shared
+            # helpers (this branch had no metadata guard — round-2 #5/#20).
+            if (not _norm_title_eq(name1, name2)
+                    and not _dual_name2_is_false_positive(name2)):
                 return (name1, name2)
 
     return None
@@ -682,25 +669,44 @@ def parse_episode_info(filename):
 
 # A 4-digit (19xx|20xx) token, with optional surrounding ()/[]; used to find
 # the RELEASE year rather than a title-embedded number like "2049"/"2000".
-_RE_YEAR_TOKEN_SCAN = re.compile(r'[\(\[]?((?:19|20)\d{2})[\)\]]?')
-_RE_BRACKETED_YEAR = re.compile(r'[\(\[]((?:19|20)\d{2})[\)\]]')
+# The `(?!x\d{3,4})` lookahead rejects a WIDTH that is part of a resolution
+# ("1920x1080", "2020x1080") so the resolution width is never read as the
+# release year (audit round-2 #2/#3).
+_RE_YEAR_TOKEN_SCAN = re.compile(r'[\(\[]?((?:19|20)\d{2})(?!x\d{3,4})[\)\]]?')
+_RE_BRACKETED_YEAR = re.compile(r'[\(\[]((?:19|20)\d{2})(?!x\d{3,4})[\)\]]')
+# Known video/archive extensions only — used to strip a trailing extension from
+# a "(year) Title.ext" title without eating dotted sequel suffixes ("Rocky.IV").
+_RE_FILE_EXT_STRIP = re.compile(
+    r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3|wmv|mov|mpg|mpeg)$',
+    re.IGNORECASE)
 
 
 def _select_movie_year(filename):
     """Pick the release year and the title text preceding it.
 
-    Returns (raw_title, year) or None. Resolution order, designed so an
-    in-title number ("Blade Runner 2049", "Death Race 2000") is NOT mistaken
-    for the release year:
-      1. A bracketed/parenthesized (19|20)\\d{2} anywhere = the release year
-         (uploaders wrap the real year: "Death Race 2000 (1975)" -> 1975).
+    Returns (raw_title, year) or None. Resolution order:
+      1. A bracketed/parenthesized (19|20)\\d{2} = the release year (uploaders
+         wrap the real year: "Death Race 2000 (1975)" -> 1975). The title is
+         the text before the bracket, or — for the "(2010) Title" convention —
+         the text AFTER it when nothing precedes it.
       2. Otherwise the LAST plausible (19|20)\\d{2} token that is <= current+2,
          with the title being everything before it.
-    A leading implausible-future number ("2049") is left in the title.
+
+    Limitation: a BARE trailing year is taken as the release year, so
+    "Death Race 2000.mkv" yields year 2000 / title "Death Race". A bare title
+    number and a real release year are indistinguishable by surface form; to
+    keep an in-title number ("Death Race 2000", "Space 1999"), supply the real
+    year in brackets ("Death Race 2000 (1975)") — rule 1 then wins. A leading
+    implausible-future number ("2049") is left in the title via the plausibility
+    cap.
     """
     # Strip leading release-group tags ("[FLE] ", "(Lena) ", "[FLE][YIFY] ")
     # so they don't leak into the title or get mistaken for the year token.
-    filename = re.sub(r'^(?:[\(\[][^)\]]*[\)\]]\s*)+', '', filename)
+    # A bracket whose content is JUST a year ("(2010)") is NOT a release-group
+    # tag — it is the release year for a "(2010) Title" name — so the lookahead
+    # leaves it in place for rule 1 to consume (audit round-2 #5).
+    filename = re.sub(
+        r'^(?:[\(\[](?!(?:19|20)\d{2}[\)\]])[^)\]]*[\)\]]\s*)+', '', filename)
 
     # 1. bracketed year wins (it's an explicit release-year tag)
     bm = _RE_BRACKETED_YEAR.search(filename)
@@ -710,6 +716,15 @@ def _select_movie_year(filename):
             raw_title = filename[:bm.start()].strip(' .-_([')
             if raw_title:
                 return raw_title, year
+            # "(2010) Title": nothing precedes the year — the title follows it.
+            # Strip a trailing file extension here, which the normal
+            # title-before-year path never carries (the year precedes it). Only
+            # a KNOWN extension is stripped — a blanket ".<2-4 alnum>$" would
+            # also eat dotted sequel suffixes ("Rocky.IV" -> "Rocky").
+            after = filename[bm.end():].strip(' .-_)]')
+            after = _RE_FILE_EXT_STRIP.sub('', after).strip(' .-_')
+            if after:
+                return after, year
 
     # 2. choose the rightmost plausible bare year token; everything before it
     #    is the title. This keeps in-title numbers in the title when a later

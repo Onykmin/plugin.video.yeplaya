@@ -18,7 +18,8 @@ from lib.parsing import (
 from lib.grouping import (
     deduplicate_versions, _filter_irrelevant, _safe_size,
     _version_sort_key, pick_best_display_name_from_list,
-    merge_word_order_series, group_by_series,
+    merge_word_order_series, merge_substring_series, group_by_series,
+    merge_crossyear_movies,
 )
 
 
@@ -240,6 +241,110 @@ class TestDedupAndFilter(unittest.TestCase):
         self.assertEqual(cleaned, 'The Office - 05.mkv')
         _, cleaned2 = extract_season_from_text('Babylon 5 Season 2 - 10.mkv')
         self.assertEqual(cleaned2, 'Babylon 5 - 10.mkv')
+
+
+# ===========================================================================
+# Round 2 — second-pass audit fixes
+# ===========================================================================
+class TestRound2YearHandling(unittest.TestCase):
+    def test_resolution_not_parsed_as_year(self):  # r2 #2/#3/#7
+        # "1920x1080" width must not be read as the release year.
+        m = parse_movie_info('The Heist 1920x1080 x264.mkv')
+        # No real year present -> not classified as a movie (year is required).
+        self.assertIsNone(m)
+
+    def test_resolution_alongside_real_year(self):  # r2 #7
+        m = parse_movie_info('Tenet (2020 1920x1080p) cz.mkv')
+        self.assertIsNotNone(m)
+        self.assertEqual(m['year'], 2020)
+
+    def test_leading_parenthesized_year_kept(self):  # r2 #5
+        # "(2010) Title" — the leading (year) is the release year, not a tag.
+        m = parse_movie_info('(2010) The Movie.mkv')
+        self.assertIsNotNone(m)
+        self.assertEqual(m['year'], 2010)
+        self.assertNotIn('mkv', m['title'])  # extension must be stripped
+        m2 = parse_movie_info('(1999) Fight Club 1080p BluRay.mkv')
+        self.assertEqual(m2['year'], 1999)
+        self.assertEqual(m2['title'], 'fight club')
+
+    def test_leading_year_keeps_dotted_sequel_suffix(self):  # r2 audit self-fix
+        # The after-year extension strip must remove only KNOWN extensions, not
+        # a dotted sequel suffix ("Rocky.IV" must not lose "IV").
+        m = parse_movie_info('(2010) Rocky.IV')
+        self.assertEqual(m['year'], 2010)
+        self.assertEqual(m['title'], 'rocky 4')  # roman numeral normalized
+        m2 = parse_movie_info('(2010) Rocky.IV.mkv')  # real ext still stripped
+        self.assertEqual(m2['title'], 'rocky 4')
+
+
+class TestRound2DualNameGuards(unittest.TestCase):
+    def test_dash_no_space_branch_rejects_metadata(self):  # r2 #5/#20
+        # Dash-without-spaces branch now applies the shared false-positive guard.
+        self.assertIsNone(extract_dual_names('Inception-1080p'))
+        self.assertIsNone(extract_dual_names('Movie-2010'))
+
+    def test_multi_space_branch_rejects_metadata(self):  # r2 #5/#20
+        self.assertIsNone(extract_dual_names('Inception  1080p BluRay'))
+        self.assertIsNone(extract_dual_names('Movie  S01E01'))
+
+    def test_legit_dual_still_detected_after_refactor(self):  # r2 no over-correction
+        self.assertEqual(extract_dual_names('The Penguin - Tucnak'),
+                         ('The Penguin', 'Tucnak'))
+
+
+class TestRound2Filter(unittest.TestCase):
+    def test_short_query_prefix_match_kept(self):  # r2 #6
+        # 3-char query as a word-prefix is kept; the substring false-keep
+        # ("man" inside "Batman") is still avoided (prefix is word-anchored).
+        kept = [f['name'] for f in _filter_irrelevant(
+            [{'name': 'Manifest S01E01.mkv'}, {'name': 'Batman Begins.mkv'}], 'man')]
+        self.assertEqual(kept, ['Manifest S01E01.mkv'])
+
+
+class TestRound2MergeDeterminism(unittest.TestCase):
+    def test_spinoff_guard_order_independent(self):  # r2 #4/#11
+        # The spinoff guard must read PRE-merge episode counts so the outcome
+        # does not depend on dict/merge iteration order.
+        def build():
+            return {'series': {
+                'dragon ball': _series(5),
+                'dragon ball z': _series(5, 10),
+                'dragon ball super': _series(5, 20),
+            }}
+        g1 = build()
+        merge_substring_series(g1)
+        g2 = build()
+        # Reverse insertion order.
+        g2['series'] = dict(reversed(list(g2['series'].items())))
+        merge_substring_series(g2)
+        self.assertEqual(set(g1['series']), set(g2['series']))
+
+
+class TestRound2MovieMergeFinalize(unittest.TestCase):
+    def test_crossyear_multi_source_dedup_and_sort(self):  # r2 #9/#27
+        # A target absorbing multiple sources must end up deduped and
+        # quality-sorted exactly as before (deferred finalize is equivalent).
+        def v(name, ident, size):
+            return {'name': name, 'ident': ident, 'size': size}
+        result = {'movies': {
+            'blade|2000': {'year': 2000, 'versions': [
+                v('Blade 480p.mkv', 'a', '100')]},
+            'blade|2001': {'year': 2001, 'versions': [
+                v('Blade 1080p.mkv', 'b', '900'),
+                v('Blade 480p.mkv', 'a', '100')]},  # dup ident of 'a'
+            'blade|2002': {'year': 2002, 'versions': [
+                v('Blade 720p.mkv', 'c', '500')]},
+        }}
+        merge_crossyear_movies(result)
+        # All merged into one key.
+        self.assertEqual(len(result['movies']), 1)
+        versions = next(iter(result['movies'].values()))['versions']
+        idents = [x['ident'] for x in versions]
+        self.assertEqual(len(idents), len(set(idents)))  # deduped
+        # Quality-sorted DESC: 1080p > 720p > 480p.
+        quals = [x['quality_meta']['quality'] for x in versions]
+        self.assertEqual(quals, ['1080p', '720p', '480p'])
 
 
 if __name__ == '__main__':
