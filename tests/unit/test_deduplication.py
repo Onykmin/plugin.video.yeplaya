@@ -278,8 +278,11 @@ class TestDeduplicationLogic:
         # Two non-series files (movies grouped separately if movie grouping enabled)
         assert len(result['non_series']) >= 1
 
-    def test_quality_meta_lazy_not_in_grouping(self):
-        """Quality metadata is deferred (lazy) — not computed during grouping."""
+    def test_quality_meta_cached_during_grouping(self):
+        """Quality metadata is computed once and CACHED on the version dict by
+        the sort key, so repeated grouping/merge re-sorts and the later
+        series_ui pass reuse it instead of re-parsing (audit round-2 #7/#34 —
+        the cache used to never be populated, so every sort re-parsed)."""
         files = [
             {'name': 'Show.S01E01.1080p.BluRay.mkv', 'ident': 'id1', 'size': '1000000000'},
             {'name': 'Show.S01E02.mkv', 'ident': 'id2', 'size': '500000000'},
@@ -291,9 +294,10 @@ class TestDeduplicationLogic:
         ep1 = series['seasons'][1][1][0]
         ep2 = series['seasons'][1][2][0]
 
-        # quality_meta is NOT pre-computed (lazy — parsed on demand in version dialogs)
-        assert 'quality_meta' not in ep1
-        assert 'quality_meta' not in ep2
+        # quality_meta is now populated (cached) during grouping.
+        assert isinstance(ep1.get('quality_meta'), dict)
+        assert ep1['quality_meta'].get('quality') == '1080p'
+        assert isinstance(ep2.get('quality_meta'), dict)
 
 
 class TestAggressiveNormalization:
