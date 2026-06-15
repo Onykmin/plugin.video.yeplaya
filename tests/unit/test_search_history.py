@@ -22,7 +22,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 import lib.cache as cache
-from lib.cache import storesearch, loadsearch, savesearch, SEARCH_HISTORY
+from lib.cache import storesearch, loadsearch, savesearch, removesearch, SEARCH_HISTORY
 
 
 class _FakeAddon(object):
@@ -130,11 +130,48 @@ class TestStoreSearchNoOp(SearchHistoryTestBase):
         storesearch(None)
         self.assertEqual(loadsearch(), ['a'])
 
-    def test_whitespace_term_is_stored(self):
-        # "if not what" only guards falsy — whitespace is truthy and stored.
-        # Document current behavior.
+    def test_whitespace_only_term_no_op(self):
+        # Whitespace-only terms are stripped to empty and skipped.
+        storesearch('a')
         storesearch('  ')
-        self.assertEqual(loadsearch(), ['  '])
+        storesearch('\t\n')
+        self.assertEqual(loadsearch(), ['a'])
+
+    def test_surrounding_whitespace_stripped(self):
+        storesearch('  avatar  ')
+        self.assertEqual(loadsearch(), ['avatar'])
+
+
+class TestStoreSearchNormalizedDedup(SearchHistoryTestBase):
+    """Case/accent/whitespace-insensitive dedup."""
+
+    def test_case_insensitive_dedup_keeps_newest_casing(self):
+        storesearch('Avatar')
+        storesearch('avatar')
+        history = loadsearch()
+        self.assertEqual(history, ['avatar'])
+
+    def test_accent_insensitive_dedup(self):
+        storesearch('avatar')
+        storesearch('avatár')
+        self.assertEqual(loadsearch(), ['avatár'])
+
+    def test_whitespace_variant_dedup(self):
+        storesearch('avatar')
+        storesearch('  avatar ')
+        self.assertEqual(loadsearch(), ['avatar'])
+
+    def test_normalized_dedup_moves_to_front(self):
+        for t in ['a', 'b', 'c']:
+            storesearch(t)
+        storesearch('A')  # case-variant of 'a'
+        self.assertEqual(loadsearch(), ['A', 'c', 'b'])
+        self.assertEqual(len(loadsearch()), 3)
+
+    def test_remove_is_case_insensitive(self):
+        storesearch('Avatar')
+        removesearch('avatar')
+        self.assertEqual(loadsearch(), [])
 
 
 class TestBadShistorySetting(SearchHistoryTestBase):
@@ -217,6 +254,12 @@ class TestCorruptedJSON(SearchHistoryTestBase):
             f.write('null')
         storesearch('first')
         self.assertEqual(loadsearch(), ['first'])
+
+    def test_non_string_items_filtered(self):
+        # Older/corrupt files may hold non-strings; loadsearch drops them.
+        with io.open(self._history_path(), 'w', encoding='utf8') as f:
+            f.write('["ok", 123, null, "fine", {"x": 1}]')
+        self.assertEqual(loadsearch(), ['ok', 'fine'])
 
 
 class TestReproducerScenario(SearchHistoryTestBase):
@@ -337,7 +380,8 @@ class TestSearchUIWritesHistory(SearchHistoryTestBase):
         self._saved_dosearch = search_ui.dosearch
         search_ui.revalidate = lambda: 'fake-token'
         self._dosearch_calls = []
-        def _fake_dosearch(token, what, category, sort, limit, offset, action, params=None):
+        def _fake_dosearch(token, what, category, sort, limit, offset, action,
+                           params=None, **kwargs):
             self._dosearch_calls.append((what, offset))
         search_ui.dosearch = _fake_dosearch
 

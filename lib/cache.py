@@ -13,6 +13,7 @@ import contextlib
 import xbmcaddon
 from lib.keys import NONE_WHAT as _NONE_WHAT
 from lib.logging import log_warning, log_error, log_debug
+from lib.search import _normalize
 
 try:
     import fcntl
@@ -319,6 +320,9 @@ def loadsearch():
         log_warning("loadsearch: non-list JSON on disk ({}), resetting".format(
             type(history).__name__))
         return []
+    # Defend against non-string items on disk (older/corrupt files): downstream
+    # display and dedup assume strings.
+    history = [s for s in history if isinstance(s, str)]
     log_debug("loadsearch: {} items, file={} bytes".format(len(history), len(raw)))
     return history
 
@@ -329,7 +333,15 @@ def savesearch(history):
 
 
 def storesearch(what):
-    """Add search term to history."""
+    """Add search term to history.
+
+    Dedup is case/accent/whitespace-insensitive (via _normalize): re-searching
+    "Avatar", "avatar", or " avatár " all collapse to one entry, keeping the
+    newest casing at the front.
+    """
+    if not what:
+        return
+    what = what.strip()
     if not what:
         return
     try:
@@ -338,9 +350,8 @@ def storesearch(what):
         size = 20
     if size <= 0:
         size = 20
-    history = loadsearch()
-    if what in history:
-        history.remove(what)
+    key = _normalize(what)
+    history = [s for s in loadsearch() if _normalize(s) != key]
     history = [what] + history
     if len(history) > size:
         history = history[:size]
@@ -349,9 +360,11 @@ def storesearch(what):
 
 
 def removesearch(what):
-    """Remove search term from history."""
-    if what:
-        history = loadsearch()
-        if what in history:
-            history.remove(what)
-            savesearch(history)
+    """Remove search term from history (case/accent/whitespace-insensitive)."""
+    if not what:
+        return
+    key = _normalize(what)
+    history = loadsearch()
+    pruned = [s for s in history if _normalize(s) != key]
+    if len(pruned) != len(history):
+        savesearch(pruned)
