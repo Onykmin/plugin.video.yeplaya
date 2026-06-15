@@ -35,7 +35,8 @@ def _setting_int(key, default):
         return default
 
 
-def dosearch(token, what, category, sort, limit, offset, action, params=None):
+def dosearch(token, what, category, sort, limit, offset, action, params=None,
+             update_listing=False):
     response = api('search',{'what':'' if what == NONE_WHAT else what, 'category':category, 'sort':sort, 'limit': limit, 'offset': offset, 'wst':token, 'maybe_removed':'true'})
     if response is None:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
@@ -61,7 +62,7 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None):
 
         if not files and offset == 0:
             popinfo(_addon.getLocalizedString(30108), icon=xbmcgui.NOTIFICATION_INFO)
-            xbmcplugin.endOfDirectory(_handle)
+            xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
             return
 
         # Check if we should show series view (only on first page and if not forced flat)
@@ -87,7 +88,8 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None):
                 page = int(params.get('page', 0)) if params else 0
 
                 # Display series list instead of flat files
-                display_series_list(grouped, what, category, sort, limit, page)
+                display_series_list(grouped, what, category, sort, limit, page,
+                                    update_listing=update_listing)
                 return
 
         # ORIGINAL: Flat file display (backward compatible)
@@ -96,9 +98,13 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None):
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
             xbmcplugin.addDirectoryItem(_handle, get_url(action=action, what=what, category=category, sort=sort, limit=limit, offset=offset - limit if offset > limit else 0), listitem, True)
 
+        # This branch only renders when flat view is active, so the queue
+        # refresh must carry flat=1 (plus category/sort/limit/offset) to
+        # re-enter the SAME flat page. Dropping them made the post-queue
+        # refresh fall back to series view and lose the current offset.
         for item in files:
             commands = []
-            commands.append(( _addon.getLocalizedString(30214), 'Container.Update(' + get_url(action='search',toqueue=item['ident'], what=what, offset=offset) + ')'))
+            commands.append(( _addon.getLocalizedString(30214), 'Container.Update(' + get_url(action='search', toqueue=item['ident'], what=what, category=category, sort=sort, limit=limit, offset=offset, flat=1) + ')'))
             listitem = tolistitem(item,commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='play',ident=item['ident'],name=item['name']), listitem, False)
 
@@ -112,13 +118,14 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None):
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
             xbmcplugin.addDirectoryItem(_handle, get_url(action=action, what=what, category=category, sort=sort, limit=limit, offset=offset+limit), listitem, True)
 
-        xbmcplugin.endOfDirectory(_handle)
+        xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
     else:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
-        xbmcplugin.endOfDirectory(_handle)
+        xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
 
 
-def display_series_list(grouped, what, category, sort, limit, page=0):
+def display_series_list(grouped, what, category, sort, limit, page=0,
+                        update_listing=False):
     """Display list of series with counts."""
     log_debug("=== DISPLAY_SERIES_LIST called with page={} ===".format(page))
     xbmcplugin.setContent(_handle, 'tvshows')
@@ -175,13 +182,19 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
         listitem.setProperty('IsPlayable', 'false')
         xbmcplugin.addDirectoryItem(_handle, back_url, listitem, False)
 
-    # Option to switch to flat view
+    # Option to switch to flat view. Routed through goto_page so the flat
+    # listing REPLACES the current series-results frame (updateListing) instead
+    # of pushing a sibling ?action=search&...&flat=1 frame. Without this, the
+    # series and flat renders of the SAME search both sit on the back-stack, so
+    # Back needs two presses to leave the result set ("weird page stacking").
+    flat_url = get_url(action='search', what=what, category=category,
+                       sort=sort, limit=limit, flat=1)
     listitem = xbmcgui.ListItem(label='[{}]'.format(_addon.getLocalizedString(30401)))
     listitem.setArt({'icon': 'DefaultFile.png'})
+    listitem.setProperty('IsPlayable', 'false')
     xbmcplugin.addDirectoryItem(_handle,
-        get_url(action='search', what=what, category=category,
-                sort=sort, limit=limit, flat=1),
-        listitem, True)
+        get_url(action='goto_page', target_url=flat_url),
+        listitem, False)
 
     # Display items for current page
     page_items = all_items[start_idx:end_idx]
@@ -347,7 +360,7 @@ def display_series_list(grouped, what, category, sort, limit, page=0):
         listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
         xbmcplugin.addDirectoryItem(_handle, next_url, listitem, True)
 
-    xbmcplugin.endOfDirectory(_handle)
+    xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
 
 
 def search(params):
@@ -383,7 +396,11 @@ def search(params):
         if is_first_page and what != NONE_WHAT:
             storesearch(what)
         xbmcplugin.setContent(_handle, 'files')
-        dosearch(token, what, category, sort, limit, offset, 'search', params)
+        # Thread updateListing through: when a context action (toqueue/remove)
+        # re-enters this same path to refresh, the re-render must REPLACE the
+        # current listing, not push a duplicate frame onto the back-stack.
+        dosearch(token, what, category, sort, limit, offset, 'search', params,
+                 update_listing=updateListing)
         return
     else:
         history = loadsearch()
