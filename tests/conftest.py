@@ -44,6 +44,12 @@ class MockListItem:
     def getVideoInfoTag(self):
         return MagicMock()
 
+    def setLabel(self, label):
+        self.label = label
+
+    def setLabel2(self, label2):
+        self.label2 = label2
+
     def setArt(self, art):
         self._art.update(art)
 

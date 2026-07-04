@@ -14,7 +14,7 @@ from lib.state import state_key_for, build_mv_state_key, get_states
 from lib.keys import normalize_series_key, normalize_movie_key
 from lib.parsing import parse_quality_metadata
 from lib.cache import get_or_fetch_grouped
-from lib.grouping import deduplicate_versions
+from lib.grouping import deduplicate_versions, _safe_size
 from lib.metadata import enrich_file_metadata
 from lib.logging import log_debug
 from lib.playback import toqueue, resolve_and_play
@@ -245,6 +245,12 @@ def show_version_dialog(params):
         if 'quality_meta' not in v:
             v['quality_meta'] = parse_quality_metadata(v.get('name', ''))
 
+    # Order the pick-variant list by file size (largest first); tie-break on
+    # quality score so equal-size entries stay deterministically ordered.
+    versions.sort(
+        key=lambda v: (_safe_size(v), v.get('quality_meta', {}).get('quality_score', 50)),
+        reverse=True)
+
     listitems = []
     for file_dict in versions:
         label = file_dict.get('name', 'Unknown')
@@ -314,6 +320,12 @@ def select_movie_version(params):
     for v in versions:
         if 'quality_meta' not in v:
             v['quality_meta'] = parse_quality_metadata(v.get('name', ''))
+
+    # Order the pick-variant list by file size (largest first); tie-break on
+    # quality score so equal-size entries stay deterministically ordered.
+    versions.sort(
+        key=lambda v: (_safe_size(v), v.get('quality_meta', {}).get('quality_score', 50)),
+        reverse=True)
 
     listitems = []
     for file_dict in versions:
