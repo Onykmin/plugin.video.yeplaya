@@ -97,17 +97,17 @@ def play(params):
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
             return
         if 'ident' not in params:
-            xbmc.log("YAWsP: Missing ident in play", xbmc.LOGERROR)
+            xbmc.log("yeplaya: Missing ident in play", xbmc.LOGERROR)
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
             return
         state_key = _build_state_key(params)
         resolve_and_play(params['ident'], params['name'], token, state_key=state_key)
     except requests.exceptions.RequestException as e:
-        xbmc.log("YAWsP: Network error in play: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Network error in play: " + str(e), xbmc.LOGERROR)
         popinfo(_addon.getLocalizedString(30305), icon=xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
     except Exception as e:
-        xbmc.log("YAWsP: Playback error: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Playback error: " + str(e), xbmc.LOGERROR)
         popinfo(_addon.getLocalizedString(30306), icon=xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
@@ -153,25 +153,88 @@ def _unique_path(filepath):
 _active_downloads = set()
 _download_lock = __import__('threading').Lock()
 
+try:
+    import fcntl as _fcntl
+except ImportError:
+    _fcntl = None  # Non-POSIX (Windows): fall back to the in-process guard.
+
+
+def _acquire_cross_process_lock(ident):
+    """Acquire an exclusive, cross-process download lock for `ident`.
+
+    Kodi spawns a fresh interpreter per plugin call, so the in-process
+    `_active_downloads` set can't see a download running in another process —
+    two rapid clicks then write the same `.part` file concurrently and corrupt
+    it. An flock on a per-ident lock file guards across processes and, crucially,
+    is released automatically by the OS when the process dies, so a crash can
+    never leave a stale lock wedging future downloads.
+
+    Returns an open file handle to keep for the download's duration (close to
+    release), or None if the lock is already held (download in progress).
+    On non-POSIX platforms (no fcntl) returns the string 'noflock' so the caller
+    still proceeds — the in-process guard remains the only defense there.
+    """
+    if _fcntl is None:
+        return 'noflock'
+    safe = re.sub(r'[^A-Za-z0-9_.-]', '_', ident)
+    lock_path = os.path.join(translatePath('special://temp/'),
+                             'yeplaya-dl-{}.lock'.format(safe))
+    # Creating the lock file and holding the lock are distinct failure modes:
+    # if we CAN'T create the lock file, degrade to "no cross-process lock" and
+    # let the download proceed (never wedge downloads on a path problem); only a
+    # genuinely held lock (flock would block) means a download is in progress.
+    try:
+        fh = io.open(lock_path, 'w')
+    except (IOError, OSError) as e:
+        xbmc.log("yeplaya: download lock file unavailable, proceeding without "
+                 "cross-process lock: " + str(e), xbmc.LOGWARNING)
+        return 'noflock'
+    try:
+        _fcntl.flock(fh.fileno(), _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+        return fh
+    except (IOError, OSError):
+        try:
+            fh.close()
+        except Exception:
+            pass
+        return None
+
 
 def download(params):
     token = revalidate()
     if 'ident' not in params:
-        xbmc.log("YAWsP: Missing ident in download", xbmc.LOGERROR)
+        xbmc.log("yeplaya: Missing ident in download", xbmc.LOGERROR)
         return
 
     ident = params['ident']
+    # In-process guard (same interpreter double-fire) …
     with _download_lock:
         if ident in _active_downloads:
-            xbmc.log("YAWsP: Download already in progress: " + ident, xbmc.LOGWARNING)
+            xbmc.log("yeplaya: Download already in progress: " + ident, xbmc.LOGWARNING)
             return
         _active_downloads.add(ident)
+
+    # … plus a cross-process lock (Kodi runs each call in its own interpreter).
+    lock_handle = _acquire_cross_process_lock(ident)
+    if lock_handle is None:
+        xbmc.log("yeplaya: Download already in progress (other process): " + ident,
+                 xbmc.LOGWARNING)
+        with _download_lock:
+            _active_downloads.discard(ident)
+        popinfo(_addon.getLocalizedString(30432) + ident,
+                icon=xbmcgui.NOTIFICATION_WARNING)
+        return
 
     try:
         _do_download(params, token)
     finally:
         with _download_lock:
             _active_downloads.discard(ident)
+        if lock_handle != 'noflock':
+            try:
+                lock_handle.close()  # releases the flock
+            except Exception:
+                pass
 
 
 def _do_download(params, token):
@@ -275,7 +338,7 @@ def _do_download(params, token):
 
         popinfo(_addon.getLocalizedString(30303) + name, sound=True)
     except (IOError, OSError, requests.exceptions.RequestException) as e:
-        xbmc.log("YAWsP: Download failed: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Download failed: " + str(e), xbmc.LOGERROR)
         err_name = name if name else 'file'
         popinfo(_addon.getLocalizedString(30304) + err_name, icon=xbmcgui.NOTIFICATION_ERROR, sound=True)
     finally:
@@ -324,7 +387,7 @@ def queue(params):
 
 def toqueue(ident,token):
     if not validate_ident(ident):
-        xbmc.log("YAWsP: Invalid ident in toqueue", xbmc.LOGERROR)
+        xbmc.log("yeplaya: Invalid ident in toqueue", xbmc.LOGERROR)
         return
     response = api('queue_file',{'ident':ident,'wst':token})
     if response is None:

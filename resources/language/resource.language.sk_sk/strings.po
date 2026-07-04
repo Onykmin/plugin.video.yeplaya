@@ -449,3 +449,7 @@ msgstr "[Film]"
 msgctxt "#30431"
 msgid "Series not found"
 msgstr "Seriál nenájdený"
+
+msgctxt "#30432"
+msgid "Download already in progress - "
+msgstr "Sťahovanie už prebieha - "

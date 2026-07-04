@@ -184,6 +184,46 @@ def test_build_state_key_string_ints():
     assert key == 'ep:s|S00E00'
 
 
+class TestCrossProcessDownloadLock:
+    """The cross-process flock guard (Kodi runs each call in its own process)."""
+
+    def _tmp(self, tmp_path):
+        from lib import playback
+        playback.translatePath = lambda p: str(tmp_path) + '/'
+        return playback
+
+    def test_second_acquire_blocks_while_held(self, tmp_path):
+        pb = self._tmp(tmp_path)
+        if pb._fcntl is None:
+            import pytest
+            pytest.skip("no fcntl on this platform")
+        h1 = pb._acquire_cross_process_lock('ID1')
+        assert h1 not in (None, 'noflock')
+        assert pb._acquire_cross_process_lock('ID1') is None, "held lock must block"
+        h1.close()
+        h2 = pb._acquire_cross_process_lock('ID1')
+        assert h2 not in (None, 'noflock'), "lock re-acquirable after release"
+        h2.close()
+
+    def test_distinct_idents_independent(self, tmp_path):
+        pb = self._tmp(tmp_path)
+        if pb._fcntl is None:
+            import pytest
+            pytest.skip("no fcntl on this platform")
+        a = pb._acquire_cross_process_lock('A')
+        b = pb._acquire_cross_process_lock('B')
+        assert a not in (None, 'noflock') and b not in (None, 'noflock')
+        a.close(); b.close()
+
+    def test_bad_lock_path_degrades_not_blocks(self, tmp_path):
+        """A missing/unwritable lock dir must NOT wedge downloads — degrade."""
+        from lib import playback
+        playback.translatePath = lambda p: '/nonexistent_dir_xyz_zzz/'
+        result = playback._acquire_cross_process_lock('X')
+        # 'noflock' on POSIX (open failed) or 'noflock' on no-fcntl: never None.
+        assert result == 'noflock'
+
+
 if __name__ == '__main__':
     print("Running playback tests...")
     test_getinfo_none_handling()
