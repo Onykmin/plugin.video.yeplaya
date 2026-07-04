@@ -148,10 +148,8 @@ def browse_season(params):
                     commands = []
                     commands.append((
                         _addon.getLocalizedString(30214),
-                        'Container.Update(' + get_url(
-                            action='browse_season', series=series_name,
-                            season=season_num, what=params['what'],
-                            toqueue=ep_data['ident']) + ')'
+                        'RunPlugin(' + get_url(
+                            action='toqueue', toqueue=ep_data['ident']) + ')'
                     ))
 
                     listitem = tolistitem(ep_data, commands)
@@ -182,10 +180,8 @@ def browse_season(params):
                     for v in versions:
                         commands.append((
                             _addon.getLocalizedString(30214),
-                            'Container.Update(' + get_url(
-                                action='browse_season', series=series_name,
-                                season=season_num, what=params['what'],
-                                toqueue=v['ident']) + ')'
+                            'RunPlugin(' + get_url(
+                                action='toqueue', toqueue=v['ident']) + ')'
                         ))
                     commands.extend(state_cmds)
                     listitem.addContextMenuItems(commands)

@@ -89,3 +89,46 @@ class TestRouter:
     def test_empty_params_shows_menu(self, mock_menu):
         router('')
         mock_menu.assert_called_once()
+
+
+class TestSideEffectActions:
+    """RunPlugin side-effect actions perform the side effect then refresh the
+    container, and never touch a directory handle (they run under RunPlugin)."""
+
+    @patch('lib.routing.xbmc.executebuiltin')
+    @patch('lib.playback.toqueue')
+    @patch('lib.api.revalidate', return_value='tok')
+    def test_toqueue_action_queues_then_refreshes(self, _rv, mock_toqueue, mock_exec):
+        router('action=toqueue&toqueue=abc123')
+        mock_toqueue.assert_called_once_with('abc123', 'tok')
+        mock_exec.assert_any_call('Container.Refresh')
+
+    @patch('lib.routing.xbmc.executebuiltin')
+    @patch('lib.playback.toqueue')
+    @patch('lib.api.revalidate', return_value=None)
+    def test_toqueue_action_no_token_no_queue_no_refresh(self, _rv, mock_toqueue, mock_exec):
+        router('action=toqueue&toqueue=abc123')
+        mock_toqueue.assert_not_called()
+        assert ('Container.Refresh',) not in [c.args for c in mock_exec.call_args_list]
+
+    @patch('lib.routing.xbmc.executebuiltin')
+    @patch('lib.playback.dequeue')
+    def test_dequeue_action_dequeues_then_refreshes(self, mock_dequeue, mock_exec):
+        router('action=dequeue&dequeue=xyz789')
+        mock_dequeue.assert_called_once_with('xyz789')
+        mock_exec.assert_any_call('Container.Refresh')
+
+    @patch('lib.routing.xbmc.executebuiltin')
+    @patch('lib.cache.removesearch')
+    def test_remove_search_action_removes_then_refreshes(self, mock_remove, mock_exec):
+        router('action=remove_search&remove=avatar')
+        mock_remove.assert_called_once_with('avatar')
+        mock_exec.assert_any_call('Container.Refresh')
+
+    @patch('lib.routing.xbmc.executebuiltin')
+    @patch('lib.playback.toqueue')
+    @patch('lib.api.revalidate', return_value='tok')
+    def test_toqueue_action_missing_ident_noop(self, _rv, mock_toqueue, mock_exec):
+        router('action=toqueue')
+        mock_toqueue.assert_not_called()
+        mock_exec.assert_not_called()

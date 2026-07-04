@@ -107,7 +107,7 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
         # refresh fall back to series view and lose the current offset.
         for item in files:
             commands = []
-            commands.append(( _addon.getLocalizedString(30214), 'Container.Update(' + get_url(action='search', toqueue=item['ident'], what=what, category=category, sort=sort, limit=limit, offset=offset, flat=1) + ')'))
+            commands.append(( _addon.getLocalizedString(30214), 'RunPlugin(' + get_url(action='toqueue', toqueue=item['ident']) + ')'))
             listitem = tolistitem(item,commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='play',ident=item['ident'],name=item['name']), listitem, False)
 
@@ -231,9 +231,8 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
                         commands = []
                         commands.append((
                             _addon.getLocalizedString(30214),
-                            'Container.Update(' + get_url(
-                                action='search', what=what, category=category,
-                                sort=sort, limit=limit, page=page, toqueue=ep_data['ident']) + ')'
+                            'RunPlugin(' + get_url(
+                                action='toqueue', toqueue=ep_data['ident']) + ')'
                         ))
                         listitem = tolistitem(ep_data, commands)
                         listitem.setLabel(label)
@@ -347,9 +346,8 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
             commands = []
             commands.append((
                 _addon.getLocalizedString(30214),
-                'Container.Update(' + get_url(action='search',
-                    what=what, category=category, sort=sort, limit=limit,
-                    page=page, toqueue=file_data['ident']) + ')'
+                'RunPlugin(' + get_url(action='toqueue',
+                    toqueue=file_data['ident']) + ')'
             ))
 
             listitem = tolistitem(file_data, commands)
@@ -427,7 +425,7 @@ def search(params):
             listitem = xbmcgui.ListItem(label=s)
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
             commands = []
-            commands.append(( _addon.getLocalizedString(30213), 'Container.Update(' + get_url(action='search',remove=s) + ')'))
+            commands.append(( _addon.getLocalizedString(30213), 'RunPlugin(' + get_url(action='remove_search',remove=s) + ')'))
             commands.append(add_favorite_context_entry({'type': 'search', 'query': s}))
             listitem.addContextMenuItems(commands)
             xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=s), listitem, True)

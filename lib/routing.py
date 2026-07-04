@@ -28,6 +28,45 @@ def _state_action(params, fn_name):
     xbmc.executebuiltin('Container.Refresh')
 
 
+def _toqueue_action(params):
+    """RunPlugin side-effect: add a file to the queue, then refresh.
+
+    Invoked via RunPlugin so the side-effect URL never becomes the container
+    path (a manual Refresh would otherwise re-queue). Container.Refresh
+    re-renders the current listing without the side-effect param.
+    """
+    ident = params.get('toqueue')
+    if not ident:
+        return
+    from lib.api import revalidate
+    from lib.playback import toqueue
+    token = revalidate()
+    if token is None:
+        return
+    toqueue(ident, token)
+    xbmc.executebuiltin('Container.Refresh')
+
+
+def _dequeue_action(params):
+    """RunPlugin side-effect: remove a file from the queue, then refresh."""
+    ident = params.get('dequeue')
+    if not ident:
+        return
+    from lib.playback import dequeue
+    dequeue(ident)
+    xbmc.executebuiltin('Container.Refresh')
+
+
+def _remove_search_action(params):
+    """RunPlugin side-effect: remove a search-history term, then refresh."""
+    what = params.get('remove')
+    if not what:
+        return
+    from lib.cache import removesearch
+    removesearch(what)
+    xbmc.executebuiltin('Container.Refresh')
+
+
 def router(paramstring):
     params = dict(parse_qsl(paramstring))
     if params:
@@ -67,6 +106,12 @@ def router(paramstring):
             _state_action(params, 'mark_unwatched')
         elif params['action'] == 'clear_resume':
             _state_action(params, 'clear_resume')
+        elif params['action'] == 'toqueue':
+            _toqueue_action(params)
+        elif params['action'] == 'dequeue':
+            _dequeue_action(params)
+        elif params['action'] == 'remove_search':
+            _remove_search_action(params)
         elif params['action'] == 'favorites':
             favorites(params)
         elif params['action'] == 'add_favorite':

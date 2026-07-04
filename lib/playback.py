@@ -387,7 +387,7 @@ def queue(params):
             for file in xml.iter('file'):
                 item = todict(file)
                 commands = []
-                commands.append(( _addon.getLocalizedString(30215), 'Container.Update(' + get_url(action='queue',dequeue=item['ident']) + ')'))
+                commands.append(( _addon.getLocalizedString(30215), 'RunPlugin(' + get_url(action='dequeue',dequeue=item['ident']) + ')'))
                 listitem = tolistitem(item,commands)
                 xbmcplugin.addDirectoryItem(_handle, get_url(action='play',ident=item['ident'],name=item['name']), listitem, False)
         else:
@@ -406,6 +406,30 @@ def toqueue(ident,token):
     xml = parse_xml(response.content)
     if is_ok(xml):
         popinfo(_addon.getLocalizedString(30105))
+    else:
+        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+
+
+def dequeue(ident):
+    """Remove a file from the Webshare queue.
+
+    Self-contained (revalidates its own token) so it can run as a RunPlugin
+    side-effect action; the caller triggers Container.Refresh afterwards.
+    """
+    if not validate_ident(ident):
+        xbmc.log("yeplaya: Invalid ident in dequeue", xbmc.LOGERROR)
+        return
+    token = revalidate()
+    if token is None:
+        popinfo(_addon.getLocalizedString(30102), icon=xbmcgui.NOTIFICATION_ERROR)
+        return
+    response = api('dequeue_file', {'ident': ident, 'wst': token})
+    if response is None:
+        popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+        return
+    xml = parse_xml(response.content)
+    if is_ok(xml):
+        popinfo(_addon.getLocalizedString(30106))
     else:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
 
