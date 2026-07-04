@@ -102,7 +102,12 @@ def unix_md5_crypt(pw, salt, magic=None):
             try:
                 ctx = ctx + pw[0]
             except TypeError:
-                ctx = ctx + chr(pw[0]).encode("utf-8")
+                # Py3 bytes: pw[0] is an int. md5crypt appends the first BYTE of
+                # pw, so slice it out (pw[0:1] == that one byte). chr(pw[0])
+                # .encode('utf-8') was wrong: for a non-ASCII first byte (>=0x80)
+                # it emits 2 bytes, corrupting the hash and breaking login for
+                # passwords whose UTF-8 form has byte-length 2 or 4, etc.
+                ctx = ctx + pw[0:1]
         i = i >> 1
 
     final = hashlib.md5(ctx).digest()

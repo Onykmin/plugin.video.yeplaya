@@ -142,7 +142,16 @@ def todict(xml, skip=None):
 def sizelize(txtsize, units=['B', 'KB', 'MB', 'GB']):
     """Convert bytes to human-readable size."""
     if txtsize:
-        size = float(txtsize)
+        # 'size' comes verbatim from the Webshare XML and may be a list
+        # (duplicated <size> tags) or non-numeric garbage. Tolerate it instead
+        # of letting float() crash the whole directory render (mirrors
+        # grouping._safe_size).
+        if isinstance(txtsize, (list, tuple)):
+            txtsize = txtsize[0] if txtsize else None
+        try:
+            size = float(txtsize)
+        except (ValueError, TypeError):
+            return str(txtsize)
         if size < 1024:
             size = str(size) + units[0]
         else:

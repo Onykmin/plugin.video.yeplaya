@@ -40,6 +40,9 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
     response = api('search',{'what':'' if what == NONE_WHAT else what, 'category':category, 'sort':sort, 'limit': limit, 'offset': offset, 'wst':token, 'maybe_removed':'true'})
     if response is None:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
+        # Close the directory on API failure — returning without endOfDirectory
+        # leaves Kodi's container stuck on a spinner / the previous listing.
+        xbmcplugin.endOfDirectory(_handle, succeeded=False, updateListing=update_listing)
         return
     xml = parse_xml(response.content)
     if is_ok(xml):
@@ -130,28 +133,32 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
     log_debug("=== DISPLAY_SERIES_LIST called with page={} ===".format(page))
     xbmcplugin.setContent(_handle, 'tvshows')
 
-    # Merge series, movies, and non_series into unified list sorted by relevance
+    # Merge series, movies, and non_series into unified list sorted by relevance.
+    # Treat the NONE_WHAT sentinel (Newest / Biggest browse) as "no query" — it
+    # is not a real search term, so relevance-scoring against it would scramble
+    # the intended (alphabetical / server-provided) order.
+    has_query = bool(what) and what != NONE_WHAT
     all_items = []
 
     # Add series to unified list
     for k, v in grouped['series'].items():
-        score = calculate_search_relevance(v['display_name'], what, k) if what else -1
+        score = calculate_search_relevance(v['display_name'], what, k) if has_query else -1
         all_items.append(('series', k, v, score))
 
     # Add movies to unified list
     if grouped.get('movies'):
         for k, v in grouped['movies'].items():
-            score = calculate_search_relevance(v['display_name'], what, k) if what else -1
+            score = calculate_search_relevance(v['display_name'], what, k) if has_query else -1
             all_items.append(('movie', k, v, score))
 
     # Add non_series files to unified list
     if grouped.get('non_series'):
         for file_data in grouped['non_series']:
-            score = calculate_search_relevance(file_data['name'], what) if what else -1
+            score = calculate_search_relevance(file_data['name'], what) if has_query else -1
             all_items.append(('file', file_data['name'], file_data, score))
 
     # Sort unified list by relevance (or alphabetically if no query)
-    if what:
+    if has_query:
         all_items.sort(key=lambda x: (-x[3], x[0] != 'movie', x[1]))
     else:
         all_items.sort(key=lambda x: x[2].get('display_name', x[2].get('name', '')).lower())

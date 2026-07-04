@@ -111,6 +111,15 @@ def test_match_empty_list():
 def test_match_none_primary():
     assert match_stream(['English'], None) is None
 
+def test_match_fallback_only_when_primary_disabled():
+    """Primary disabled (None) but fallback set → fallback still matches."""
+    streams = ['English', 'German', 'French']
+    assert match_stream(streams, None, 'de') == 1
+
+def test_match_fallback_only_no_match():
+    streams = ['English', 'German']
+    assert match_stream(streams, None, 'ja') is None
+
 def test_match_none_in_streams():
     """None entries in stream list should be skipped safely."""
     assert match_stream([None, 'English', ''], 'en') == 1

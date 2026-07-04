@@ -41,7 +41,7 @@ def loaddb(dbdir,file):
             data = json.loads(fdata)['data']
         return data
     except (IOError, OSError, ValueError, KeyError) as e:
-        xbmc.log("YAWsP: Failed to load database: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Failed to load database: " + str(e), xbmc.LOGERROR)
         return {}
 
 
@@ -49,25 +49,28 @@ def safe_extract_zip(zip_path, extract_to):
     """Safely extract ZIP file with path traversal protection."""
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
+            base = os.path.abspath(extract_to)
             # Validate all file paths before extraction
             for member in zf.namelist():
-                # Normalize path and check for path traversal
-                member_path = os.path.normpath(os.path.join(extract_to, member))
-                if not member_path.startswith(os.path.abspath(extract_to)):
-                    xbmc.log("YAWsP: Potential path traversal in ZIP: " + member, xbmc.LOGERROR)
+                # Normalize path and check for path traversal. Compare against
+                # base + separator (not a bare prefix): a plain startswith lets
+                # a sibling like ".../profile-evil" pass ".../profile".
+                member_path = os.path.normpath(os.path.join(base, member))
+                if member_path != base and not member_path.startswith(base + os.sep):
+                    xbmc.log("yeplaya: Potential path traversal in ZIP: " + member, xbmc.LOGERROR)
                     return False
                 # Check for absolute paths
                 if os.path.isabs(member):
-                    xbmc.log("YAWsP: Absolute path in ZIP: " + member, xbmc.LOGERROR)
+                    xbmc.log("yeplaya: Absolute path in ZIP: " + member, xbmc.LOGERROR)
                     return False
             # All paths validated, proceed with extraction
             zf.extractall(extract_to)
             return True
     except zipfile.BadZipFile as e:
-        xbmc.log("YAWsP: Invalid ZIP file: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Invalid ZIP file: " + str(e), xbmc.LOGERROR)
         return False
     except Exception as e:
-        xbmc.log("YAWsP: ZIP extraction failed: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: ZIP extraction failed: " + str(e), xbmc.LOGERROR)
         return False
 
 
@@ -94,7 +97,7 @@ def db(params):
                 bf.flush()
                 bf.close()
         except (IOError, OSError, requests.exceptions.RequestException) as e:
-            xbmc.log("YAWsP: Failed to download database: " + str(e), xbmc.LOGERROR)
+            xbmc.log("yeplaya: Failed to download database: " + str(e), xbmc.LOGERROR)
             popinfo(_addon.getLocalizedString(30310), icon=xbmcgui.NOTIFICATION_ERROR)
             if os.path.exists(dbfile):
                 os.unlink(dbfile)

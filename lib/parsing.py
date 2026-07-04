@@ -236,7 +236,12 @@ def extract_dual_names(raw_name):
         is_hex_hash = bool(re.match(r'^[0-9A-Fa-f]{6,8}$', name2))  # Release group hashes
         is_year = bool(re.match(r'^(?:19|20)\d{2}$', name2))  # Years like 2009, 2024
 
-        if name1 and name2 and len(name1) > 1 and len(name2) > 1 and not is_quality and not is_hex_hash and not is_year:
+        # Apply the same shared false-positive guard as the dash/slash/multi-space
+        # branches: an episode marker ("Show [S01E05]") or a wordy episode title
+        # ("Sherlock [A Study in Pink]") in the brackets is not a dual-name alias.
+        if (name1 and name2 and len(name1) > 1 and len(name2) > 1
+                and not is_quality and not is_hex_hash and not is_year
+                and not _dual_name2_is_false_positive(name2)):
             return (name1, name2)
 
     # Try parentheses format: "Name1 (Name2)"
@@ -426,8 +431,16 @@ def extract_language_tag(filename):
 
     Returns language code string ('CZ', 'EN', etc.) or None.
     """
-    match = re.search(r'[\(\[]?(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)[\)\]]?', filename, re.IGNORECASE)
-    return match.group(1).upper() if match else None
+    # Require a word boundary (or explicit brackets) around the code so codes
+    # embedded in ordinary words don't false-match ("GENESIS"→ES, "SPIRIT"→IT,
+    # "SEVEN"→EN). Mirrors _PATTERN_LANG. Bracketed group is captured separately.
+    match = re.search(
+        r'\b(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)\b'
+        r'|[\(\[](CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)[\)\]]',
+        filename, re.IGNORECASE)
+    if not match:
+        return None
+    return (match.group(1) or match.group(2)).upper()
 
 
 def get_display_name(filename):
@@ -553,6 +566,11 @@ def parse_episode_info(filename):
         # Remove dash and anything after (often episode titles)
         raw_name = re.sub(r'[\s_]*-[\s_].*$', '', raw_name)
         raw_name = raw_name.strip(' .-_')
+        # Guard against bare markers like "S01E01.mkv": after stripping the
+        # extension and quality junk, nothing but a container extension remains,
+        # which would otherwise yield a phantom series named "mkv"/"avi".
+        if re.match(r'^(mkv|avi|mp4|m4v|wmv|flv|webm|mov)$', raw_name, re.IGNORECASE):
+            raw_name = ''
         series_name = clean_series_name(raw_name)
         if series_name and len(series_name) >= 2:  # Make sure we got a valid series name
             return {
@@ -641,7 +659,11 @@ def parse_episode_info(filename):
         # For absolute episode numbers without explicit markers (ep, episode),
         # require series name to be reasonably long to avoid false positives
         # like "Blade 01" being mistaken for episode 1 instead of movie
-        has_ep_marker = 'ep' in cleaned_filename.lower() or 'episode' in cleaned_filename.lower()
+        # Require a real "ep"/"episode" token, not any word containing the
+        # letters "ep" ("Deep 2", "Steep 3", "Sleepers"), which would otherwise
+        # bypass the sequel-number guard below and mis-parse a movie as a series.
+        has_ep_marker = bool(re.search(r'\bep\b|\bep\.?\s*\d|\bepisode\b',
+                                       cleaned_filename, re.IGNORECASE))
         if not has_ep_marker:
             # Require either multiple words OR longer single word (6+ chars)
             words = series_name.split()

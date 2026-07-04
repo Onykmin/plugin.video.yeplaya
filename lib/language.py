@@ -128,7 +128,9 @@ def match_stream(available_streams, primary_code, fallback_code=None):
     Returns:
         0-based index or None if no match
     """
-    if not available_streams or not primary_code:
+    # Proceed if EITHER preference is set: a user may disable the primary
+    # language yet still want the fallback matched (primary=None, fallback='en').
+    if not available_streams or (not primary_code and not fallback_code):
         return None
     for code in [primary_code, fallback_code]:
         if not code:
