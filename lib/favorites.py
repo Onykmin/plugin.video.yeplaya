@@ -17,6 +17,7 @@ import time
 from lib.cache import (locked_read_text, atomic_write_text, profile_dir,
                        file_lock)
 from lib.keys import normalize_series_key, normalize_movie_key
+from lib.search import _normalize
 from lib.logging import log_warning, log_error, log_debug
 
 
@@ -68,7 +69,9 @@ def _entry_key(entry):
     """
     t = entry.get('type')
     if t == 'search':
-        return ('search', entry.get('query'))
+        # Normalize like search history (case/accent/whitespace-insensitive)
+        # so 'Avatar' and 'avatar' are one favorite and the toggle/remove match.
+        return ('search', _normalize(entry.get('query') or ''))
     if t in ('series', 'movie'):
         return (t, _normalize_canonical(t, entry.get('canonical_key')))
     return None
@@ -93,7 +96,7 @@ def _target_key(type_, key):
     """Identity tuple for a (type, raw key) lookup — normalized to match
     _entry_key so drifted canonical_keys still resolve to the stored entry."""
     if type_ == 'search':
-        return ('search', key)
+        return ('search', _normalize(key or ''))
     if type_ in ('series', 'movie'):
         return (type_, _normalize_canonical(type_, key))
     return None

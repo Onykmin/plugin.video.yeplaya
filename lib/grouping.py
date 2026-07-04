@@ -741,10 +741,6 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             canonical_key = series
             display_name = get_display_name(ep_info['original_name'])
 
-            # CSFD integration: dual-name detection or CSFD lookup
-            plot = None
-            csfd_id = None
-
             # Extract raw name for dual-name detection (works even when CSFD disabled)
             match = _PATTERN_S00E00.match(filename) or _PATTERN_0x00.match(filename)
             if match:
@@ -770,12 +766,6 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
                     'seasons': {},
                     'total_episodes': 0
                 }
-                # Add CSFD metadata if available
-                if plot:
-                    series_meta['plot'] = plot
-                if csfd_id:
-                    series_meta['csfd_id'] = csfd_id
-
                 result['series'][canonical_key] = series_meta
             else:
                 # Add this episode's display name as candidate

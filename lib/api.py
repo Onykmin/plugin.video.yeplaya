@@ -14,11 +14,6 @@ import requests
 from xml.etree import ElementTree as ET
 from md5crypt import md5crypt
 
-try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
-
 # ============================================================================
 # Configuration & Constants
 # ============================================================================
@@ -242,8 +237,3 @@ def refresh_addon():
 def get_url_base():
     """Get URL base for plugin."""
     return _url
-
-
-def get_url(**kwargs):
-    """Build plugin URL with parameters."""
-    return '{0}?{1}'.format(_url, urlencode(kwargs, 'utf-8'))

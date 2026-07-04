@@ -14,7 +14,6 @@ import requests
 import xbmcgui
 import xbmcplugin
 from lib.api import revalidate, getlink, api, parse_xml, is_ok, get_session, get_addon, validate_ident, getinfo
-from lib.player import YePlayer
 from lib.utils import popinfo, todict, sizelize, get_handle, get_url, tolistitem
 
 try:

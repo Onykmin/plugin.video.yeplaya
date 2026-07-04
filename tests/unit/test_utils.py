@@ -91,6 +91,24 @@ class TestLabelize:
         result = self.labelize(file)
         assert result == 'unknown.avi (?)'
 
+    def test_unknown_placeholder_falls_back_to_name(self):
+        """A bad custom format must not crash the listing — fall back to name."""
+        self.mock_addon.setSetting('customformat', 'true')
+        self.mock_addon.setSetting('labelformat', '{name} {bogus}')
+
+        file = {'name': 'movie.mkv', 'size': '1024'}
+        result = self.labelize(file)
+        assert result == 'movie.mkv'
+
+    def test_malformed_braces_falls_back_to_name(self):
+        """Malformed braces raise ValueError from str.format — must not crash."""
+        self.mock_addon.setSetting('customformat', 'true')
+        self.mock_addon.setSetting('labelformat', '{name')
+
+        file = {'name': 'movie.mkv', 'size': '1024'}
+        result = self.labelize(file)
+        assert result == 'movie.mkv'
+
 
 class TestGetLabelFormat:
     """Test label format getter."""

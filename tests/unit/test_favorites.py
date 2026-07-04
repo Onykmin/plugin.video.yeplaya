@@ -90,6 +90,26 @@ class TestAddDedup(FavoritesTestBase):
         self.assertEqual(len(items), 2)
 
 
+class TestSearchFavoriteNormalizedIdentity(FavoritesTestBase):
+    """Search-favorite identity must normalize (case/accent/whitespace) like
+    search history, so 'Avatar'/'avatar' are one favorite and toggle matches."""
+
+    def test_case_and_whitespace_variants_dedupe(self):
+        add_favorite({'type': 'search', 'query': 'Avatar'})
+        add_favorite({'type': 'search', 'query': ' avatar '})
+        items = load_favorites()
+        # Both variants collapse to a single favorite by normalized identity.
+        self.assertEqual(len(items), 1)
+        # The stored query text is preserved verbatim (not normalized) for display.
+        self.assertIn(items[0]['query'], ('Avatar', ' avatar '))
+
+    def test_is_favorited_and_remove_match_case_insensitively(self):
+        add_favorite({'type': 'search', 'query': 'Avatar'})
+        self.assertTrue(is_favorited('search', 'AVATAR'))
+        self.assertTrue(remove_favorite('search', 'avatar'))
+        self.assertEqual(load_favorites(), [])
+
+
 class TestNormalizedIdentity(FavoritesTestBase):
     """Series/movie identity is the normalized canonical_key, so dual-name
     drift collapses to one favorite while different-year movies stay distinct."""

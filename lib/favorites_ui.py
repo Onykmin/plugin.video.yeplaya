@@ -10,6 +10,7 @@ import xbmcgui
 import xbmcplugin
 
 from lib.utils import get_url, popinfo, get_handle, get_addon
+from lib.keys import NONE_WHAT
 from lib.favorites import (
     load_favorites, add_favorite, remove_favorite, is_favorited,
     find_favorite_by_name,
@@ -137,7 +138,10 @@ def add_favorite_action(params):
     else:
         entry['canonical_key'] = params.get('key', '')
         entry['display_name'] = params.get('display_name', '')
-        if params.get('search_query'):
+        # Never persist the Newest/Biggest browse sentinel as a real query;
+        # it is an internal token, and in _click_url it would (being truthy)
+        # win over display_name for the reproduced 'what'.
+        if params.get('search_query') and params['search_query'] != NONE_WHAT:
             entry['search_query'] = params['search_query']
         # Preserve the originating search's category/sort so the favorite
         # click reproduces the same result set / cache key.
@@ -153,6 +157,9 @@ def add_favorite_action(params):
 
     if add_favorite(entry):
         popinfo(_addon.getLocalizedString(_STR_ADD_FAV))
+        # Mirror remove_favorite_action: refresh so the context menu label
+        # flips from 'Add to favorites' to 'Remove' without a manual reload.
+        xbmc.executebuiltin('Container.Refresh')
 
 
 def remove_favorite_action(params):

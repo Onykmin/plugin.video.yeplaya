@@ -50,7 +50,6 @@ _series_cache = {}
 _cache_timestamps = {}
 _cache_ttls = {}
 _cache_lock = threading.Lock()
-_csfd_db = None
 
 # Default TTL: 5 minutes (300 seconds)
 DEFAULT_CACHE_TTL = 300

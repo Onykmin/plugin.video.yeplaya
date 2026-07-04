@@ -177,7 +177,15 @@ def labelize(file):
         size = file['sizelized']
     else:
         size = '?'
-    return get_label_format().format(name=file['name'], size=size)
+    # A user-supplied labelformat may contain unknown placeholders ({foo}) or
+    # malformed braces ({name) which raise KeyError/ValueError/IndexError from
+    # str.format. labelize runs per item, so one bad format would crash the
+    # whole directory render; fall back to the bare name instead.
+    try:
+        return get_label_format().format(name=file['name'], size=size)
+    except (KeyError, ValueError, IndexError) as e:
+        log_debug("labelize: bad label format ({}): {}".format(type(e).__name__, e))
+        return file['name']
 
 
 def set_webshare_id(listitem, ident):
