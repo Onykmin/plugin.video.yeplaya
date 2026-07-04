@@ -99,7 +99,7 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
         if offset > 0: #prev page
             listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30206))
             listitem.setArt({'icon': 'DefaultAddonsSearch.png'})
-            xbmcplugin.addDirectoryItem(_handle, get_url(action=action, what=what, category=category, sort=sort, limit=limit, offset=offset - limit if offset > limit else 0), listitem, True)
+            xbmcplugin.addDirectoryItem(_handle, get_url(action=action, what=what, category=category, sort=sort, limit=limit, offset=offset - limit if offset > limit else 0, flat=1), listitem, True)
 
         # This branch only renders when flat view is active, so the queue
         # refresh must carry flat=1 (plus category/sort/limit/offset) to
@@ -233,7 +233,7 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
                             _addon.getLocalizedString(30214),
                             'Container.Update(' + get_url(
                                 action='search', what=what, category=category,
-                                sort=sort, limit=limit, toqueue=ep_data['ident']) + ')'
+                                sort=sort, limit=limit, page=page, toqueue=ep_data['ident']) + ')'
                         ))
                         listitem = tolistitem(ep_data, commands)
                         listitem.setLabel(label)

@@ -9,6 +9,8 @@ Based on metadata.csfd.cz Kodi addon XML scraper patterns.
 import re
 import sqlite3
 import os
+from html import unescape
+from urllib.parse import quote_plus
 
 try:
     import xbmc
@@ -115,7 +117,7 @@ def search_csfd(query, timeout=TIMEOUT):
         return None
 
     try:
-        url = CSFD_SEARCH_URL.format(query=query.replace(' ', '+'))
+        url = CSFD_SEARCH_URL.format(query=quote_plus(query))
         headers = {'User-Agent': USER_AGENT}
 
         _log(f'Searching CSFD: {url}', 'DEBUG')
@@ -214,7 +216,7 @@ def get_csfd_titles(film_id, timeout=TIMEOUT):
             plot = plot_match.group(1).strip()
             # Clean HTML tags and entities
             plot = re.sub(r'<[^>]+>', '', plot)
-            plot = plot.replace('&nbsp;', ' ')
+            plot = unescape(plot.replace('&nbsp;', ' '))
             titles['plot'] = plot
         else:
             # Try shorter plot version
@@ -222,7 +224,7 @@ def get_csfd_titles(film_id, timeout=TIMEOUT):
             if plot_match:
                 plot = plot_match.group(1).strip()
                 plot = re.sub(r'<[^>]+>', '', plot)
-                plot = plot.replace('&nbsp;', ' ')
+                plot = unescape(plot.replace('&nbsp;', ' '))
                 titles['plot'] = plot
 
         _log(f'CSFD titles: orig={titles.get("original")}, cz={titles.get("czech")}, series={titles["is_series"]}, plot={len(titles.get("plot", ""))} chars', 'DEBUG')

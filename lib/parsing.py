@@ -27,6 +27,11 @@ _PATTERN_S00E00_REVERSED = re.compile(r'^[Ss](\d{1,2})[Ee](\d{1,3})[\s_\.\-]+(.+
 _PATTERN_0x00 = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?(\d{1,2})x(\d{1,3})[\)\]]?')
 _PATTERN_MULTI_EP = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?[Ss](\d{1,2})[Ee](\d{1,3})(?:[\-\.]?[Ee]?(\d{1,3}))?[\)\]]?')
 _PATTERN_ABSOLUTE_EP = re.compile(r'^(.+?)[\s\.\-]+(?:ep?\.?\s*)?(\d{1,3})(?!\d)', re.IGNORECASE)
+# Prefer a spaced " - N" dash before the general pattern so titles with an
+# earlier bare number ("Show - Part 2 - 05") bind the episode after the LAST
+# " - " rather than the first number. Strictly more restrictive, so it only
+# reorders which number binds; when it doesn't match, the general one is used.
+_PATTERN_ABSOLUTE_EP_DASH = re.compile(r'^(.+?)\s+-\s+(?:ep?\.?\s*)?(\d{1,3})(?!\d)', re.IGNORECASE)
 _PATTERN_SEASON_TEXT = re.compile(r'(?:Season\s*(\d{1,2})|(\d{1,2})(?:st|nd|rd|th)\s*Season|(?:^|\s)S(?:eason)?\s+(\d{1,2})(?!\s*[Ee]))', re.IGNORECASE)
 _PATTERN_QUALITY = re.compile(r'\b(1080p|720p|2160p|4K|BluRay|WEB-DL|HDTV|WEBRip|BRRip)\b', re.IGNORECASE)
 _PATTERN_CODEC = re.compile(r'\b(x264|x265|H\.?264|H\.?265|HEVC|XviD)\b', re.IGNORECASE)
@@ -603,7 +608,7 @@ def parse_episode_info(filename):
     # First check for season text markers
     season_from_text, cleaned_filename = extract_season_from_text(filename)
 
-    match = _PATTERN_ABSOLUTE_EP.match(cleaned_filename)
+    match = _PATTERN_ABSOLUTE_EP_DASH.match(cleaned_filename) or _PATTERN_ABSOLUTE_EP.match(cleaned_filename)
     if match:
         raw_name = match.group(1)
         episode_str = match.group(2)

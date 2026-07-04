@@ -195,6 +195,22 @@ class TestFetchAndGroupSeriesMaxPages:
         assert max_pages_param.default == 20
 
 
+class TestAbsoluteEpisodeDashPreference:
+    """A spaced ' - N' dash should bind the episode after the LAST dash, not an
+    earlier bare title number ('Show - Part 2 - 05' -> episode 05, not 2)."""
+
+    def test_part_number_before_dash_episode(self):
+        r = parse_episode_info('Show - Part 2 - 05.mkv')
+        assert r is not None
+        assert r['episode'] == 5
+
+    def test_plain_dash_absolute_episode_unchanged(self):
+        r = parse_episode_info('Mashle - 01.mkv')
+        assert r is not None
+        assert r['episode'] == 1
+        assert r['series_name'] == 'mashle'
+
+
 if __name__ == '__main__':
     import pytest
     pytest.main([__file__, '-v'])
