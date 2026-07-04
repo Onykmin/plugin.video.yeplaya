@@ -65,15 +65,30 @@ class YePlayer(xbmc.Player):
         # isPlaying() is the primary exit signal; if it is unavailable or raises
         # we must NOT spin forever, so treat that as "stop waiting". waitForAbort
         # paces the loop and exits on Kodi shutdown.
+        xbmc.log(_LOG + "wait_for_playback: entering keep-alive loop", xbmc.LOGDEBUG)
+        elapsed = 0.0
         while not self._playback_done:
             self._poll_position()
             try:
                 if not self.isPlaying():
+                    xbmc.log(_LOG + "wait_for_playback: isPlaying() False, exiting",
+                             xbmc.LOGDEBUG)
                     break
             except Exception:
                 break
+            # Safety backstop: never loop longer than the media's own duration
+            # plus a wide margin. If isPlaying() somehow stays True with no
+            # stop/end callback (stuck stream), this prevents an indefinite hang
+            # WITHOUT truncating legitimate playback (the cap tracks total time).
+            if self._last_total and self._last_total > 0:
+                if elapsed > self._last_total + 900:  # +15 min margin
+                    xbmc.log(_LOG + "wait_for_playback: backstop hit (%.0fs > "
+                             "%.0fs+900), exiting" % (elapsed, self._last_total),
+                             xbmc.LOGWARNING)
+                    break
             if self._monitor.waitForAbort(1.0):
                 break
+            elapsed += 1.0
 
     def _capture_state(self, force_watched=False):
         """Persist resume/watched state while the player is still alive."""
@@ -88,13 +103,19 @@ class YePlayer(xbmc.Player):
         # unreliable (may return 0 or raise) once playback has stopped.
         if self._last_total and self._last_total > 0:
             pos, total = self._last_pos, self._last_total
+            src = "polled"
         else:
             try:
                 pos = self.getTime()
                 total = self.getTotalTime()
+                src = "getTime"
             except Exception as e:
                 xbmc.log(_LOG + "capture: getTime failed: %s" % e, xbmc.LOGWARNING)
                 pos, total = 0.0, 0.0
+                src = "failed"
+        xbmc.log(_LOG + "capture(%s): key=%s pos=%.0f total=%.0f force_watched=%s"
+                 % (src, self._state_key, pos or 0, total or 0, force_watched),
+                 xbmc.LOGINFO)
         try:
             from lib import state
             if force_watched:

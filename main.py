@@ -25,15 +25,33 @@ if __name__ == '__main__':
         # the user. Every step is guarded — the failure path must never raise.
         try:
             import xbmcgui
-            xbmcgui.Dialog().notification(
-                'yeplaya', str(e), xbmcgui.NOTIFICATION_ERROR)
         except Exception:
-            pass
+            xbmcgui = None
+        if xbmcgui is not None:
+            try:
+                xbmcgui.Dialog().notification(
+                    'yeplaya', str(e), xbmcgui.NOTIFICATION_ERROR)
+            except Exception:
+                pass
         try:
             import xbmcplugin
+            try:
+                from urllib.parse import parse_qsl
+            except ImportError:
+                from urlparse import parse_qsl
             handle = int(sys.argv[1])
-            # Directory handlers are what predominantly reach here (play() wraps
-            # its own body), so end the directory as failed to clear the spinner.
-            xbmcplugin.endOfDirectory(handle, succeeded=False)
+            # Close with the primitive that matches how the handle was opened:
+            # playable/resolve actions need setResolvedUrl(False); directory
+            # actions need endOfDirectory(False). Calling the wrong one leaves
+            # the spinner up, so derive the action from the plugin URL rather
+            # than guessing. Unknown/blank action → treat as a directory.
+            action = dict(parse_qsl(sys.argv[2][1:])).get('action', '') \
+                if len(sys.argv) > 2 else ''
+            _RESOLVE_ACTIONS = {'play', 'select_version', 'select_movie_version',
+                                'newsearch'}
+            if action in _RESOLVE_ACTIONS:
+                xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem())
+            else:
+                xbmcplugin.endOfDirectory(handle, succeeded=False)
         except Exception:
             pass
