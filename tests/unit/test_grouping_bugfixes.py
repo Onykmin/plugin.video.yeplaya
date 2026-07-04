@@ -78,6 +78,17 @@ class TestCrashHardening(unittest.TestCase):
         # The grouped movie files must NOT also appear in non_series.
         self.assertFalse(any(n and 'Inception (2010)' in n for n in ns_names))
 
+    def test_identless_movie_file_not_duplicated_in_non_series(self):
+        # A movie-pattern file that itself has NO ident must not remain in
+        # non_series after being grouped into movies (excluded by object id).
+        files = [
+            {'name': 'Inception (2010) 1080p.mkv', 'size': '5'},  # movie, no ident
+        ]
+        r = group_by_series(files, search_query='inception')
+        self.assertIn('inception|2010', r['movies'])
+        ns_names = [f.get('name') for f in r['non_series']]
+        self.assertNotIn('Inception (2010) 1080p.mkv', ns_names)
+
 
 # ---------------------------------------------------------------------------
 # Cluster B — year handling

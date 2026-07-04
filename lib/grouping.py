@@ -13,11 +13,9 @@ from lib.parsing import (parse_episode_info, parse_movie_info,
 from lib.api import api, parse_xml, is_ok
 from lib.utils import todict
 
-# Import NONE_WHAT from ui to avoid duplication
-# Note: Import at end to avoid circular dependency
-def _get_none_what():
-    from lib.ui import NONE_WHAT
-    return NONE_WHAT
+# NONE_WHAT lives in lib.keys (single source of truth); keys has no
+# intra-package imports so this top-level import cannot cause a cycle.
+from lib.keys import NONE_WHAT
 
 _addon = xbmcaddon.Addon()
 
@@ -887,15 +885,23 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             # maybe_removed) must not abort the whole exclusion step (which
             # would leave grouped movies duplicated in the flat list).
             grouped_movie_idents = set()
+            grouped_movie_obj_ids = set()
             for movie_data in movies_result['movies'].values():
                 for version in movie_data['versions']:
                     ident = version.get('ident')
                     if ident:
                         grouped_movie_idents.add(ident)
+                    else:
+                        # Ident-less versions can't be excluded by ident; fall
+                        # back to object identity (the movie pipeline reuses the
+                        # same dicts from non_series, never copies) so they don't
+                        # stay duplicated in the flat list.
+                        grouped_movie_obj_ids.add(id(version))
 
             result['non_series'] = [
                 f for f in result['non_series']
                 if f.get('ident') not in grouped_movie_idents
+                and id(f) not in grouped_movie_obj_ids
             ]
 
             # CSFD movie enrichment removed (feature disabled)
@@ -1416,7 +1422,6 @@ def fetch_and_group_series(token, what, category, sort, limit=500, max_pages=20,
     offset = 0
     page = 0
 
-    NONE_WHAT = _get_none_what()
     # Relevance filtering is meaningless for the browse sentinel — pass '' so
     # group_by_series does not run _filter_irrelevant against the literal
     # '%#NONE#%' token (wasted work; would drop everything but for a fallback).
