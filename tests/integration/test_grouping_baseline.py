@@ -77,7 +77,7 @@ sys.modules['xbmcvfs'] = MockXBMCVFS
 
 # Mock sys.argv for imports
 old_argv = sys.argv[:]
-sys.argv = ['plugin.video.yawsp', '0', '']
+sys.argv = ['plugin.video.yeplaya', '0', '']
 
 # Import from lib/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

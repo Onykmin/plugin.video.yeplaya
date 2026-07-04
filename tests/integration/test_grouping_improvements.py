@@ -66,7 +66,7 @@ sys.modules['xbmcaddon'] = MockXBMCAddon
 sys.modules['xbmcvfs'] = MockXBMCVFS
 
 old_argv = sys.argv[:]
-sys.argv = ['plugin.video.yawsp', '0', '']
+sys.argv = ['plugin.video.yeplaya', '0', '']
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from lib.grouping import group_by_series, group_movies

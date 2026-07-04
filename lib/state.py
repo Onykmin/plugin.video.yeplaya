@@ -26,7 +26,7 @@ except ImportError:
     from xbmc import translatePath
 
 
-_LOG = "YAWsP.state: "
+_LOG = "yeplaya.state: "
 _WATCHED_THRESHOLD = 0.90
 _SCHEMA_VERSION = 2
 

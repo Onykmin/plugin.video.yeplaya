@@ -8,14 +8,14 @@ import xbmc
 
 def log_debug(message):
     """Log debug message."""
-    xbmc.log("YAWsP [DEBUG]: " + str(message), xbmc.LOGDEBUG)
+    xbmc.log("yeplaya [DEBUG]: " + str(message), xbmc.LOGDEBUG)
 
 
 def log_warning(message):
     """Log warning message."""
-    xbmc.log("YAWsP [WARNING]: " + str(message), xbmc.LOGWARNING)
+    xbmc.log("yeplaya [WARNING]: " + str(message), xbmc.LOGWARNING)
 
 
 def log_error(message):
     """Log error message."""
-    xbmc.log("YAWsP [ERROR]: " + str(message), xbmc.LOGERROR)
+    xbmc.log("yeplaya [ERROR]: " + str(message), xbmc.LOGERROR)

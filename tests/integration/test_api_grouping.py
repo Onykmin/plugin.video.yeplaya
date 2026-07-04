@@ -27,7 +27,7 @@ def unidecode(text):
     normalized = unicodedata.normalize('NFKD', text)
     return ''.join([c for c in normalized if not unicodedata.combining(c)])
 
-# Import from yawsp.py directly (with mocks for Kodi)
+# Import from yeplaya.py directly (with mocks for Kodi)
 import sys
 import os
 
@@ -84,9 +84,9 @@ sys.modules['xbmcplugin'] = type('obj', (object,), {})()
 sys.modules['xbmcaddon'] = MockXBMCAddon
 sys.modules['xbmcvfs'] = MockXBMCVFS
 
-# Mock sys.argv for yawsp import
+# Mock sys.argv for yeplaya import
 old_argv = sys.argv[:]
-sys.argv = ['plugin.video.yawsp', '0', '']
+sys.argv = ['plugin.video.yeplaya', '0', '']
 
 # Now import from lib/
 sys.path.insert(0, '.')

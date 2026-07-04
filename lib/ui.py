@@ -127,7 +127,7 @@ def settings(params):
 def info(params):
     token = revalidate()
     if 'ident' not in params:
-        xbmc.log("YAWsP: Missing ident in info", xbmc.LOGERROR)
+        xbmc.log("yeplaya: Missing ident in info", xbmc.LOGERROR)
         return
     xml = getinfo(params['ident'],token)
 

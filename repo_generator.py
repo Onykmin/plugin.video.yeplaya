@@ -23,8 +23,8 @@ ADDONS = [
 ]
 
 EXCLUDED_DIRS = {
-    '.git', '.github', '.idea', '__pycache__',
-    'tests', 'exports', '.claude', 'lib/__pycache__',
+    '.git', '.github', '.idea', '.vscode', '__pycache__', '.pytest_cache',
+    'tests', 'test-grouping', 'exports', '.claude',
     'repository.yeplaya'  # Don't include repo folder in plugin zip
 }
 

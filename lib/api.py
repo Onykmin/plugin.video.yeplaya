@@ -47,10 +47,10 @@ def api(fnct, data, timeout=30):
         response.raise_for_status()
         return response
     except requests.exceptions.Timeout:
-        xbmc.log("YAWsP: API timeout for: " + fnct, xbmc.LOGERROR)
+        xbmc.log("yeplaya: API timeout for: " + fnct, xbmc.LOGERROR)
         return None
     except requests.exceptions.RequestException as e:
-        xbmc.log("YAWsP: API error for " + fnct + ": " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: API error for " + fnct + ": " + str(e), xbmc.LOGERROR)
         return None
 
 
@@ -63,11 +63,11 @@ def validate_ident(ident):
     # Prevent injection attacks - only allow alphanumeric and common safe chars
     allowed = string.ascii_letters + string.digits + '_-'
     if not all(c in allowed for c in ident):
-        xbmc.log("YAWsP: Invalid ident format: " + str(ident), xbmc.LOGWARNING)
+        xbmc.log("yeplaya: Invalid ident format: " + str(ident), xbmc.LOGWARNING)
         return False
     # Reasonable length check
     if len(ident) > 100:
-        xbmc.log("YAWsP: Ident too long: " + str(len(ident)), xbmc.LOGWARNING)
+        xbmc.log("yeplaya: Ident too long: " + str(len(ident)), xbmc.LOGWARNING)
         return False
     return True
 
@@ -77,14 +77,14 @@ def parse_xml(content):
     try:
         # Limit XML size to prevent billion laughs attack
         if len(content) > 10 * 1024 * 1024:  # 10 MB limit
-            xbmc.log("YAWsP: XML response too large: " + str(len(content)), xbmc.LOGERROR)
+            xbmc.log("yeplaya: XML response too large: " + str(len(content)), xbmc.LOGERROR)
             return None
         return ET.fromstring(content)
     except ET.ParseError as e:
-        xbmc.log("YAWsP: XML parsing error: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: XML parsing error: " + str(e), xbmc.LOGERROR)
         return None
     except (TypeError, ValueError) as e:
-        xbmc.log("YAWsP: Unexpected error parsing XML: " + str(e), xbmc.LOGERROR)
+        xbmc.log("yeplaya: Unexpected error parsing XML: " + str(e), xbmc.LOGERROR)
         return None
 
 
@@ -176,7 +176,7 @@ def getinfo(ident, wst):
     from lib.utils import popinfo
 
     if not validate_ident(ident):
-        xbmc.log("YAWsP: Invalid ident in getinfo", xbmc.LOGERROR)
+        xbmc.log("yeplaya: Invalid ident in getinfo", xbmc.LOGERROR)
         return None
     response = api('file_info', {'ident': ident, 'wst': wst})
     if response is None:
@@ -203,7 +203,7 @@ def getlink(ident, wst, dtype='video_stream'):
     from lib.utils import popinfo
 
     if not validate_ident(ident):
-        xbmc.log("YAWsP: Invalid ident in getlink", xbmc.LOGERROR)
+        xbmc.log("yeplaya: Invalid ident in getlink", xbmc.LOGERROR)
         return None
     # UUID experiment
     duuid = _addon.getSetting('duuid')

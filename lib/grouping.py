@@ -694,7 +694,7 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
         'non_series': [file_dict, ...]
     }
     """
-    xbmc.log(f'[YAWsP] group_by_series: Processing {len(files)} files', xbmc.LOGDEBUG)
+    xbmc.log(f'[yeplaya] group_by_series: Processing {len(files)} files', xbmc.LOGDEBUG)
 
     # Pre-filter irrelevant results if search query provided and setting enabled
     if search_query:

@@ -47,6 +47,8 @@ def main():
             '-x', f'{ADDON_ID}/.claude/*',
             '-x', f'{ADDON_ID}/exports/*',
             '-x', f'{ADDON_ID}/tests/*',
+            '-x', f'{ADDON_ID}/test-grouping/*',
+            '-x', f'{ADDON_ID}/.pytest_cache/*',
             '-x', f'{ADDON_ID}/repository.yeplaya/*',
             '-x', '*.pyc',
             '-x', '**/.DS_Store',

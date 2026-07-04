@@ -1,4 +1,4 @@
-"""CSFD metadata scraper for YAWsP.
+"""CSFD metadata scraper for yeplaya.
 
 Provides series title lookup from CSFD.cz (Czech-Slovak Film Database)
 to enable grouping series with different names (Czech vs Original).
@@ -49,7 +49,7 @@ def _log(message, level='DEBUG'):
             'WARNING': xbmc.LOGWARNING,
             'ERROR': xbmc.LOGERROR
         }
-        xbmc.log(f'[YAWsP CSFD] {message}', levels.get(level, xbmc.LOGDEBUG))
+        xbmc.log(f'[yeplaya CSFD] {message}', levels.get(level, xbmc.LOGDEBUG))
     else:
         print(f'[CSFD] {message}')
 
