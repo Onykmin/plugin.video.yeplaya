@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.1.3" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.2.0" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,20 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.2.0[/B]
+- new: version-picker dialog now lists sources largest-file-first
+- fix: resume / watched tracking now actually records (player stayed alive through playback; position read reliably)
+- fix: login works with accented (non-ASCII) passwords
+- fix: expired session on download/queue shows a proper auth error instead of a generic failure
+- fix: search favorites dedupe case/accent-insensitively; "Add to favorites" flips to "Remove" right after adding
+- fix: "Newest"/"Biggest" browse no longer scrambled; titles like "Deep 2" not mistaken for a series
+- fix: audio/subtitle fallback language honored even when the primary is disabled
+- fix: bad file-size data or a bad custom label format no longer blanks the whole listing
+- fix: search history remove / queue actions no longer re-fire on a manual refresh
+- fix: concurrent downloads guarded (no corrupted .part); download progress can't overshoot 100%
+- fix: database feature streams to disk, cleans up a failed extract, and reports errors instead of a blank screen
+- fix: an unexpected error no longer leaves Kodi spinning; the listing closes and notifies
+- fix: search-history dedup is case/accent/whitespace-insensitive; no duplicate back-stack frames
 [B]1.1.3[/B]
 - fix: "(2010) Title" movies (year-first naming) now group under the correct year instead of going ungrouped
 - fix: resolution width (1920x1080) no longer mistaken for the release year
