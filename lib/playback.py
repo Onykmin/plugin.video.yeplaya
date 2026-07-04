@@ -201,6 +201,9 @@ def _acquire_cross_process_lock(ident):
 
 def download(params):
     token = revalidate()
+    if token is None:
+        popinfo(_addon.getLocalizedString(30102), icon=xbmcgui.NOTIFICATION_ERROR)
+        return
     if 'ident' not in params:
         xbmc.log("yeplaya: Missing ident in download", xbmc.LOGERROR)
         return
@@ -308,6 +311,10 @@ def _do_download(params, token):
         # Write to .part file first, rename on completion
         if local:
             write_path = filepath + '.part'
+            if not resuming:
+                # Server ignored Range (200 not 206); we're re-fetching the whole
+                # file, so reset the byte counter to match the truncated 'wb' write.
+                dl = 0
             bf = io.open(write_path, 'ab' if resuming else 'wb')
         else:
             write_path = join(where, name)
@@ -352,8 +359,12 @@ def queue(params):
     xbmcplugin.setPluginCategory(_handle, _addon.getAddonInfo('name') + " \\ " + _addon.getLocalizedString(30202))
     xbmcplugin.setContent(_handle, 'files')
     token = revalidate()
+    if token is None:
+        popinfo(_addon.getLocalizedString(30102), icon=xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(_handle, succeeded=False)
+        return
     updateListing=False
-    
+
     if 'dequeue' in params:
         response = api('dequeue_file',{'ident':params['dequeue'],'wst':token})
         if response is None:

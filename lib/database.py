@@ -8,6 +8,7 @@
 import os
 import io
 import json
+import shutil
 import zipfile
 import requests
 import xbmc
@@ -93,7 +94,8 @@ def db(params):
             with io.open(dbfile, 'wb') as bf:
                 response = _session.get(link, stream=True, timeout=60)
                 response.raise_for_status()
-                bf.write(response.content)
+                for chunk in response.iter_content(chunk_size=4096):
+                    bf.write(chunk)
                 bf.flush()
                 bf.close()
         except (IOError, OSError, requests.exceptions.RequestException) as e:
@@ -108,6 +110,10 @@ def db(params):
         if not safe_extract_zip(dbfile, _profile):
             popinfo(_addon.getLocalizedString(30311), icon=xbmcgui.NOTIFICATION_ERROR)
             os.unlink(dbfile)
+            # Remove any partially-extracted db dir so the next run re-downloads
+            # rather than treating a bricked partial extract as installed.
+            if os.path.isdir(dbdir):
+                shutil.rmtree(dbdir, ignore_errors=True)
             xbmcplugin.endOfDirectory(_handle, succeeded=False)
             return
         os.unlink(dbfile)
@@ -142,6 +148,10 @@ def db(params):
             for dbfile in dbfiles:
                 listitem = xbmcgui.ListItem(label=os.path.splitext(dbfile)[0])
                 xbmcplugin.addDirectoryItem(_handle, get_url(action='db',file=dbfile), listitem, True)
+        else:
+            # DB dir missing (download/extract never completed) — tell the user
+            # instead of rendering a silent empty directory.
+            popinfo(_addon.getLocalizedString(30311), icon=xbmcgui.NOTIFICATION_ERROR)
     xbmcplugin.addSortMethod(_handle,xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.endOfDirectory(_handle, updateListing=updateListing)
 
