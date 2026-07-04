@@ -106,7 +106,11 @@ def _safe_size(v):
     if s is None:
         return 0
     try:
-        return int(str(s).strip())
+        # Parse via float so a decimal-form byte string ("1685758999.0")
+        # ranks correctly. int(str(s)) raised ValueError on those and returned
+        # 0, collapsing the sort key so the version list ended up unsorted even
+        # though sizelize() (which uses float()) still rendered the size label.
+        return int(float(str(s).strip()))
     except (ValueError, TypeError):
         return 0
 

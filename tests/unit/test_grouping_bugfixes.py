@@ -39,6 +39,15 @@ class TestCrashHardening(unittest.TestCase):
         self.assertEqual(_safe_size({}), 0)
         self.assertEqual(_safe_size({'size': '  500 '}), 500)
 
+    def test_safe_size_parses_decimal_byte_string(self):
+        # A decimal-form byte string must rank by its numeric value, not
+        # collapse to 0 (which desynced the modal sort from the size label).
+        self.assertEqual(_safe_size({'size': '1685758999.0'}), 1685758999)
+        self.assertEqual(_safe_size({'size': '4262463897'}), 4262463897)
+        # And it must still order correctly relative to a plain int string.
+        self.assertGreater(_safe_size({'size': '4262463897'}),
+                           _safe_size({'size': '1685758999.0'}))
+
     def test_version_sort_does_not_crash_on_bad_size(self):  # #6, #24, #25
         versions = [
             {'name': 'A 1080p.mkv', 'size': 'N/A'},
