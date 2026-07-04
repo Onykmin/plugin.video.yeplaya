@@ -39,8 +39,11 @@ zip -r "${ADDON_ID}/${EXPORT_DIR}/${ZIP_NAME}" "${ADDON_ID}" \
     -x "${ADDON_ID}/.claude/*" \
     -x "${ADDON_ID}/exports/*" \
     -x "${ADDON_ID}/tests/*" \
+    -x "${ADDON_ID}/test-grouping/*" \
+    -x "${ADDON_ID}/.pytest_cache/*" \
     -x "${ADDON_ID}/repository.yeplaya/*" \
     -x "${ADDON_ID}/*.pyc" \
+    -x "**/.DS_Store" \
     -x "${ADDON_ID}/.gitignore" \
     -x "${ADDON_ID}/LICENSE" \
     -x "${ADDON_ID}/README.md" \

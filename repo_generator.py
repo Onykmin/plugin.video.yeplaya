@@ -25,7 +25,8 @@ ADDONS = [
 EXCLUDED_DIRS = {
     '.git', '.github', '.idea', '.vscode', '__pycache__', '.pytest_cache',
     'tests', 'test-grouping', 'exports', '.claude',
-    'repository.yeplaya'  # Don't include repo folder in plugin zip
+    'repository.yeplaya',  # Don't include repo folder in plugin zip
+    'zips',  # Don't embed generated repo zips (incl. the plugin zip) in the repo addon zip
 }
 
 EXCLUDED_FILES = {
@@ -80,7 +81,9 @@ def create_addon_zip(addon_path_str):
                     continue
 
                 file_path = Path(root) / file
-                arcname = file_path.relative_to(addon_path.parent)
+                # Root the arcname at the addon id, not the checkout directory
+                # basename (which matched only by coincidence for the '.' addon).
+                arcname = Path(addon_id) / file_path.relative_to(addon_path)
                 zipf.write(file_path, arcname)
 
     print(f"   ✓ Created {zip_path.name}")
@@ -148,6 +151,29 @@ def copy_addon_xml_to_zips():
         shutil.copy2(source_xml, dest_xml)
 
 
+def generate_index_html():
+    """Regenerate the GitHub-Pages directory listings that the rmtree in main()
+    wipes. Kodi browses the repo over HTTP, so each dir needs an index.html.
+    Matches the committed format: directories first (trailing '/'), then files,
+    each 'href' sorted, index.html itself excluded."""
+    def write_index(directory):
+        entries = sorted(p for p in directory.iterdir() if p.name != "index.html")
+        ordered = [e for e in entries if e.is_dir()] + [e for e in entries if e.is_file()]
+        lines = ["<!DOCTYPE html>",
+                 "<html><head><title>Index</title></head><body>"]
+        for p in ordered:
+            href = p.name + "/" if p.is_dir() else p.name
+            lines.append('<a href="{0}">{0}</a><br>'.format(href))
+        lines.append("</body></html>")
+        (directory / "index.html").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    write_index(ZIPS_DIR)
+    for sub in ZIPS_DIR.iterdir():
+        if sub.is_dir():
+            write_index(sub)
+    print("   ✓ Regenerated index.html directory listings")
+
+
 def main():
     print("🚀 Kodi Repository Generator\n")
     print(f"Repository: {REPO_DIR}")
@@ -172,6 +198,9 @@ def main():
 
     # Generate addons.xml catalog
     generate_addons_xml()
+
+    # Regenerate the directory listings the rmtree above deleted
+    generate_index_html()
 
     print("\n✅ Repository generation complete!\n")
     print(f"Built {len(built_addons)} addon(s):")

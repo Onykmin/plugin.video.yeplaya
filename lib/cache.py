@@ -350,12 +350,16 @@ def storesearch(what):
     if size <= 0:
         size = 20
     key = _normalize(what)
-    history = [s for s in loadsearch() if _normalize(s) != key]
-    history = [what] + history
-    if len(history) > size:
-        history = history[:size]
-    log_debug("storesearch: writing {} items (cap={})".format(len(history), size))
-    savesearch(history)
+    # Hold the sidecar lock across the whole read-modify-write so two concurrent
+    # Kodi processes can't both read the old history and clobber each other's add.
+    path = os.path.join(_profile, SEARCH_HISTORY)
+    with file_lock(path + '.lock'):
+        history = [s for s in loadsearch() if _normalize(s) != key]
+        history = [what] + history
+        if len(history) > size:
+            history = history[:size]
+        log_debug("storesearch: writing {} items (cap={})".format(len(history), size))
+        savesearch(history)
 
 
 def removesearch(what):
@@ -363,7 +367,9 @@ def removesearch(what):
     if not what:
         return
     key = _normalize(what)
-    history = loadsearch()
-    pruned = [s for s in history if _normalize(s) != key]
-    if len(pruned) != len(history):
-        savesearch(pruned)
+    path = os.path.join(_profile, SEARCH_HISTORY)
+    with file_lock(path + '.lock'):
+        history = loadsearch()
+        pruned = [s for s in history if _normalize(s) != key]
+        if len(pruned) != len(history):
+            savesearch(pruned)
