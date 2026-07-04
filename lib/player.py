@@ -9,7 +9,7 @@ import xbmc
 import xbmcaddon
 from lib.language import match_stream, normalize_lang, setting_to_code
 
-_LOG = "YAWsP.player: "
+_LOG = "yeplaya.player: "
 
 
 class YePlayer(xbmc.Player):
@@ -23,15 +23,57 @@ class YePlayer(xbmc.Player):
         self._state_key = state_key
         self._tracking_enabled = tracking_enabled
         self._monitor = xbmc.Monitor()
+        # Last position/total sampled while the player was demonstrably alive.
+        # getTime()/getTotalTime() are unreliable once playback has stopped, so
+        # we poll during playback and prefer these values at capture time.
+        self._last_pos = 0.0
+        self._last_total = 0.0
+
+    def _poll_position(self):
+        """Sample current position while playing; keep the last valid reading."""
+        try:
+            pos = self.getTime()
+            total = self.getTotalTime()
+        except Exception:
+            return
+        if total and total > 0:
+            self._last_pos = float(pos or 0)
+            self._last_total = float(total)
 
     def wait_for_playback(self, timeout=30):
-        """Keep script alive until onAVStarted fires, error, or timeout (seconds)."""
+        """Keep the plugin script alive across the whole playback session.
+
+        Phase 1: wait up to `timeout` seconds for playback to actually start
+        (onAVStarted), or for an early error/abort. Phase 2: once playing, loop
+        — polling position so we have a reliable resume point — until playback
+        stops/ends or Kodi aborts. Without phase 2 the script would return the
+        instant playback started, the interpreter would tear down, and the
+        onPlayBackStopped/Ended callbacks (hence resume/watched tracking) would
+        never fire.
+        """
         for _ in range(timeout * 10):
             if self._av_started or self._playback_done:
-                return
+                break
             if self._monitor.waitForAbort(0.1):
                 return
-        xbmc.log(_LOG + "wait_for_playback: timeout after %ds" % timeout, xbmc.LOGWARNING)
+        else:
+            xbmc.log(_LOG + "wait_for_playback: timeout after %ds" % timeout, xbmc.LOGWARNING)
+            return
+        if self._playback_done:
+            return
+        # Phase 2: stay alive while the media plays so stop/end callbacks fire.
+        # isPlaying() is the primary exit signal; if it is unavailable or raises
+        # we must NOT spin forever, so treat that as "stop waiting". waitForAbort
+        # paces the loop and exits on Kodi shutdown.
+        while not self._playback_done:
+            self._poll_position()
+            try:
+                if not self.isPlaying():
+                    break
+            except Exception:
+                break
+            if self._monitor.waitForAbort(1.0):
+                break
 
     def _capture_state(self, force_watched=False):
         """Persist resume/watched state while the player is still alive."""
@@ -42,12 +84,17 @@ class YePlayer(xbmc.Player):
         watched_ok = addon.getSetting('track_watched') != 'false'
         if not (resume_ok or watched_ok):
             return
-        try:
-            pos = self.getTime()
-            total = self.getTotalTime()
-        except Exception as e:
-            xbmc.log(_LOG + "capture: getTime failed: %s" % e, xbmc.LOGWARNING)
-            pos, total = 0.0, 0.0
+        # Prefer the last position sampled during playback: getTime() is
+        # unreliable (may return 0 or raise) once playback has stopped.
+        if self._last_total and self._last_total > 0:
+            pos, total = self._last_pos, self._last_total
+        else:
+            try:
+                pos = self.getTime()
+                total = self.getTotalTime()
+            except Exception as e:
+                xbmc.log(_LOG + "capture: getTime failed: %s" % e, xbmc.LOGWARNING)
+                pos, total = 0.0, 0.0
         try:
             from lib import state
             if force_watched:

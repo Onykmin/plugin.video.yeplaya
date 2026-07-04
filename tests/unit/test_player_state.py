@@ -150,6 +150,24 @@ class TestPlayerStateTracking:
         assert st['watched'] == 1
         h.cleanup()
 
+    def test_stopped_uses_polled_position_when_gettime_dead(self):
+        """Resume must use the position polled during playback even when
+        getTime() returns 0/raises at stop time (real-Kodi behaviour)."""
+        h = _Harness()
+        # Simulate a mid-playback poll capturing a valid position...
+        h.player.getTime = MagicMock(return_value=200.0)
+        h.player.getTotalTime = MagicMock(return_value=1000.0)
+        h.player._poll_position()
+        # ...then getTime dies once playback stops.
+        h.player.getTime = MagicMock(side_effect=RuntimeError("stopped"))
+        h.player.getTotalTime = MagicMock(side_effect=RuntimeError("stopped"))
+        h.player.onPlayBackStopped()
+        st = h.state.get_state('ep:x|S01E01')
+        assert st is not None, "polled position must survive a dead getTime() at stop"
+        assert st['resume_seconds'] == 200
+        assert st['watched'] == 0
+        h.cleanup()
+
 
 class TestPerConcernGating:
     """Fix F: track_resume and track_watched must gate independently."""
