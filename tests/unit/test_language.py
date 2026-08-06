@@ -6,7 +6,9 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from lib.language import normalize_lang, match_stream, setting_to_code, is_forced_label
+from lib.language import (
+    normalize_lang, match_stream, match_stream_meta, setting_to_code, is_forced_label,
+)
 
 
 # --- normalize_lang ---
@@ -280,3 +282,95 @@ def test_match_audio_no_kwarg_forced_label_in_audio_context():
     first-match-wins semantics when the kwarg is not passed."""
     streams = ['English', 'Czech (Forced)', 'Czech']
     assert match_stream(streams, 'cs', 'en') == 1
+
+
+# --- match_stream_meta: real per-track metadata (v1.2.1 forced-subtitle fix) ---
+# Fixtures below mirror the real 41-track ffmpeg dump captured in kodi.log
+# (addon indices 0..40); only the first two tracks are load-bearing for the
+# acceptance criterion, so unrelated tracks are omitted from the fixtures.
+
+def test_match_stream_meta_real_case_isforced_flag():
+    """Acceptance criterion: eng[Forced] isforced=True at 0, eng plain
+    isdefault=True at 1, primary='en' -> index 1."""
+    tracks = [
+        {'language': 'eng', 'name': 'English [Forced]', 'isforced': True, 'isdefault': False},
+        {'language': 'eng', 'name': 'English', 'isforced': False, 'isdefault': True},
+    ]
+    idx, reason = match_stream_meta(tracks, 'en')
+    assert idx == 1, reason
+
+
+def test_match_stream_meta_isforced_absent_name_fallback():
+    """isforced missing entirely (None) -> fall back to name-based detection."""
+    tracks = [
+        {'language': 'eng', 'name': 'English [Forced]', 'isforced': None, 'isdefault': False},
+        {'language': 'eng', 'name': 'English', 'isforced': None, 'isdefault': True},
+    ]
+    idx, reason = match_stream_meta(tracks, 'en')
+    assert idx == 1, reason
+
+
+def test_match_stream_meta_kodi_ui_forced_suffix_spelling():
+    """Kodi's UI may append its own '[forced]' suffix on top of the
+    container title -> 'English [Forced] [forced]'. Must still detect."""
+    tracks = [
+        {'language': 'eng', 'name': 'English [Forced] [forced]', 'isforced': None, 'isdefault': False},
+        {'language': 'eng', 'name': 'English', 'isforced': None, 'isdefault': True},
+    ]
+    idx, reason = match_stream_meta(tracks, 'en')
+    assert idx == 1, reason
+
+
+def test_match_stream_meta_forced_only_language_still_selected():
+    """A language present only as a forced track must still be selected
+    rather than returning None."""
+    tracks = [
+        {'language': 'ger', 'name': 'German [Forced]', 'isforced': True, 'isdefault': False},
+    ]
+    idx, reason = match_stream_meta(tracks, 'de')
+    assert idx == 0, reason
+
+
+def test_match_stream_meta_isdefault_tiebreak():
+    """Two non-forced same-language tracks; the one with isdefault=True wins
+    even though it is not first positionally."""
+    tracks = [
+        {'language': 'jpn', 'name': 'Japanese', 'isforced': False, 'isdefault': False},
+        {'language': 'jpn', 'name': 'Japanese [SDH]', 'isforced': False, 'isdefault': True},
+    ]
+    idx, reason = match_stream_meta(tracks, 'ja')
+    assert idx == 1, reason
+
+
+def test_match_stream_meta_language_precedence_over_forced():
+    """Language precedence still outranks forced-ness: primary language only
+    exists as forced, fallback language exists as non-forced -> primary's
+    forced track still wins."""
+    tracks = [
+        {'language': 'cze', 'name': 'Czech [Forced]', 'isforced': True, 'isdefault': False},
+        {'language': 'eng', 'name': 'English', 'isforced': False, 'isdefault': True},
+    ]
+    idx, reason = match_stream_meta(tracks, 'cs', 'en')
+    assert idx == 0, reason
+
+
+def test_match_stream_meta_sdh_not_deprioritized():
+    """SDH/isimpaired must not be treated as a degraded track — it competes
+    on equal footing with any other non-forced track of the language."""
+    tracks = [
+        {'language': 'jpn', 'name': 'Japanese [SDH]', 'isforced': False, 'isdefault': False,
+         'isimpaired': True},
+        {'language': 'ara', 'name': 'Arabic', 'isforced': False, 'isdefault': False},
+    ]
+    idx, reason = match_stream_meta(tracks, 'ja')
+    assert idx == 0, reason
+
+
+def test_match_stream_meta_empty_list():
+    assert match_stream_meta([], 'en') == (None, "no tracks or no codes")
+
+
+def test_match_stream_meta_no_codes():
+    tracks = [{'language': 'eng', 'name': 'English', 'isforced': False, 'isdefault': True}]
+    idx, reason = match_stream_meta(tracks, None, None)
+    assert idx is None

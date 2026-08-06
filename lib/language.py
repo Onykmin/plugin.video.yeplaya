@@ -194,6 +194,75 @@ def match_stream(available_streams, primary_code, fallback_code=None, deprioriti
     return None
 
 
+def match_stream_meta(tracks, primary_code, fallback_code=None):
+    """Find best matching subtitle track index using real per-track metadata.
+
+    Unlike match_stream (which only sees bare label strings from
+    getAvailableSubtitleStreams — e.g. 'eng' — and therefore cannot express
+    forced-ness), this operates on JSON-RPC Player.GetProperties track dicts
+    that carry real 'isforced'/'isdefault' flags alongside 'language'/'name'.
+
+    Args:
+        tracks: list of dicts, positionally ordered (index == list position),
+            each shaped like {'language': str, 'name': str,
+            'isforced': bool|None, 'isdefault': bool|None}. Any key may be
+            missing.
+        primary_code: ISO 639-1 code to prefer (or None)
+        fallback_code: ISO 639-1 code as fallback (or None)
+
+    Returns:
+        (index, reason) on success, (None, reason) when nothing matches.
+        `reason` is a short string for logging (never used for control flow).
+
+    isdefault tie-break rationale: when two tracks of the same language are
+    both non-forced (e.g. a plain track and an SDH track), the muxer's own
+    'default' flag is the best available signal for which one the release
+    intended as primary — cheaper and more reliable than guessing from names.
+
+    isimpaired/SDH is deliberately NOT used for ranking here: SDH tracks are
+    complete subtitles (not a degraded/partial track like forced-only ones),
+    so they compete on equal footing with any other non-forced track of the
+    same language, decided only by isdefault/index (settled v1.2.1).
+    """
+    if not tracks or (not primary_code and not fallback_code):
+        return None, "no tracks or no codes"
+
+    for code in [primary_code, fallback_code]:
+        if not code:
+            continue
+        best_idx = None
+        best_rank = None
+        best_source = None
+        for i, track in enumerate(tracks):
+            if not isinstance(track, dict):
+                continue
+            lang = normalize_lang(track.get('language')) or normalize_lang(track.get('name'))
+            if lang != code:
+                continue
+            name = track.get('name')
+            raw_forced = track.get('isforced')
+            if raw_forced is True or raw_forced is False:
+                forced = raw_forced
+                source = 'isforced'
+            else:
+                forced = is_forced_label(name)
+                source = 'name'
+            isdefault = track.get('isdefault') is True
+            if not forced and isdefault:
+                rank = 0
+            elif not forced:
+                rank = 1
+            else:
+                rank = 2
+            if best_rank is None or rank < best_rank:
+                best_rank = rank
+                best_idx = i
+                best_source = source
+        if best_idx is not None:
+            return best_idx, "lang=%s rank=%d source=%s" % (code, best_rank, best_source)
+    return None, "no language match"
+
+
 def setting_to_code(setting_value):
     """Convert settings dropdown value to ISO 639-1 code.
 

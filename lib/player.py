@@ -5,9 +5,13 @@
 
 """Custom player with automatic audio/subtitle language selection."""
 
+import json
+
 import xbmc
 import xbmcaddon
-from lib.language import match_stream, normalize_lang, setting_to_code, is_forced_label
+from lib.language import (
+    match_stream, match_stream_meta, normalize_lang, setting_to_code, is_forced_label,
+)
 
 _LOG = "yeplaya.player: "
 
@@ -195,17 +199,151 @@ class YePlayer(xbmc.Player):
             return
         for i, s in enumerate(streams):
             xbmc.log(_LOG + "subs: [%d] '%s' → %s" % (i, s, normalize_lang(s)), xbmc.LOGINFO)
-        idx = match_stream(streams, primary, fallback, deprioritize_forced=True)
+
+        idx = None
+        meta = None
+        try:
+            meta = self._get_subtitle_metadata(len(streams))
+            if meta is not None and not self._metadata_langs_agree(streams, meta):
+                xbmc.log(_LOG + "subs: jsonrpc metadata language mismatch vs bare codes, "
+                         "discarding", xbmc.LOGWARNING)
+                meta = None
+        except Exception as e:
+            xbmc.log(_LOG + "subs: jsonrpc metadata lookup failed: %s" % e, xbmc.LOGWARNING)
+            meta = None
+
+        if meta is not None:
+            idx, reason = match_stream_meta(meta, primary, fallback)
+            if idx is not None:
+                xbmc.log(_LOG + "subs: metadata source=jsonrpc selecting index %d (%s)"
+                         % (idx, reason), xbmc.LOGINFO)
+            else:
+                xbmc.log(_LOG + "subs: jsonrpc metadata matched nothing (%s), "
+                         "falling back to label-only" % reason, xbmc.LOGINFO)
+        else:
+            xbmc.log(_LOG + "subs: jsonrpc metadata unavailable, falling back to label-only",
+                     xbmc.LOGINFO)
+
+        if idx is None:
+            idx = match_stream(streams, primary, fallback, deprioritize_forced=True)
+            if idx is not None:
+                chosen_forced = is_forced_label(streams[idx])
+                xbmc.log(_LOG + "subs: selecting index %d (forced=%s, deprioritize_forced=True)"
+                         % (idx, chosen_forced), xbmc.LOGINFO)
+
         if idx is not None:
-            chosen_forced = is_forced_label(streams[idx])
-            xbmc.log(_LOG + "subs: selecting index %d (forced=%s, deprioritize_forced=True)"
-                     % (idx, chosen_forced), xbmc.LOGINFO)
             self.setSubtitleStream(idx)
             if addon.getSetting('sub_auto') == 'true':
                 xbmc.log(_LOG + "subs: showSubtitles(True)", xbmc.LOGINFO)
                 self.showSubtitles(True)
         else:
             xbmc.log(_LOG + "subs: no match, keeping default", xbmc.LOGINFO)
+
+    def _jsonrpc(self, method, params):
+        """Round-trip a Kodi JSON-RPC call. Returns the 'result' value, or
+        None on ANY problem (never raises).
+
+        Guards against the test-mock shape: xbmc.executeJSONRPC on a bare
+        MagicMock() auto-returns a MagicMock object rather than a JSON
+        string, which would blow up json.loads with a TypeError. Treat any
+        non-str result as "JSON-RPC unavailable" rather than an error.
+        """
+        try:
+            payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+            raw = xbmc.executeJSONRPC(json.dumps(payload))
+            if not isinstance(raw, str):
+                return None
+            resp = json.loads(raw)
+            return resp.get('result')
+        except Exception:
+            return None
+
+    def _metadata_langs_agree(self, streams, tracks):
+        """Cross-check jsonrpc track languages against the bare codes from
+        getAvailableSubtitleStreams(). If both sides resolve a language for
+        the same position and they disagree, the two lists are misaligned
+        (or jsonrpc returned stale/wrong data) — refuse to use metadata.
+        """
+        try:
+            for i, track in enumerate(tracks):
+                if i >= len(streams):
+                    break
+                if not isinstance(track, dict):
+                    continue
+                bare_lang = normalize_lang(streams[i])
+                meta_lang = normalize_lang(track.get('language'))
+                if bare_lang is not None and meta_lang is not None and bare_lang != meta_lang:
+                    xbmc.log(_LOG + "subs: index %d language mismatch bare=%s meta=%s"
+                             % (i, bare_lang, meta_lang), xbmc.LOGWARNING)
+                    return False
+            return True
+        except Exception:
+            return False
+
+    def _get_subtitle_metadata(self, expected_count):
+        """Fetch real per-track subtitle metadata via JSON-RPC.
+
+        Returns a list of track dicts (positionally ordered, same index
+        space as getAvailableSubtitleStreams), or None if metadata is
+        unavailable, malformed, or its ordering can't be trusted — in which
+        case the caller must fall back to label-only matching.
+        """
+        try:
+            players = self._jsonrpc("Player.GetActivePlayers", {})
+            if not isinstance(players, list) or not players:
+                xbmc.log(_LOG + "subs: jsonrpc no active players", xbmc.LOGINFO)
+                return None
+            pid = None
+            for p in players:
+                if isinstance(p, dict) and p.get('type') == 'video':
+                    pid = p.get('playerid')
+                    break
+            if pid is None:
+                first = players[0]
+                pid = first.get('playerid') if isinstance(first, dict) else None
+            if pid is None:
+                xbmc.log(_LOG + "subs: jsonrpc no usable playerid", xbmc.LOGINFO)
+                return None
+
+            payload = {
+                "jsonrpc": "2.0", "id": 1, "method": "Player.GetProperties",
+                "params": {"playerid": pid, "properties": ["subtitles", "currentsubtitle"]},
+            }
+            raw = xbmc.executeJSONRPC(json.dumps(payload))
+            raw_dump = raw if isinstance(raw, str) else str(raw)
+            if len(raw_dump) > 4000:
+                raw_dump = raw_dump[:4000] + "...(truncated)"
+            xbmc.log(_LOG + "subs: jsonrpc raw=%s" % raw_dump, xbmc.LOGINFO)
+
+            if not isinstance(raw, str):
+                xbmc.log(_LOG + "subs: jsonrpc GetProperties returned no usable result",
+                         xbmc.LOGWARNING)
+                return None
+            result = json.loads(raw).get('result')
+            if not isinstance(result, dict):
+                xbmc.log(_LOG + "subs: jsonrpc GetProperties returned no usable result",
+                         xbmc.LOGWARNING)
+                return None
+            subs = result.get('subtitles')
+            if not isinstance(subs, list):
+                xbmc.log(_LOG + "subs: jsonrpc 'subtitles' missing or not a list", xbmc.LOGWARNING)
+                return None
+            if len(subs) != expected_count:
+                xbmc.log(_LOG + "subs: jsonrpc count mismatch (got %d, expected %d)"
+                         % (len(subs), expected_count), xbmc.LOGWARNING)
+                return None
+            for i, entry in enumerate(subs):
+                if not isinstance(entry, dict):
+                    xbmc.log(_LOG + "subs: jsonrpc entry %d not a dict" % i, xbmc.LOGWARNING)
+                    return None
+                if 'index' in entry and entry.get('index') != i:
+                    xbmc.log(_LOG + "subs: jsonrpc index field %s disagrees with position %d"
+                             % (entry.get('index'), i), xbmc.LOGWARNING)
+                    return None
+            return subs
+        except Exception as e:
+            xbmc.log(_LOG + "subs: jsonrpc metadata error: %s" % e, xbmc.LOGWARNING)
+            return None
 
     def _get_audio_streams(self):
         """Return list of audio stream language labels."""

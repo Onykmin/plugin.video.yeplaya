@@ -206,3 +206,155 @@ class TestYePlayer:
         player.onAVStarted()
         player.setSubtitleStream.assert_called_once_with(0)
         player.showSubtitles.assert_not_called()
+
+
+# --- JSON-RPC subtitle metadata (v1.2.1 forced-subtitle fix) ---
+
+class TestSubtitleMetadata:
+
+    def _make_player(self, settings=None):
+        return TestYePlayer()._make_player(settings)
+
+    def test_metadata_none_when_executeJSONRPC_returns_non_str(self):
+        """xbmc.executeJSONRPC on the bare MagicMock() auto-returns a
+        MagicMock, not a JSON string — must be treated as unavailable."""
+        player = self._make_player({})
+        import lib.player as player_mod
+        player_mod.xbmc.executeJSONRPC = MagicMock(return_value=MagicMock())
+        result = player._get_subtitle_metadata(2)
+        assert result is None
+
+    def test_metadata_none_on_malformed_json(self):
+        player = self._make_player({})
+        import lib.player as player_mod
+        player_mod.xbmc.executeJSONRPC = MagicMock(return_value="not valid json{{{")
+        result = player._get_subtitle_metadata(2)
+        assert result is None
+
+    def test_metadata_none_on_missing_subtitles_key(self):
+        player = self._make_player({})
+        import json as _json
+        import lib.player as player_mod
+
+        def fake_rpc(payload_str):
+            payload = _json.loads(payload_str)
+            if payload['method'] == 'Player.GetActivePlayers':
+                return _json.dumps({"id": 1, "jsonrpc": "2.0",
+                                     "result": [{"playerid": 1, "type": "video"}]})
+            return _json.dumps({"id": 1, "jsonrpc": "2.0", "result": {"currentsubtitle": {}}})
+
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=fake_rpc)
+        result = player._get_subtitle_metadata(2)
+        assert result is None
+
+    def test_metadata_none_on_length_mismatch(self):
+        player = self._make_player({})
+        import json as _json
+        import lib.player as player_mod
+
+        def fake_rpc(payload_str):
+            payload = _json.loads(payload_str)
+            if payload['method'] == 'Player.GetActivePlayers':
+                return _json.dumps({"id": 1, "jsonrpc": "2.0",
+                                     "result": [{"playerid": 1, "type": "video"}]})
+            return _json.dumps({"id": 1, "jsonrpc": "2.0", "result": {
+                "subtitles": [{"language": "eng", "name": "English"}],
+            }})
+
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=fake_rpc)
+        result = player._get_subtitle_metadata(2)  # expected 2, got 1
+        assert result is None
+
+    def test_metadata_none_on_index_disagrees_with_position(self):
+        player = self._make_player({})
+        import json as _json
+        import lib.player as player_mod
+
+        def fake_rpc(payload_str):
+            payload = _json.loads(payload_str)
+            if payload['method'] == 'Player.GetActivePlayers':
+                return _json.dumps({"id": 1, "jsonrpc": "2.0",
+                                     "result": [{"playerid": 1, "type": "video"}]})
+            return _json.dumps({"id": 1, "jsonrpc": "2.0", "result": {
+                "subtitles": [
+                    {"index": 5, "language": "eng", "name": "English [Forced]",
+                     "isforced": True, "isdefault": False},
+                    {"index": 1, "language": "eng", "name": "English",
+                     "isforced": False, "isdefault": True},
+                ],
+            }})
+
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=fake_rpc)
+        result = player._get_subtitle_metadata(2)
+        assert result is None
+
+    def test_metadata_happy_path_selects_index_1(self):
+        """Realistic 2-track payload: forced eng at 0, plain default eng at
+        1 -> selection lands on index 1 and setSubtitleStream(1) is called."""
+        player = self._make_player({'sub_lang': 'English', 'sub_auto': 'false'})
+        import json as _json
+        import lib.player as player_mod
+
+        def fake_rpc(payload_str):
+            payload = _json.loads(payload_str)
+            if payload['method'] == 'Player.GetActivePlayers':
+                return _json.dumps({"id": 1, "jsonrpc": "2.0",
+                                     "result": [{"playerid": 1, "type": "video"}]})
+            return _json.dumps({"id": 1, "jsonrpc": "2.0", "result": {
+                "subtitles": [
+                    {"index": 0, "language": "eng", "name": "English [Forced]",
+                     "isforced": True, "isdefault": False},
+                    {"index": 1, "language": "eng", "name": "English",
+                     "isforced": False, "isdefault": True},
+                ],
+            }})
+
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=fake_rpc)
+        player.getAvailableAudioStreams = MagicMock(return_value=['Japanese'])
+        player.getAvailableSubtitleStreams = MagicMock(return_value=['eng', 'eng'])
+        player.setSubtitleStream = MagicMock()
+        player.showSubtitles = MagicMock()
+        player.onAVStarted()
+        player.setSubtitleStream.assert_called_once_with(1)
+
+    def test_metadata_no_lang_match_falls_back_to_label_only(self):
+        """Well-formed metadata of correct length but with unresolvable
+        language/name fields must fall back to label-only matching rather
+        than being skipped entirely."""
+        player = self._make_player({'sub_lang': 'English', 'sub_auto': 'false'})
+        import json as _json
+        import lib.player as player_mod
+
+        def fake_rpc(payload_str):
+            payload = _json.loads(payload_str)
+            if payload['method'] == 'Player.GetActivePlayers':
+                return _json.dumps({"id": 1, "jsonrpc": "2.0",
+                                     "result": [{"playerid": 1, "type": "video"}]})
+            return _json.dumps({"id": 1, "jsonrpc": "2.0", "result": {
+                "subtitles": [
+                    {"index": 0, "language": "", "name": "", "isforced": False, "isdefault": False},
+                    {"index": 1, "language": "", "name": "", "isforced": False, "isdefault": False},
+                ],
+            }})
+
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=fake_rpc)
+        player.getAvailableAudioStreams = MagicMock(return_value=['Japanese'])
+        player.getAvailableSubtitleStreams = MagicMock(return_value=['eng', 'eng'])
+        player.setSubtitleStream = MagicMock()
+        player.showSubtitles = MagicMock()
+        player.onAVStarted()
+        player.setSubtitleStream.assert_called_once_with(0)
+
+    def test_metadata_jsonrpc_exception_does_not_propagate(self):
+        """A raising executeJSONRPC must never break playback selection —
+        falls back to label-only matching."""
+        player = self._make_player({'sub_lang': 'English', 'sub_auto': 'false'})
+        import lib.player as player_mod
+        player_mod.xbmc.executeJSONRPC = MagicMock(side_effect=RuntimeError("boom"))
+        player.getAvailableAudioStreams = MagicMock(return_value=['Japanese'])
+        player.getAvailableSubtitleStreams = MagicMock(return_value=['Czech', 'English'])
+        player.setSubtitleStream = MagicMock()
+        player.showSubtitles = MagicMock()
+        # Should not raise, and should still fall back to label-only match.
+        player.onAVStarted()
+        player.setSubtitleStream.assert_called_once_with(1)
