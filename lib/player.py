@@ -7,7 +7,7 @@
 
 import xbmc
 import xbmcaddon
-from lib.language import match_stream, normalize_lang, setting_to_code
+from lib.language import match_stream, normalize_lang, setting_to_code, is_forced_label
 
 _LOG = "yeplaya.player: "
 
@@ -195,9 +195,11 @@ class YePlayer(xbmc.Player):
             return
         for i, s in enumerate(streams):
             xbmc.log(_LOG + "subs: [%d] '%s' → %s" % (i, s, normalize_lang(s)), xbmc.LOGINFO)
-        idx = match_stream(streams, primary, fallback)
+        idx = match_stream(streams, primary, fallback, deprioritize_forced=True)
         if idx is not None:
-            xbmc.log(_LOG + "subs: selecting index %d" % idx, xbmc.LOGINFO)
+            chosen_forced = is_forced_label(streams[idx])
+            xbmc.log(_LOG + "subs: selecting index %d (forced=%s, deprioritize_forced=True)"
+                     % (idx, chosen_forced), xbmc.LOGINFO)
             self.setSubtitleStream(idx)
             if addon.getSetting('sub_auto') == 'true':
                 xbmc.log(_LOG + "subs: showSubtitles(True)", xbmc.LOGINFO)

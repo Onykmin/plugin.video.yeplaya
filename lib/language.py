@@ -7,6 +7,14 @@
 
 import re
 
+try:
+    from unidecode import unidecode
+except ImportError:
+    import unicodedata
+    def unidecode(text):
+        normalized = unicodedata.normalize('NFKD', text)
+        return ''.join([c for c in normalized if not unicodedata.combining(c)])
+
 # All known variants → 2-letter ISO 639-1 code
 LANG_MAP = {
     # English
@@ -96,6 +104,28 @@ _LABEL_RE = re.compile(
     r'\uAC00-\uD7AF]+'                        # Korean
 )
 
+# Detects a "forced" subtitle marker in a stream label (e.g. "Czech (Forced)",
+# "forced-cze", native Czech/Slovak "nucen\u00E9"/"vyn\u00FAten\u00E9" after unidecode).
+# Word-boundary alternation avoids false positives on words that merely
+# contain the substring ("Reinforced", "Enforced"). Applied on top of
+# normalize_lang, never in place of it \u2014 see match_stream's
+# deprioritize_forced kwarg. SDH/hearing-impaired tracks are intentionally
+# NOT covered here (out of scope; they are complete subtitles, not broken).
+_FORCED_RE = re.compile(r'\b(?:forced|nucene|vynutene)\b')
+
+
+def is_forced_label(stream_label):
+    """Return True if a stream label carries a "forced" subtitle marker.
+
+    Accent-insensitive (handles native Czech/Slovak wording) and None/empty
+    safe. Detection only \u2014 never mutates or strips the label, so language
+    detection via normalize_lang keeps working on the same string.
+    """
+    if not stream_label:
+        return False
+    normalized = unidecode(stream_label).lower()
+    return bool(_FORCED_RE.search(normalized))
+
 
 def normalize_lang(stream_label):
     """Normalize a stream label to ISO 639-1 code or None.
@@ -117,13 +147,18 @@ def normalize_lang(stream_label):
     return None
 
 
-def match_stream(available_streams, primary_code, fallback_code=None):
+def match_stream(available_streams, primary_code, fallback_code=None, deprioritize_forced=False):
     """Find best matching stream index for given language preference.
 
     Args:
         available_streams: list of stream label strings
         primary_code: ISO 639-1 code to prefer (or None)
         fallback_code: ISO 639-1 code as fallback (or None)
+        deprioritize_forced: when True, within each language code prefer a
+            non-forced track over a forced one, only falling back to a forced
+            track when it is the only track in that language. Opt-in and
+            defaulted to False so the audio path (_select_audio) is
+            byte-for-byte unchanged; only _select_subtitles passes True.
 
     Returns:
         0-based index or None if no match
@@ -135,9 +170,27 @@ def match_stream(available_streams, primary_code, fallback_code=None):
     for code in [primary_code, fallback_code]:
         if not code:
             continue
+        if not deprioritize_forced:
+            for i, label in enumerate(available_streams):
+                if normalize_lang(label) == code:
+                    return i
+            continue
+        # Forced-ness inner: scan for a non-forced match of this language
+        # first; only if none exists, fall back to a forced match of the
+        # SAME language. Language precedence (outer loop) still outranks
+        # forced-ness — a non-forced fallback-language track is never
+        # reached before both passes of the primary language are exhausted.
+        forced_idx = None
         for i, label in enumerate(available_streams):
-            if normalize_lang(label) == code:
-                return i
+            if normalize_lang(label) != code:
+                continue
+            if is_forced_label(label):
+                if forced_idx is None:
+                    forced_idx = i
+                continue
+            return i
+        if forced_idx is not None:
+            return forced_idx
     return None
 
 
