@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.2.1" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.2.2" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,8 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.2.2[/B]
+- fix: subtitle auto-select now reads real track flags (forced / default / SDH) instead of bare language codes, so a "Forced" track is no longer picked when a normal one of the same language exists
 [B]1.2.1[/B]
 - fix: subtitle auto-select no longer picks a "Forced" track when a normal track of the same language exists (forced tracks are often empty, so subtitles appeared not to work)
 [B]1.2.0[/B]
