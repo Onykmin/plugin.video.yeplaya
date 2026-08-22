@@ -35,15 +35,41 @@ def _setting_int(key, default):
         return default
 
 
+# dosearch() outcome signals — plain strings so they survive Kodi's module
+# reloads and are trivially assertable in tests.
+SEARCH_OK = 'ok'          # results rendered (series or flat)
+SEARCH_EMPTY = 'empty'    # query succeeded, zero results
+SEARCH_FAILED = 'failed'  # API/response failure
+
+
 def dosearch(token, what, category, sort, limit, offset, action, params=None,
-             update_listing=False):
+             update_listing=False, close_directory=True):
+    """Run a search and render results (series view or flat file list).
+
+    Returns one of SEARCH_OK / SEARCH_EMPTY / SEARCH_FAILED so a caller can
+    tell the three outcomes apart without inspecting side effects.
+
+    close_directory=False suppresses endOfDirectory on the two non-rendering
+    outcomes (SEARCH_FAILED, SEARCH_EMPTY) only — a reroll loop (e.g. "random
+    movie") needs the directory handle to stay open across several rejected
+    candidates, since endOfDirectory kills the handle for the rest of this
+    Kodi action. Once a search actually renders a listing (SEARCH_OK), the
+    directory is always closed — that caller is done, handle or no handle.
+    On the suppressed empty path, the "No results found." popinfo is also
+    skipped (a per-reroll toast would spam the user); a log_debug line keeps
+    the event traceable instead. The API-failure popinfo always fires — a
+    real API failure is worth surfacing once, and the caller stops looping
+    on it regardless.
+    """
     response = api('search',{'what':'' if what == NONE_WHAT else what, 'category':category, 'sort':sort, 'limit': limit, 'offset': offset, 'wst':token, 'maybe_removed':'true'})
     if response is None:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
         # Close the directory on API failure — returning without endOfDirectory
         # leaves Kodi's container stuck on a spinner / the previous listing.
-        xbmcplugin.endOfDirectory(_handle, succeeded=False, updateListing=update_listing)
-        return
+        # (Suppressed only when close_directory=False, for the reroll loop.)
+        if close_directory:
+            xbmcplugin.endOfDirectory(_handle, succeeded=False, updateListing=update_listing)
+        return SEARCH_FAILED
     xml = parse_xml(response.content)
     if is_ok(xml):
 
@@ -64,9 +90,14 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
             files.append(item)
 
         if not files and offset == 0:
-            popinfo(_addon.getLocalizedString(30108), icon=xbmcgui.NOTIFICATION_INFO)
-            xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
-            return
+            if close_directory:
+                popinfo(_addon.getLocalizedString(30108), icon=xbmcgui.NOTIFICATION_INFO)
+                xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
+            else:
+                # Reroll loop: skip the per-candidate toast (would spam the
+                # user) but keep the event traceable in the log.
+                log_debug("dosearch: empty result for '{}' (close_directory=False)".format(what))
+            return SEARCH_EMPTY
 
         # Check if we should show series view (only on first page and if not forced flat)
         # Also show series view if 'page' param present (paginated series view)
@@ -93,7 +124,7 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
                 # Display series list instead of flat files
                 display_series_list(grouped, what, category, sort, limit, page,
                                     update_listing=update_listing)
-                return
+                return SEARCH_OK
 
         # ORIGINAL: Flat file display (backward compatible)
         if offset > 0: #prev page
@@ -122,9 +153,14 @@ def dosearch(token, what, category, sort, limit, offset, action, params=None,
             xbmcplugin.addDirectoryItem(_handle, get_url(action=action, what=what, category=category, sort=sort, limit=limit, offset=offset+limit), listitem, True)
 
         xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
+        return SEARCH_OK
     else:
         popinfo(_addon.getLocalizedString(30107), icon=xbmcgui.NOTIFICATION_WARNING)
-        xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
+        # Second, distinct API/response-failure path (malformed/not-OK XML,
+        # as opposed to no response at all above) — same failure signal.
+        if close_directory:
+            xbmcplugin.endOfDirectory(_handle, updateListing=update_listing)
+        return SEARCH_FAILED
 
 
 def display_series_list(grouped, what, category, sort, limit, page=0,
@@ -420,6 +456,11 @@ def search(params):
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30209))
         listitem.setArt({'icon': 'DefaultHardDisk.png'})
         xbmcplugin.addDirectoryItem(_handle, get_url(action='search',what=NONE_WHAT,sort=SORTS[3]), listitem, True)
+
+        if 'true' == _addon.getSetting('random_movie'):
+            listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30446))
+            listitem.setArt({'icon': 'DefaultPlaylist.png'})
+            xbmcplugin.addDirectoryItem(_handle, get_url(action='random_movie'), listitem, False)
 
         for s in history:
             listitem = xbmcgui.ListItem(label=s)

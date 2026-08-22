@@ -21,7 +21,10 @@ def set_video_info(listitem, info_dict):
 
     Args:
         listitem: xbmcgui.ListItem
-        info_dict: dict with keys like 'plot', 'title', 'size'
+        info_dict: dict with keys like 'plot', 'title', 'size', 'year'
+
+    Additive: existing callers passing only 'plot'/'title' see no change in
+    behaviour — 'year' is simply ignored (both branches) when absent.
     """
     try:
         tag = listitem.getVideoInfoTag()
@@ -29,7 +32,11 @@ def set_video_info(listitem, info_dict):
             tag.setPlot(info_dict['plot'])
         if 'title' in info_dict:
             tag.setTitle(info_dict['title'])
+        if 'year' in info_dict:
+            tag.setYear(int(info_dict['year']))
     except AttributeError:
+        # Kodi 19 (Matrix): no InfoTagVideo setters, fall back to the
+        # deprecated setInfo dict form — 'year' is a recognized key there too.
         listitem.setInfo('video', info_dict)
 
 
