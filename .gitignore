@@ -32,3 +32,8 @@ Thumbs.db
 
 # Local Kodi profile scratch data from manual testing
 TestAddon/
+
+# Local planning / research notes (not shipped, not versioned)
+RANDOM_MOVIE_RESEARCH.md
+WDQS_DEEP_DIVE.md
+test-grouping/PLAN.md
