@@ -453,3 +453,47 @@ msgstr ""
 msgctxt "#30432"
 msgid "Download already in progress - "
 msgstr ""
+
+msgctxt "#30433"
+msgid "Random episode"
+msgstr ""
+
+msgctxt "#30434"
+msgid "Random episode"
+msgstr ""
+
+msgctxt "#30435"
+msgid "Random episode (this season)"
+msgstr ""
+
+msgctxt "#30436"
+msgid "Play"
+msgstr ""
+
+msgctxt "#30437"
+msgid "Reroll"
+msgstr ""
+
+msgctxt "#30438"
+msgid "Cancel"
+msgstr ""
+
+msgctxt "#30439"
+msgid "Enable random episode picker"
+msgstr ""
+
+msgctxt "#30440"
+msgid "No episodes available to pick"
+msgstr ""
+
+msgctxt "#30441"
+msgid "All episodes shown, start over to see repeats"
+msgstr ""
+
+msgctxt "#30442"
+msgid "Start over"
+msgstr ""
+
+msgctxt "#30443"
+msgid "Pick version ({0})"
+msgstr ""

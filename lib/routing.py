@@ -8,7 +8,7 @@
 import xbmc
 from lib.ui import history, settings, menu, info, goto_page
 from lib.search_ui import search, newsearch
-from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version
+from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version, show_random_episode_dialog
 from lib.playback import play, download, queue
 from lib.database import db
 from lib.favorites_ui import favorites, add_favorite_action, remove_favorite_action
@@ -80,6 +80,8 @@ def router(paramstring):
             select_version(params)
         elif params['action'] == 'select_movie_version':
             select_movie_version(params)
+        elif params['action'] == 'random_episode':
+            show_random_episode_dialog(params)
         elif params['action'] == 'browse_other':
             browse_other(params)
         elif params['action'] == 'queue':

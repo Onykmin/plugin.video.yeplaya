@@ -48,7 +48,7 @@ if __name__ == '__main__':
             action = dict(parse_qsl(sys.argv[2][1:])).get('action', '') \
                 if len(sys.argv) > 2 else ''
             _RESOLVE_ACTIONS = {'play', 'select_version', 'select_movie_version',
-                                'newsearch'}
+                                'newsearch', 'random_episode'}
             if action in _RESOLVE_ACTIONS:
                 xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem())
             else:

@@ -453,3 +453,47 @@ msgstr "Seriál nenájdený"
 msgctxt "#30432"
 msgid "Download already in progress - "
 msgstr "Sťahovanie už prebieha - "
+
+msgctxt "#30433"
+msgid "Random episode"
+msgstr "Náhodná epizóda"
+
+msgctxt "#30434"
+msgid "Random episode"
+msgstr "Náhodná epizóda"
+
+msgctxt "#30435"
+msgid "Random episode (this season)"
+msgstr "Náhodná epizóda (táto séria)"
+
+msgctxt "#30436"
+msgid "Play"
+msgstr "Prehrať"
+
+msgctxt "#30437"
+msgid "Reroll"
+msgstr "Vybrať znova"
+
+msgctxt "#30438"
+msgid "Cancel"
+msgstr "Zrušiť"
+
+msgctxt "#30439"
+msgid "Enable random episode picker"
+msgstr "Povoliť náhodný výber epizódy"
+
+msgctxt "#30440"
+msgid "No episodes available to pick"
+msgstr "Žiadne epizódy na výber"
+
+msgctxt "#30441"
+msgid "All episodes shown, start over to see repeats"
+msgstr "Všetky epizódy zobrazené, začnite znova pre opakovanie"
+
+msgctxt "#30442"
+msgid "Start over"
+msgstr "Začať znova"
+
+msgctxt "#30443"
+msgid "Pick version ({0})"
+msgstr "Vybrať verziu ({0})"

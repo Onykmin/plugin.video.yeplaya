@@ -30,6 +30,12 @@ class TestRouter:
         router('action=browse_season&series=test&season=1')
         mock_fn.assert_called_once()
 
+    @patch('lib.routing.show_random_episode_dialog')
+    def test_random_episode_action(self, mock_fn):
+        router('action=random_episode&series=south+park&what=south+park')
+        mock_fn.assert_called_once()
+        assert mock_fn.call_args[0][0]['series'] == 'south park'
+
     @patch('lib.routing.select_version')
     def test_select_version_action(self, mock_fn):
         router('action=select_version&series=test&season=1&episode=5')
