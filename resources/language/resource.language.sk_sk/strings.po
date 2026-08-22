@@ -497,3 +497,11 @@ msgstr "Začať znova"
 msgctxt "#30443"
 msgid "Pick version ({0})"
 msgstr "Vybrať verziu ({0})"
+
+msgctxt "#30444"
+msgid "Show changelog after update"
+msgstr "Zobraziť zoznam zmien po aktualizácii"
+
+msgctxt "#30445"
+msgid "What's new in {0}"
+msgstr "Čo je nové vo verzii {0}"

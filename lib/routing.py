@@ -6,6 +6,7 @@
 """URL routing logic."""
 
 import xbmc
+from lib.changelog import maybe_show_changelog
 from lib.ui import history, settings, menu, info, goto_page
 from lib.search_ui import search, newsearch
 from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version, show_random_episode_dialog
@@ -70,60 +71,62 @@ def _remove_search_action(params):
 def router(paramstring):
     params = dict(parse_qsl(paramstring))
     if params:
-        if params['action'] == 'search':
+        action = params.get('action', '')
+        if action == 'search':
             search(params)
-        elif params['action'] == 'browse_series':
+        elif action == 'browse_series':
             browse_series(params)
-        elif params['action'] == 'browse_season':
+        elif action == 'browse_season':
             browse_season(params)
-        elif params['action'] == 'select_version':
+        elif action == 'select_version':
             select_version(params)
-        elif params['action'] == 'select_movie_version':
+        elif action == 'select_movie_version':
             select_movie_version(params)
-        elif params['action'] == 'random_episode':
+        elif action == 'random_episode':
             show_random_episode_dialog(params)
-        elif params['action'] == 'browse_other':
+        elif action == 'browse_other':
             browse_other(params)
-        elif params['action'] == 'queue':
+        elif action == 'queue':
             queue(params)
-        elif params['action'] == 'history':
+        elif action == 'history':
             history(params)
-        elif params['action'] == 'settings':
+        elif action == 'settings':
             settings(params)
-        elif params['action'] == 'info':
+        elif action == 'info':
             info(params)
-        elif params['action'] == 'play':
+        elif action == 'play':
             play(params)
-        elif params['action'] == 'download':
+        elif action == 'download':
             download(params)
-        elif params['action'] == 'db':
+        elif action == 'db':
             db(params)
-        elif params['action'] == 'goto_page':
+        elif action == 'goto_page':
             goto_page(params)
-        elif params['action'] == 'newsearch':
+        elif action == 'newsearch':
             newsearch(params)
-        elif params['action'] == 'mark_watched':
+        elif action == 'mark_watched':
             _state_action(params, 'mark_watched')
-        elif params['action'] == 'mark_unwatched':
+        elif action == 'mark_unwatched':
             _state_action(params, 'mark_unwatched')
-        elif params['action'] == 'clear_resume':
+        elif action == 'clear_resume':
             _state_action(params, 'clear_resume')
-        elif params['action'] == 'toqueue':
+        elif action == 'toqueue':
             _toqueue_action(params)
-        elif params['action'] == 'dequeue':
+        elif action == 'dequeue':
             _dequeue_action(params)
-        elif params['action'] == 'remove_search':
+        elif action == 'remove_search':
             _remove_search_action(params)
-        elif params['action'] == 'favorites':
+        elif action == 'favorites':
             favorites(params)
-        elif params['action'] == 'add_favorite':
+        elif action == 'add_favorite':
             add_favorite_action(params)
-        elif params['action'] == 'remove_favorite':
+        elif action == 'remove_favorite':
             remove_favorite_action(params)
         else:
             menu()
     else:
         menu()
+        maybe_show_changelog()
 
 # Start settings monitor
 

@@ -35,5 +35,7 @@
         <setting label="30292" id="track_watched" type="bool" default="true" />
         <setting type="lsep" label="30433" />
         <setting label="30439" id="random_episode" type="bool" default="false" />
+        <setting label="30444" id="show_changelog" type="bool" default="true" />
+        <setting id="changelog_seen_version" type="text" visible="false" default="" />
     </category>
 </settings>
