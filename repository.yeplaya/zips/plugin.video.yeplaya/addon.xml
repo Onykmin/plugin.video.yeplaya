@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.2.2" provider-name="onykmin">
+<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.3.0" provider-name="onykmin">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.18.4"/>
@@ -20,6 +20,10 @@
             <icon>resources/icon.png</icon>
         </assets>
         <news>
+[B]1.3.0[/B]
+- new: "Random episode" in series and season views — picks a random episode, then Play / Pick version / Reroll; rerolls never repeat until the pool runs out (opt-in, off by default)
+- new: changelog dialog shown once after the addon updates (can be turned off in settings)
+- fix: the Play row in the episode and movie version pickers now offers the best-ranked source instead of raw API order
 [B]1.2.2[/B]
 - fix: subtitle auto-select now reads real track flags (forced / default / SDH) instead of bare language codes, so a "Forced" track is no longer picked when a normal one of the same language exists
 [B]1.2.1[/B]

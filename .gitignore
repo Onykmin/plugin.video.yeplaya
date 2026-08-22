@@ -29,3 +29,6 @@ Thumbs.db
 
 # Local development
 *.log
+
+# Local Kodi profile scratch data from manual testing
+TestAddon/

@@ -25,6 +25,8 @@ ADDONS = [
 EXCLUDED_DIRS = {
     '.git', '.github', '.idea', '.vscode', '__pycache__', '.pytest_cache',
     'tests', 'test-grouping', 'exports', '.claude',
+    'TestAddon',  # Local Kodi profile scratch data from manual testing
+    'feature-random-episode',  # Dev planning docs, not shipped
     'repository.yeplaya',  # Don't include repo folder in plugin zip
     'zips',  # Don't embed generated repo zips (incl. the plugin zip) in the repo addon zip
 }
