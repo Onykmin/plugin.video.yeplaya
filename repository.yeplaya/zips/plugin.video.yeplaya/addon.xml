@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.3.0" provider-name="onykmin">
+<addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.4.0" provider-name="onykmin">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.requests" version="2.18.4"/>
@@ -20,6 +20,9 @@
             <icon>resources/icon.png</icon>
         </assets>
         <news>
+[B]1.4.0[/B]
+- new: "Random movie" in the Search menu — picks a random film from Wikidata and searches it, with Reroll to draw another (opt-in, off by default)
+- new: random movie picks show the release year
 [B]1.3.0[/B]
 - new: "Random episode" in series and season views — picks a random episode, then Play / Pick version / Reroll; rerolls never repeat until the pool runs out (opt-in, off by default)
 - new: changelog dialog shown once after the addon updates (can be turned off in settings)
