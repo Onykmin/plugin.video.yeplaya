@@ -167,7 +167,8 @@ def _preimport_lib_modules():
     for name in ('lib.utils', 'lib.cache', 'lib.keys', 'lib.state',
                  'lib.grouping', 'lib.playback', 'lib.favorites',
                  'lib.favorites_ui', 'lib.search_ui', 'lib.series_ui',
-                 'lib.ui', 'lib.routing'):
+                 'lib.ui', 'lib.routing', 'lib.wdqs', 'lib.movie_pool',
+                 'lib.random_movie_ui'):
         try:
             __import__(name)
         except Exception:

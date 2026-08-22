@@ -1,0 +1,28 @@
+{
+  "head": {"vars": ["film", "csL", "enL"]},
+  "results": {
+    "bindings": [
+      {
+        "film": {"type": "uri", "value": "http://www.wikidata.org/entity/Q83495"},
+        "csL": {"xml:lang": "cs", "type": "literal", "value": "Matrix"},
+        "enL": {"xml:lang": "en", "type": "literal", "value": "The Matrix"}
+      },
+      {
+        "film": {"type": "uri", "value": "http://www.wikidata.org/entity/Q219776"},
+        "enL": {"xml:lang": "en", "type": "literal", "value": "Yossi & Jagger"},
+        "csL": {"xml:lang": "cs", "type": "literal", "value": "Yossi & Jagger"}
+      },
+      {
+        "film": {"type": "uri", "value": "http://www.wikidata.org/entity/Q1"},
+        "enL": {"xml:lang": "en", "type": "literal", "value": "Germinal"}
+      },
+      {
+        "film": {"type": "uri", "value": "http://www.wikidata.org/entity/Q2"},
+        "csL": {"xml:lang": "cs", "type": "literal", "value": "Tucnak"}
+      },
+      {
+        "film": {"type": "uri", "value": "http://www.wikidata.org/entity/Q3"}
+      }
+    ]
+  }
+}
