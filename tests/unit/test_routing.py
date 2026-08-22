@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
+from lib import routing
 from lib.routing import router
 
 
@@ -95,6 +96,37 @@ class TestRouter:
     def test_empty_params_shows_menu(self, mock_menu):
         router('')
         mock_menu.assert_called_once()
+
+    @patch.object(routing, 'maybe_show_changelog')
+    @patch('lib.routing.menu')
+    def test_actionless_params_no_keyerror_no_changelog_hook(self, mock_menu, mock_hook):
+        """Stale bookmark like '?foo=bar' (params non-empty, no 'action' key)
+        must not raise KeyError, and must land on the hook-free inner
+        else: menu() branch, not the outer changelog-hook else."""
+        router('foo=bar')
+        mock_menu.assert_called_once()
+        mock_hook.assert_not_called()
+
+    @patch.object(routing, 'maybe_show_changelog')
+    @patch('lib.routing.menu')
+    def test_empty_paramstring_calls_changelog_hook(self, mock_menu, mock_hook):
+        router('')
+        mock_menu.assert_called_once()
+        mock_hook.assert_called_once()
+
+    @patch.object(routing, 'maybe_show_changelog')
+    @patch('lib.routing.menu')
+    def test_unknown_action_no_changelog_hook(self, mock_menu, mock_hook):
+        router('action=unknown_thing')
+        mock_menu.assert_called_once()
+        mock_hook.assert_not_called()
+
+    @patch.object(routing, 'maybe_show_changelog')
+    @patch('lib.routing.search')
+    def test_known_action_dispatches_and_no_changelog_hook(self, mock_search, mock_hook):
+        router('action=search&what=test')
+        mock_search.assert_called_once()
+        mock_hook.assert_not_called()
 
 
 class TestSideEffectActions:
