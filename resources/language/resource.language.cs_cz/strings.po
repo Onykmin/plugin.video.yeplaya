@@ -505,3 +505,31 @@ msgstr "Zobrazit seznam změn po aktualizaci"
 msgctxt "#30445"
 msgid "What's new in {0}"
 msgstr "Co je nového ve verzi {0}"
+
+msgctxt "#30446"
+msgid "Random movie"
+msgstr "Náhodný film"
+
+msgctxt "#30447"
+msgid "No movies available to pick"
+msgstr "Žádné filmy k výběru"
+
+msgctxt "#30448"
+msgid "Reroll"
+msgstr "Vybrat znovu"
+
+msgctxt "#30449"
+msgid "Cancel"
+msgstr "Zrušit"
+
+msgctxt "#30450"
+msgid "Search \"{0}\""
+msgstr "Hledat „{0}“"
+
+msgctxt "#30451"
+msgid "Enable random movie picker"
+msgstr "Povolit náhodný výběr filmu"
+
+msgctxt "#30453"
+msgid "Movie list unavailable, check your connection"
+msgstr "Seznam filmů není dostupný, zkontrolujte připojení"

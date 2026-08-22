@@ -505,3 +505,31 @@ msgstr ""
 msgctxt "#30445"
 msgid "What's new in {0}"
 msgstr ""
+
+msgctxt "#30446"
+msgid "Random movie"
+msgstr ""
+
+msgctxt "#30447"
+msgid "No movies available to pick"
+msgstr ""
+
+msgctxt "#30448"
+msgid "Reroll"
+msgstr ""
+
+msgctxt "#30449"
+msgid "Cancel"
+msgstr ""
+
+msgctxt "#30450"
+msgid "Search \"{0}\""
+msgstr ""
+
+msgctxt "#30451"
+msgid "Enable random movie picker"
+msgstr ""
+
+msgctxt "#30453"
+msgid "Movie list unavailable, check your connection"
+msgstr ""

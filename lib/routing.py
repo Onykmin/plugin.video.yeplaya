@@ -10,6 +10,7 @@ from lib.changelog import maybe_show_changelog
 from lib.ui import history, settings, menu, info, goto_page
 from lib.search_ui import search, newsearch
 from lib.series_ui import browse_series, browse_season, browse_other, select_version, select_movie_version, show_random_episode_dialog
+from lib.random_movie_ui import show_random_movie_dialog
 from lib.playback import play, download, queue
 from lib.database import db
 from lib.favorites_ui import favorites, add_favorite_action, remove_favorite_action
@@ -84,6 +85,8 @@ def router(paramstring):
             select_movie_version(params)
         elif action == 'random_episode':
             show_random_episode_dialog(params)
+        elif action == 'random_movie':
+            show_random_movie_dialog(params)
         elif action == 'browse_other':
             browse_other(params)
         elif action == 'queue':
