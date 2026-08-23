@@ -102,6 +102,6 @@ def maybe_show_changelog():
         except Exception:
             heading = addon.getAddonInfo('name')
 
-        xbmcgui.Dialog().textviewer(heading, body)
+        xbmcgui.Dialog().ok(heading, body)
     except Exception as e:
         xbmc.log("yeplaya: changelog check failed: " + str(e), xbmc.LOGERROR)

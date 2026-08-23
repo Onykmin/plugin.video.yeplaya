@@ -7,6 +7,7 @@
 
 import random
 
+import xbmc
 import xbmcgui
 import xbmcplugin
 
@@ -90,7 +91,18 @@ def browse_series(params):
     if 'true' == _addon.getSetting('random_episode') and series_data.get('total_episodes', 0) > 0:
         listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30434))
         listitem.setArt({'icon': 'DefaultTVShows.png'})
-        listitem.setProperty('IsPlayable', 'true')
+        # NO IsPlayable property at all — deliberately, and note that absent
+        # is NOT the same as 'false' (which was tried and broke the dialog).
+        # This row opens a dialog; it resolves nothing. With
+        # IsPlayable='true' Kodi treats the click as a playback request
+        # (kodi.log: "OnPlayMedia ...?action=random_episode"), puts the row
+        # in a playlist, and when the script exits without ever calling
+        # setResolvedUrl it tears that playlist down — "Playlist Player:
+        # skipping unplayable item" — killing the episode _play_via_handoff
+        # had just started. is_folder=False alone is the right declaration
+        # for a dialog action: Kodi still routes it through PlayMedia (see
+        # lib/favorites_ui.py:112, which sets no IsPlayable either) without
+        # demanding a resolved stream.
         url = get_url(action='random_episode', series=series_name,
                      what=params['what'], category=params.get('category'),
                      sort=params.get('sort'))
@@ -149,7 +161,18 @@ def browse_season(params):
             if 'true' == _addon.getSetting('random_episode') and episodes_dict:
                 listitem = xbmcgui.ListItem(label=_addon.getLocalizedString(30435))
                 listitem.setArt({'icon': 'DefaultTVShows.png'})
-                listitem.setProperty('IsPlayable', 'true')
+                # NO IsPlayable property at all — deliberately, and note that absent
+                # is NOT the same as 'false' (which was tried and broke the dialog).
+                # This row opens a dialog; it resolves nothing. With
+                # IsPlayable='true' Kodi treats the click as a playback request
+                # (kodi.log: "OnPlayMedia ...?action=random_episode"), puts the row
+                # in a playlist, and when the script exits without ever calling
+                # setResolvedUrl it tears that playlist down — "Playlist Player:
+                # skipping unplayable item" — killing the episode _play_via_handoff
+                # had just started. is_folder=False alone is the right declaration
+                # for a dialog action: Kodi still routes it through PlayMedia (see
+                # lib/favorites_ui.py:112, which sets no IsPlayable either) without
+                # demanding a resolved stream.
                 url = get_url(action='random_episode', series=series_name,
                              season=season_num, what=params['what'],
                              category=category, sort=sort_val)
@@ -471,6 +494,67 @@ def _build_dialog_rows(best, season_num, ep_num, pool_state, version_count):
     return listitems, actions
 
 
+def _play_via_handoff(version, series_name=None, season=None, episode=None):
+    """Play `version` through the normal `play` action instead of resolving it
+    against the picker's own URL.
+
+    Kodi's player writes a type=1 resume bookmark AT STOP TIME, keyed on the
+    URL that initiated playback. Calling resolve_and_play() from here made
+    that URL the PICKER's (?action=random_episode&series=...), so:
+
+      - every episode ever played via the picker collapsed onto ONE bookmark
+        (verified in MyVideos131.db: 454s/1277s against
+        ?action=random_episode&series=south+park), and
+      - re-entering the picker matched it and offered "Continue watching".
+
+    Setting ResumeTime/playcount on the picker ListItem cannot fix this —
+    those only affect how the row is DRAWN, not what the player persists
+    later. The fix is to not be the playing URL at all: resolve this
+    invocation away and hand off to ?action=play&ident=...&name=..., the
+    same per-episode URL every other list in this addon uses (see
+    lib/ui.py:116, lib/search_ui.py:143, lib/series_ui.py:682). Kodi then
+    writes the bookmark against the episode, which is what makes resume
+    correct rather than merely absent.
+
+    Does NOT call setResolvedUrl(False) first, unlike
+    lib.random_movie_ui._run_search. That helper hands off with
+    Container.Update, which only navigates a list, so a failed resolve
+    alongside it is harmless. PlayMedia starts PLAYBACK, and the failed
+    resolve lands in the same playlist — Kodi then tears the playlist down
+    while cleaning up the "unplayable" item and kills the episode that just
+    started. Measured in kodi.log:
+
+        11:56:21.644 VideoPlayer::OpenFile: ...?action=play&ident=ZNOQxOqPRe
+        11:56:21.655 Playlist Player: skipping unplayable item: 0,
+                     path [...?action=random_episode&series=south+park]
+        11:56:21.835 getTime failed: Kodi is not playing any media file
+
+    So: issue PlayMedia only. main.py's outer handler closes an unresolved
+    resolve-action handle on the way out (see its _RESOLVE_ACTIONS branch),
+    and PlayMedia's own playback is what the user actually waits on.
+
+    series_name/season/episode are REQUIRED for correct state tracking, not
+    decoration. play() rebuilds the state key from the URL query
+    (lib/playback.py:83-85 -> lib/state.py:165), and state_key_for needs all
+    three to emit an "ep:<series>|S..E.." key; with only `ident` it falls
+    through to lib/state.py:178's "file:{ident}" fallback. That was a real
+    regression: the plugin's own state.db held three ep: rows from the
+    pre-handoff path and then a file:73SMhvX92X row for the same class of
+    playback. A file: key bypasses lib/keys.py's dual-name normalization, so
+    watched/resume stop following an episode across re-groupings or across a
+    different version (different ident) of the same episode.
+
+    This is the URL shape ordinary episode rows already build — see
+    lib/series_ui.py:201-204 — so the picker now matches the rest of the
+    addon rather than using a shorter, lossier form. The args default to None
+    and get_url drops None values (lib/utils.py:97,106-107), so omitting them
+    yields a byte-identical URL to the old form.
+    """
+    url = get_url(action='play', ident=version['ident'], name=version['name'],
+                  series=series_name, season=season, episode=episode)
+    xbmc.executebuiltin('PlayMedia({})'.format(url))
+
+
 def show_random_episode_dialog(params):
     """Pick a random episode and offer Play / Reroll / Cancel in one dialog.
 
@@ -560,12 +644,7 @@ def show_random_episode_dialog(params):
             action = actions[selected] if 0 <= selected < len(actions) else 'cancel'
 
             if action == 'play':
-                ep_state_key = state_key_for({
-                    'series_name': series_name,
-                    'season': shown_season,
-                    'episode': shown_ep,
-                })
-                resolve_and_play(shown_best['ident'], shown_best['name'], token, state_key=ep_state_key)
+                _play_via_handoff(shown_best, series_name, shown_season, shown_ep)
                 return
 
             if action == 'pick_version':
@@ -574,13 +653,8 @@ def show_random_episode_dialog(params):
                 heading = '{0} - S{1:02d}E{2:02d}'.format(display_name, shown_season, shown_ep)
                 version_selected = xbmcgui.Dialog().select(heading, version_listitems, useDetails=True)
                 if version_selected >= 0:
-                    chosen = ordered[version_selected]
-                    ep_state_key = state_key_for({
-                        'series_name': series_name,
-                        'season': shown_season,
-                        'episode': shown_ep,
-                    })
-                    resolve_and_play(chosen['ident'], chosen['name'], token, state_key=ep_state_key)
+                    _play_via_handoff(ordered[version_selected], series_name,
+                                      shown_season, shown_ep)
                     return
                 # Backed out of the picker — redraw the same episode's rows,
                 # no setResolvedUrl (we haven't resolved anything yet).

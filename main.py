@@ -47,8 +47,16 @@ if __name__ == '__main__':
             # than guessing. Unknown/blank action → treat as a directory.
             action = dict(parse_qsl(sys.argv[2][1:])).get('action', '') \
                 if len(sys.argv) > 2 else ''
+            # Actions Kodi opened as a resolve (they call setResolvedUrl).
+            # 'random_episode' is deliberately ABSENT: its row sets no
+            # IsPlayable and the handler hands off via PlayMedia instead of
+            # resolving a stream (lib/series_ui.py:_play_via_handoff), so
+            # Kodi never opens a resolve handle for it — the observed handle
+            # is -1. Listing it here was harmless (this block only runs on an
+            # unhandled exception, and both branches no-op on handle -1) but
+            # it misdescribed the contract.
             _RESOLVE_ACTIONS = {'play', 'select_version', 'select_movie_version',
-                                'newsearch', 'random_episode', 'random_movie'}
+                                'newsearch', 'random_movie'}
             if action in _RESOLVE_ACTIONS:
                 xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem())
             else:
