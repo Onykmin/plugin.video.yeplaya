@@ -7,7 +7,7 @@
 
 Kodi's one-process-per-menu-action lifecycle means lib.cache's in-memory
 cache_set/cache_get dies every action and cannot hold a pool across picks
-(WDQS_DEEP_DIVE.md lines 124-130). This module mirrors lib.favorites' shape
+(lib/wdqs.py evidence archive; orig. doc lines 124-130). This module mirrors lib.favorites' shape
 exactly instead — a versioned JSON envelope written atomically to the addon
 profile dir, read back under a shared lock, mutated under a cross-process
 exclusive lock (doc lines 128-130 name lib.favorites as the proven
@@ -66,6 +66,22 @@ DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60  # 1 week
 # Per-process in-memory cache, reset every Kodi invocation (mirrors
 # lib.favorites._cached_items) — never assume it survives across actions.
 _cached_pool = None
+
+# Learned lower bound on the true WDQS pool size, read back from the envelope
+# and raised whenever a fetch proves a deeper offset is populated. See
+# lib.wdqs.POOL_TOTAL / effective_pool_total.
+_pool_total_floor = None
+
+
+def pool_total_hint():
+    """Best known pool-size floor from the stored envelope, or None.
+
+    Pure read (via the in-memory cache); never fetches. Passed to
+    lib.wdqs.fetch_candidates so the random OFFSET can reach the whole pool
+    rather than being frozen at wdqs.POOL_TOTAL's 2026 measurement.
+    """
+    _cached_envelope()
+    return _pool_total_floor
 
 
 def invalidate_cache():
@@ -133,6 +149,12 @@ def _parse_envelope_raw(raw):
     if not isinstance(fetched_at, (int, float)):
         fetched_at = 0
 
+    # Optional, additive field — absent in pre-existing pools.
+    global _pool_total_floor
+    stored_floor = data.get('pool_floor')
+    if isinstance(stored_floor, int) and stored_floor > 0:
+        _pool_total_floor = stored_floor
+
     log_debug("movie_pool: loaded {} valid items (fetched_at={})".format(
         len(valid), fetched_at))
     return fetched_at, valid
@@ -155,9 +177,32 @@ def _save_envelope(fetched_at, items):
     invalidate_cache()
     envelope = {'version': ENVELOPE_VERSION, 'fetched_at': int(fetched_at),
                 'items': items}
+    # Persist the learned pool-size floor (see lib.wdqs.POOL_TOTAL) when we
+    # have one. Additive and optional exactly like the 'y' item field: absent
+    # in older files, read with .get, so no ENVELOPE_VERSION bump is needed
+    # and an existing pool is never invalidated.
+    floor = _pool_total_floor
+    if isinstance(floor, int) and floor > 0:
+        envelope['pool_floor'] = floor
     atomic_write_text(_pool_path(),
                        json.dumps(envelope, ensure_ascii=False,
                                   separators=(',', ':')))
+
+
+def _absorb_observed_floor():
+    """Raise the in-memory floor if the last fetch proved a deeper one.
+
+    Monotonic by construction — only ever increases, so a short page (which
+    sets lib.wdqs.LAST_OBSERVED_FLOOR to None) can never shrink the bound.
+    The raised value is written out by the next _save_envelope call.
+    """
+    global _pool_total_floor
+    observed = getattr(wdqs, 'LAST_OBSERVED_FLOOR', None)
+    if not isinstance(observed, int) or observed <= 0:
+        return
+    if _pool_total_floor is None or observed > _pool_total_floor:
+        _pool_total_floor = observed
+        log_debug("movie_pool: pool-size floor raised to {}".format(observed))
 
 
 def _dedupe_merge(existing, new_items):
@@ -225,7 +270,9 @@ def refresh_pool(ttl_seconds=DEFAULT_TTL_SECONDS, force=False):
         log_debug("movie_pool: refresh skipped, pool still fresh")
         return False
 
-    new_records = wdqs.fetch_candidates(PREFETCH_BATCH)
+    new_records = wdqs.fetch_candidates(PREFETCH_BATCH,
+                                        observed_floor=pool_total_hint())
+    _absorb_observed_floor()
     if not new_records:
         log_warning("movie_pool: refresh fetch returned nothing; keeping "
                     "existing pool ({} items)".format(len(items)))
@@ -241,7 +288,9 @@ def refresh_pool(ttl_seconds=DEFAULT_TTL_SECONDS, force=False):
 def _topup(ttl_seconds=DEFAULT_TTL_SECONDS):
     """Fetch one top-up batch and merge it in. Internal helper for pick_random
     when the pool is exhausted relative to the caller's excluded set."""
-    new_records = wdqs.fetch_candidates(TOPUP_BATCH)
+    new_records = wdqs.fetch_candidates(TOPUP_BATCH,
+                                        observed_floor=pool_total_hint())
+    _absorb_observed_floor()
     if not new_records:
         log_warning("movie_pool: top-up fetch returned nothing")
         return False

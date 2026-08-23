@@ -6,7 +6,7 @@
 """Wikidata Query Service (WDQS) SPARQL client — random-movie title source.
 
 Implements the query shape and failure handling measured and specified in
-WDQS_DEEP_DIVE.md (repo root). Do NOT "improve" the query or the constants
+the MEASURED EVIDENCE ARCHIVE above. Do NOT "improve" the query or the constants
 below without re-reading that doc — every choice here traces to a measured
 number, not a guess:
 
@@ -56,6 +56,68 @@ from lib.logging import log_warning, log_error, log_debug
 # Constants
 # ----------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# MEASURED EVIDENCE ARCHIVE
+#
+# The research docs these constants were derived from (the evidence archive above,
+# RANDOM_MOVIE_RESEARCH.md) have been removed from the repo. The figures that
+# justify the tuning below are preserved here so the rationale survives; other
+# modules' "doc line N" comments refer to the numbers restated in this block.
+#
+# Pool size vs sitelinks threshold (COUNT(DISTINCT ?film), P31=Q11424):
+#   >=5   68,314 films   6.43s     >=10  25,043   45.45s
+#   >=20   8,937 films  25.61s     >=40   1,889    6.93s
+#   >=80      72 films  28.34s
+#   Latency is NON-MONOTONIC in pool size — the threshold cannot be tuned for
+#   speed; it is a pool-QUALITY choice. Hence SITELINKS_MIN = 20.
+#
+# DISTINCT is necessary but insufficient: it dedupes the whole selected TUPLE,
+#   so a film with N values of a multi-valued property (P577 publication date)
+#   yields N "distinct" rows. Measured: LIMIT 10 with DISTINCT + P577 returned
+#   10 rows for 1 distinct film ("Barbarella" x10). GROUP BY ?film with
+#   MIN()/SAMPLE() aggregates is the fix — measured 10 rows / 10 distinct films.
+#
+# Label retrieval: explicit OPTIONAL + FILTER(LANG()) = 8.85s for 50 rows.
+#   Adding SERVICE wikibase:label on top: HTTP 504 at 65.2s. Director (P57) or
+#   genre (P136) with label JOINs inside GROUP_CONCAT: also 504 at ~65s. Hence
+#   neither is selected.
+#
+# OFFSET depth is not free (SPARQL scans and discards):
+#   offset 500/limit 10 = 0.50-0.70s;  offset 1000/limit 50 = 8.85s;
+#   offset 8500/limit 1 = 19.73s;      offset 20000 (past pool end, limit 5) =
+#   28.50s to return 0 rows — the worst case in the whole spec, which the
+#   clamp in fetch_candidates() exists to make unreachable.
+#
+# Latency variance is inherent: the IDENTICAL query at the SAME offset, run
+#   4x within ~1 minute, took 6.81s / 23.66s / 30.96s / 12.73s (min 6.81,
+#   max 30.96, mean 18.5 — a 4.5x spread). A live-per-click design therefore
+#   cannot promise a predictable wait; this is why the pool is prefetched.
+#   Result ORDER is also unstable: the same offset returned four DIFFERENT
+#   films across those runs, so OFFSET pages are NOT a stable partition and
+#   top-ups must dedupe on id.
+#
+# Prefetch feasibility: LIMIT 2000 OFFSET 0 = 2.68s, 617,843 bytes raw JSON,
+#   2,000 rows (1,316 with a Czech label, 65.8%). Reduced to compact JSON
+#   (separators=(',',':'), ensure_ascii=False): 70,134 bytes for 2,000 films
+#   title-only, 141,576 bytes with the year field. ensure_ascii=True would
+#   inflate to ~78KB (each Czech diacritic becomes a 6-byte \uXXXX escape).
+#   Hence PREFETCH_BATCH = 2000 as the measured sweet spot.
+#
+# A COUNT query is affordable but slow and variable (6.43-45.45s above), so it
+#   must NOT run per pick. The recommendation was to CACHE the count rather
+#   than hardcode a bound — see POOL_TOTAL / effective_pool_total() below.
+#
+# Server hard query deadline: 60s (hence REQUEST_TIMEOUT). Wikimedia's
+#   User-Agent policy requires an informative UA with contact info or the
+#   client "may be blocked without notice"; throttling is bucketed by UA+IP,
+#   which is why this module never shares lib.api's spoofed browser UA.
+#
+# Failure handling was measured against real errors: WDQS error bodies are NOT
+#   JSON (a raw 502 body raised JSONDecodeError), so status_code must be
+#   checked before any .json() parse. On refresh failure the last good pool
+#   must be kept, never discarded.
+# ---------------------------------------------------------------------------
+
 ENDPOINT = 'https://query.wikidata.org/sparql'
 
 # Popularity gate: films with >= this many Wikipedia sitelinks. Doc line 23:
@@ -70,10 +132,32 @@ SITELINKS_MIN = 20
 # single worst-case latency in the whole spec.
 POOL_TOTAL = 8937
 
+# Observed lower bound on the true pool size, learned at runtime and passed in
+# by callers (see lib.movie_pool.pool_total_hint). the evidence archive above:78
+# recommends caching the count rather than hardcoding it, and warns a bound
+# that is too low means the pool tail is never reachable. A COUNT query is
+# itself 6-45s (doc lines 76-78) so we do NOT run one; instead we learn for
+# free from the fetches we already make. If a request at `offset` comes back
+# with a FULL page of `limit` rows, the pool must contain at least
+# offset+limit items, so that sum is a proven floor. effective_pool_total()
+# below takes the max of the static figure and whatever floor has been
+# observed, so the sampler's reach grows as Wikidata grows instead of being
+# frozen at the 2026 measurement.
+#
+# Only ever RAISES the bound. It cannot introduce the doc's other risk (a
+# too-high bound paying 28.50s for 0 rows) because a floor is only recorded
+# after a page at that depth actually returned rows.
+
 # Client-side timeout. Must be at/below the server's published 60s hard
 # query deadline (doc line 179) — a >60s client wait would just be us
 # waiting past the point the server has already given up.
 REQUEST_TIMEOUT = 60
+
+# Set by the most recent fetch_candidates() call: offset+limit when that call
+# came back with a full page (a proven pool-size floor), else None. Read by
+# lib.movie_pool to persist the bound; module-level because Kodi gives each
+# menu action a fresh interpreter, so this never accumulates across actions.
+LAST_OBSERVED_FLOOR = None
 
 # At most one retry, with backoff. Never hammer a throttled/erroring
 # service (doc lines 174-178).
@@ -98,7 +182,7 @@ def build_query(limit, offset):
     """Build the SPARQL query text for a LIMIT/OFFSET page of the film pool.
 
     GROUP BY ?film + SAMPLE/MIN aggregates (not bare DISTINCT) — see module
-    docstring; this is the form WDQS_DEEP_DIVE.md §1 proves free of the
+    docstring; this is the form the evidence archive above §1 proves free of the
     tuple-fan-out bug. P577 (publication date) is included via
     (MIN(?date) AS ?d) specifically BECAUSE it's under this GROUP BY: the
     doc's fan-out bug (§1, 10 rows / 1 distinct film, "Barbarella" x10) was
@@ -255,7 +339,19 @@ def _get(params):
         attempt += 1
 
 
-def fetch_candidates(count):
+def effective_pool_total(observed_floor=None):
+    """Best known pool size: the static measurement, raised by observation.
+
+    `observed_floor` is a previously proven lower bound (see POOL_TOTAL's
+    comment). Returns POOL_TOTAL when there is nothing better, so behaviour is
+    unchanged for callers that pass nothing.
+    """
+    if isinstance(observed_floor, int) and observed_floor > POOL_TOTAL:
+        return observed_floor
+    return POOL_TOTAL
+
+
+def fetch_candidates(count, observed_floor=None):
     """Fetch up to `count` candidate film records from WDQS.
 
     Public source seam (doc §6 line 227): callers ask for a COUNT of
@@ -271,8 +367,9 @@ def fetch_candidates(count):
     count = int(count)
     if count <= 0:
         return []
-    limit = min(count, POOL_TOTAL)
-    max_offset = max(POOL_TOTAL - limit, 0)
+    pool_total = effective_pool_total(observed_floor)
+    limit = min(count, pool_total)
+    max_offset = max(pool_total - limit, 0)
     offset = random.randint(0, max_offset)
 
     query = build_query(limit, offset)
@@ -289,6 +386,22 @@ def fetch_candidates(count):
         return []
 
     records = _parse_bindings(payload)
-    log_debug("wdqs: fetched {} usable records (limit={}, offset={})".format(
-        len(records), limit, offset))
+
+    # A full page at this depth proves the pool holds at least offset+limit
+    # items. Recorded for the caller to persist (lib.movie_pool) so the bound
+    # can only ever improve. Compares against the raw row count, not the
+    # post-filter `records` length: _parse_bindings drops title-less rows, so
+    # using records here would under-count a genuinely full page.
+    raw_rows = 0
+    try:
+        raw_rows = len(payload['results']['bindings'])
+    except (KeyError, TypeError):
+        raw_rows = 0
+    global LAST_OBSERVED_FLOOR
+    LAST_OBSERVED_FLOOR = offset + limit if raw_rows >= limit else None
+
+    log_debug("wdqs: fetched {} usable records (limit={}, offset={}, "
+              "pool_total={}, floor={})".format(
+                  len(records), limit, offset, pool_total,
+                  LAST_OBSERVED_FLOOR))
     return records
