@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.4.0" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.4.1" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,11 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.4.1[/B]
+- fix: random episode now plays reliably, and the picker no longer shows as watched or asks to continue watching
+- fix: watched / resume for random-episode plays now follows the episode itself, including across different versions of it
+- fix: random movie shows a live progress bar during its first (slow) load, and repeated clicks no longer stack up dialogs
+- fix: changelog dialog is now correctly sized and has an OK button
 [B]1.4.0[/B]
 - new: "Random movie" in the Search menu — picks a random film from Wikidata and searches it, with Reroll to draw another (opt-in, off by default)
 - new: random movie picks show the release year
