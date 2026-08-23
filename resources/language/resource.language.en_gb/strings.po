@@ -533,3 +533,11 @@ msgstr ""
 msgctxt "#30453"
 msgid "Movie list unavailable, check your connection"
 msgstr ""
+
+msgctxt "#30454"
+msgid "Random movie picker is already open"
+msgstr ""
+
+msgctxt "#30455"
+msgid "Preparing movie list, this may take a moment..."
+msgstr ""

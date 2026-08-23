@@ -533,3 +533,11 @@ msgstr "Povolit náhodný výběr filmu"
 msgctxt "#30453"
 msgid "Movie list unavailable, check your connection"
 msgstr "Seznam filmů není dostupný, zkontrolujte připojení"
+
+msgctxt "#30454"
+msgid "Random movie picker is already open"
+msgstr "Náhodný výběr filmu je již otevřený"
+
+msgctxt "#30455"
+msgid "Preparing movie list, this may take a moment..."
+msgstr "Připravuji seznam filmů, může to chvíli trvat…"
