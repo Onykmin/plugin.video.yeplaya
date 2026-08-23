@@ -49,6 +49,8 @@ zip -r "${ADDON_ID}/${EXPORT_DIR}/${ZIP_NAME}" "${ADDON_ID}" \
     -x "${ADDON_ID}/.gitignore" \
     -x "${ADDON_ID}/LICENSE" \
     -x "${ADDON_ID}/README.md" \
+    -x "${ADDON_ID}/lib/README.md" \
+    -x "${ADDON_ID}/*.md" \
     -x "${ADDON_ID}/build_zip.sh" \
     -x "${ADDON_ID}/build_zip.py" \
     -x "${ADDON_ID}/repo_generator.py" \
