@@ -42,13 +42,13 @@ NEWS = """
 
 
 class _StubDialog:
-    """Records textviewer() calls."""
+    """Records ok() calls."""
 
     def __init__(self):
         self.calls = []
 
-    def textviewer(self, heading, text):
-        self.calls.append((heading, text))
+    def ok(self, heading, message):
+        self.calls.append((heading, message))
 
 
 def _install_dialog_stub():
@@ -319,14 +319,14 @@ def test_missing_section_in_news_no_dialog():
     assert addon._settings['changelog_seen_version'] == '1.2.2'
 
 
-def test_record_before_show_survives_textviewer_raising():
+def test_record_before_show_survives_ok_raising():
     """Failure-safety guarantee: version is recorded even if the dialog
     itself raises, so a crash never causes a repeat prompt."""
     addon, fake_get_info = _addon_with('1.2.2')
     addon.setSetting('changelog_seen_version', '1.2.1')
 
     class _RaisingDialog:
-        def textviewer(self, heading, text):
+        def ok(self, heading, message):
             raise RuntimeError('dialog exploded')
 
     xbmcgui_mod = sys.modules['xbmcgui']
@@ -364,6 +364,34 @@ def test_heading_never_blank_when_localized_string_empty():
     heading, _text = stub.calls[0]
     assert heading  # never blank
     assert heading == 'TestAddon'  # falls back to addon name
+
+
+def test_dialog_uses_ok_not_textviewer():
+    """Regression guard: the changelog dialog must be an OK-button dialog
+    (xbmcgui.Dialog().ok), not the full-screen textviewer(), which has no
+    OK button and always renders full-size regardless of text length."""
+    addon, fake_get_info = _addon_with('1.2.2')
+    addon.setSetting('changelog_seen_version', '1.2.1')
+
+    class _AssertingDialog:
+        def __init__(self):
+            self.ok_calls = []
+
+        def ok(self, heading, message):
+            self.ok_calls.append((heading, message))
+
+        def textviewer(self, heading, text):
+            raise AssertionError('textviewer() must not be used for the changelog dialog')
+
+    xbmcgui_mod = sys.modules['xbmcgui']
+    dialog = _AssertingDialog()
+    with patch.object(type(addon), 'getAddonInfo', fake_get_info), \
+         patch.object(changelog, 'read_news', return_value=NEWS), \
+         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog):
+        changelog.maybe_show_changelog()
+    assert len(dialog.ok_calls) == 1
+    heading, text = dialog.ok_calls[0]
+    assert 'reads real track flags' in text
 
 
 def test_heading_falls_back_on_unformattable_placeholder():

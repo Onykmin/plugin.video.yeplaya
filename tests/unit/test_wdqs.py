@@ -4,7 +4,7 @@
 
 Covers:
 - Query construction (build_query): required clauses + regression guards
-  against the measured failure modes in WDQS_DEEP_DIVE.md (bare DISTINCT,
+  against the measured failure modes in lib/wdqs.py evidence archive (bare DISTINCT,
   P577, SERVICE wikibase:label).
 - Bindings parsing (_parse_bindings): cs+en, en-only (absent key, not null),
   cs-only, neither (dropped), missing film (skipped), Q-id extraction,
@@ -416,3 +416,56 @@ class TestGetHttpBehavior(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestEffectivePoolTotal(unittest.TestCase):
+    """POOL_TOTAL is a 2026 measurement (wdqs.py:71); lib/wdqs.py evidence archive; orig. doc:78
+    warns a hardcoded bound that is too low makes the pool tail permanently
+    unreachable as Wikidata grows. effective_pool_total() lets an observed
+    floor raise it, without ever running the doc's 6-45s COUNT query."""
+
+    def test_none_returns_static_measurement(self):
+        self.assertEqual(wdqs.effective_pool_total(None), wdqs.POOL_TOTAL)
+
+    def test_floor_below_static_is_ignored(self):
+        self.assertEqual(wdqs.effective_pool_total(wdqs.POOL_TOTAL - 1000),
+                         wdqs.POOL_TOTAL)
+
+    def test_floor_above_static_raises_the_bound(self):
+        self.assertEqual(wdqs.effective_pool_total(wdqs.POOL_TOTAL + 3000),
+                         wdqs.POOL_TOTAL + 3000)
+
+    def test_non_int_floor_is_ignored(self):
+        for bad in ('junk', 1.5, [], {}, True):
+            self.assertEqual(wdqs.effective_pool_total(bad), wdqs.POOL_TOTAL,
+                             'bad floor {!r} must not change the bound'.format(bad))
+
+    def test_full_page_records_a_floor_short_page_does_not(self):
+        """A FULL page at `offset` proves offset+limit items exist; a short
+        page proves nothing (it may be the pool end). Compares raw bindings,
+        not filtered records — _parse_bindings drops title-less rows, so
+        filtering here would under-count a genuinely full page."""
+        full = {'results': {'bindings': [
+            {'film': {'value': 'http://www.wikidata.org/entity/Q%d' % i},
+             'enL': {'value': 'T%d' % i}} for i in range(5)]}}
+        short = {'results': {'bindings': [
+            {'film': {'value': 'http://www.wikidata.org/entity/Q1'},
+             'enL': {'value': 'T1'}}]}}
+
+        class _Resp(object):
+            def __init__(self, payload):
+                self.status_code = 200
+                self._payload = payload
+
+            def json(self):
+                return self._payload
+
+        with mock.patch.object(wdqs, '_get', return_value=_Resp(full)), \
+             mock.patch.object(wdqs.random, 'randint', return_value=100):
+            wdqs.fetch_candidates(5)
+        self.assertEqual(wdqs.LAST_OBSERVED_FLOOR, 105)
+
+        with mock.patch.object(wdqs, '_get', return_value=_Resp(short)), \
+             mock.patch.object(wdqs.random, 'randint', return_value=100):
+            wdqs.fetch_candidates(5)
+        self.assertIsNone(wdqs.LAST_OBSERVED_FLOOR)

@@ -82,6 +82,7 @@ def _run_dialog(grouped, params, rand_script=None, selections=None, extra_patche
         patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)),
         patch.object(series_ui, 'random', rand),
         patch.object(series_ui, 'resolve_and_play'),
+        patch.object(series_ui, '_play_via_handoff'),
         patch.object(series_ui, 'popinfo'),
         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog),
         patch.object(xbmcplugin_mod, 'setResolvedUrl'),
@@ -89,9 +90,12 @@ def _run_dialog(grouped, params, rand_script=None, selections=None, extra_patche
     if extra_patches:
         patches.extend(extra_patches)
 
-    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+    with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6], patches[7]:
         series_ui.show_random_episode_dialog(params)
-        resolve_mock = series_ui.resolve_and_play
+        # Playback now goes through _play_via_handoff (a PlayMedia
+        # handoff to ?action=play), NOT resolve_and_play — the picker
+        # must never be the URL Kodi attributes playback to.
+        resolve_mock = series_ui._play_via_handoff
         popinfo_mock = series_ui.popinfo
         resolved_mock = xbmcplugin_mod.setResolvedUrl
 
@@ -208,7 +212,9 @@ def test_setting_on_injects_series_row():
     assert recorded, 'expected at least one addDirectoryItem call'
     url, listitem, is_folder = recorded[0]
     assert listitem.label == 'String_30434'
-    assert listitem._properties['IsPlayable'] == 'true'
+    # Picker row must carry NO IsPlayable property (see below);
+    # watched state / a resume bookmark against the picker's own URL.
+    assert 'IsPlayable' not in listitem._properties
     assert is_folder is False
 
 
@@ -219,8 +225,57 @@ def test_setting_on_injects_season_row():
     assert recorded, 'expected at least one addDirectoryItem call'
     url, listitem, is_folder = recorded[0]
     assert listitem.label == 'String_30435'
-    assert listitem._properties['IsPlayable'] == 'true'
+    # Picker row must carry NO IsPlayable property (see below);
+    # watched state / a resume bookmark against the picker's own URL.
+    assert 'IsPlayable' not in listitem._properties
     assert is_folder is False
+
+
+def test_series_row_declares_no_isplayable():
+    """Regression: the picker row must declare NO IsPlayable property.
+
+    Three states, two of them broken (both user-verified):
+      'true'  -> Kodi opens the click as playback, then tears the playlist
+                 down when the script exits unresolved, killing the episode
+                 _play_via_handoff started.
+      'false' -> dialog never opens at all (handle -1).
+      absent  -> correct; is_folder=False alone declares a dialog action.
+    """
+    grouped = _grouped_series({1: {1: _versions('a')}})
+    params = {'series': 'show', 'what': 'q'}
+    recorded = _run_browse_series(grouped, params, setting='true')
+    picker_rows = [li for _, li, _ in recorded if li.label == 'String_30434']
+    assert picker_rows, 'expected the picker row to be injected'
+    for listitem in picker_rows:
+        # NO IsPlayable at all. 'true' made Kodi open the click as a
+        # playback request and then tear the playlist down when the script
+        # exited without resolving, killing the handed-off episode
+        # ("Playlist Player: skipping unplayable item" in kodi.log).
+        # Explicit 'false' was also tried and broke the dialog outright
+        # (handle -1). Absent is the correct third state — is_folder=False
+        # alone declares a dialog action (cf. lib/favorites_ui.py:112).
+        assert 'IsPlayable' not in listitem._properties
+        assert 'ResumeTime' not in listitem._properties
+
+
+def test_season_row_declares_no_isplayable():
+    """Regression: same as test_series_row_declares_no_isplayable but for
+    the season-scoped picker row."""
+    grouped = _grouped_series({1: {1: _versions('a')}})
+    params = {'series': 'show', 'season': '1', 'what': 'q'}
+    recorded = _run_browse_season(grouped, params, setting='true')
+    picker_rows = [li for _, li, _ in recorded if li.label == 'String_30435']
+    assert picker_rows, 'expected the picker row to be injected'
+    for listitem in picker_rows:
+        # NO IsPlayable at all. 'true' made Kodi open the click as a
+        # playback request and then tear the playlist down when the script
+        # exited without resolving, killing the handed-off episode
+        # ("Playlist Player: skipping unplayable item" in kodi.log).
+        # Explicit 'false' was also tried and broke the dialog outright
+        # (handle -1). Absent is the correct third state — is_folder=False
+        # alone declares a dialog action (cf. lib/favorites_ui.py:112).
+        assert 'IsPlayable' not in listitem._properties
+        assert 'ResumeTime' not in listitem._properties
 
 
 def test_no_episodes_hides_row():
@@ -254,12 +309,10 @@ def test_play_choice_calls_resolve_and_play():
 
     resolve_mock.assert_called_once()
     args, kwargs = resolve_mock.call_args
-    assert args[0] == versions[0]['ident']
-    assert args[1] == versions[0]['name']
-    assert args[2] == 'tok'
-    expected_key = series_ui.state_key_for(
-        {'series_name': 'show', 'season': 1, 'episode': 1})
-    assert kwargs['state_key'] == expected_key
+    # _play_via_handoff takes the version dict; the per-episode state/resume
+    # bookkeeping now belongs to the `play` action it hands off to.
+    assert args[0]['ident'] == versions[0]['ident']
+    assert args[0]['name'] == versions[0]['name']
     resolved_mock.assert_not_called()
 
 
@@ -462,7 +515,7 @@ def test_all_versions_empty_at_dialog_time_degrades_to_no_episodes():
          patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
          patch.object(series_ui, '_flatten_episode_keys', return_value=fake_keys), \
          patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play') as resolve_mock, \
+         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
          patch.object(series_ui, 'popinfo') as popinfo_mock, \
          patch.object(xbmcgui_mod, 'Dialog') as dialog_cls, \
          patch.object(xbmcplugin_mod, 'setResolvedUrl') as resolved_mock:
@@ -580,15 +633,20 @@ def test_one_grouped_fetch_and_one_enrichment_per_pick_across_reroll_loop():
 # 20: main.py _RESOLVE_ACTIONS membership (hung-spinner risk item)
 # ---------------------------------------------------------------------------
 
-def test_main_resolve_actions_includes_random_episode():
+def test_main_resolve_actions_excludes_random_episode():
     """_RESOLVE_ACTIONS is defined inside the `except` block of main.py's
     `if __name__ == '__main__':` guard, so it can't be imported directly.
 
-    Without 'random_episode' in this set, a fatal error raised mid
-    random_episode action falls through to xbmcplugin.endOfDirectory on a
-    handle that was opened for setResolvedUrl (a playable/resolve action),
-    which Kodi rejects — leaving the user staring at a hung spinner instead
-    of a clean failure. Parse the source to guard against this regression.
+    'random_episode' must NOT be listed. This test previously asserted the
+    opposite, on the premise that Kodi opens a resolve handle for the picker
+    row — that premise is false. The row sets no IsPlayable and the handler
+    hands off via PlayMedia rather than resolving a stream, so Kodi passes
+    handle -1 (verified in kodi.log: `Ye-Playa('plugin://...', '-1',
+    '?action=random_episode&...')`). With handle -1 BOTH branches of that
+    error path are no-ops, so membership never mattered functionally — but
+    listing it documented a contract the code does not have.
+
+    Kept as a source-parse test (not an import) for the reason above.
     """
     main_path = os.path.join(os.path.dirname(__file__), '../../main.py')
     with open(main_path, 'r', encoding='utf-8') as f:
@@ -603,7 +661,13 @@ def test_main_resolve_actions_includes_random_episode():
     entries = re.findall(r"'([^']*)'|\"([^\"]*)\"", set_literal_body)
     entries = {a or b for a, b in entries}
 
-    assert 'random_episode' in entries
+    assert 'random_episode' not in entries, (
+        "random_episode must not be listed: its row is not playable and its "
+        "handler resolves nothing (handle -1)")
+    # The genuinely-resolving actions must stay listed.
+    for still_resolving in ('play', 'select_version', 'select_movie_version',
+                            'newsearch', 'random_movie'):
+        assert still_resolving in entries, still_resolving
 
 
 # ---------------------------------------------------------------------------
@@ -660,7 +724,7 @@ def test_empty_versions_key_is_excluded_before_retry():
          patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
          patch.object(series_ui, '_flatten_episode_keys', return_value=fake_keys), \
          patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play') as resolve_mock, \
+         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
          patch.object(series_ui, 'popinfo'), \
          patch.object(xbmcgui_mod, 'Dialog') as dialog_cls, \
          patch.object(xbmcplugin_mod, 'setResolvedUrl') as resolved_mock:
@@ -777,7 +841,7 @@ def _run_dialog_multi(grouped, params, rand_script=None, selections=None):
     with patch.object(series_ui, 'revalidate', return_value='tok'), \
          patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
          patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play') as resolve_mock, \
+         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
          patch.object(series_ui, 'popinfo') as popinfo_mock, \
          patch.object(series_ui, 'enrich_file_metadata', enrich_mock), \
          patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
@@ -807,9 +871,9 @@ def test_pick_version_plays_chosen_non_best_version():
 
     resolve_mock.assert_called_once()
     args, kwargs = resolve_mock.call_args
-    assert args[0] == 'mid'
-    assert args[1] == 'mid.mkv'
-    assert args[0] != versions[0]['ident']
+    assert args[0]['ident'] == 'mid'
+    assert args[0]['name'] == 'mid.mkv'
+    assert args[0]['ident'] != versions[0]['ident']
     resolved_mock.assert_not_called()
 
 
@@ -883,9 +947,9 @@ def test_pick_version_back_out_then_play_resolves_originally_shown_version():
     # pass touching the outer loop's list in place.
     resolve_mock.assert_called_once()
     args, kwargs = resolve_mock.call_args
-    assert args[0] == 'best'
-    assert args[0] == versions[0]['ident']
-    assert args[1] == 'best.mkv'
+    assert args[0]['ident'] == 'best'
+    assert args[0]['ident'] == versions[0]['ident']
+    assert args[0]['name'] == 'best.mkv'
     resolved_mock.assert_not_called()
 
 
@@ -1033,7 +1097,7 @@ def _run_dialog_with_enrich(grouped, params, rand_script=None, selections=None,
     with patch.object(series_ui, 'revalidate', return_value='tok'), \
          patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
          patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play') as resolve_mock, \
+         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
          patch.object(series_ui, 'popinfo') as popinfo_mock, \
          patch.object(series_ui, 'enrich_file_metadata', enrich_fake), \
          patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
@@ -1236,8 +1300,8 @@ def test_best_version_unchanged_by_enrichment():
 
     resolve_mock.assert_called_once()
     args = resolve_mock.call_args[0]
-    assert args[0] == 'best'
-    assert args[0] == versions[0]['ident']
+    assert args[0]['ident'] == 'best'
+    assert args[0]['ident'] == versions[0]['ident']
 
 
 # ---------------------------------------------------------------------------
@@ -1291,7 +1355,7 @@ def _run_dialog_with_enrich_spy(grouped, params, rand_script=None, selections=No
     with patch.object(series_ui, 'revalidate', return_value='tok'), \
          patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
          patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play') as resolve_mock, \
+         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
          patch.object(series_ui, 'popinfo') as popinfo_mock, \
          patch.object(series_ui, '_enrich_displayed_version', enrich_spy), \
          patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
@@ -1448,8 +1512,8 @@ def test_play_row_ranks_instead_of_taking_api_order():
 
     resolve_mock.assert_called_once()
     args, kwargs = resolve_mock.call_args
-    assert args[0] == 'big_second'
-    assert args[0] != versions[0]['ident']
+    assert args[0]['ident'] == 'big_second'
+    assert args[0]['ident'] != versions[0]['ident']
 
 
 def test_size_is_the_primary_key_unknown_size_ranks_last():
@@ -1477,7 +1541,7 @@ def test_size_is_the_primary_key_unknown_size_ranks_last():
 
     resolve_mock.assert_called_once()
     args, kwargs = resolve_mock.call_args
-    assert args[0] == 'y'
+    assert args[0]['ident'] == 'y'
 
 
 def test_rank_versions_no_sizes_falls_back_to_quality():
@@ -1642,3 +1706,66 @@ def test_enrichment_budget_spent_on_top_ranked_versions():
     assert len(enrich_spy.call_args_list) == 5
     assert enriched_idents == {'top1', 'top2', 'top3', 'top4', 'top5'}
     assert not enriched_idents & {'low1', 'low2', 'low3', 'low4', 'low5'}
+
+
+def test_playback_hands_off_to_per_episode_play_url_not_picker_url():
+    """Regression (user-reported twice): Kodi writes a type=1 resume bookmark
+    AT STOP TIME against the URL that started playback. When the picker
+    resolved the stream itself, that URL was the picker's own
+    (?action=random_episode&series=...), so every episode played through it
+    shared ONE bookmark and re-entering the picker offered "Continue
+    watching" — verified in MyVideos131.db as 454s/1277s against
+    ?action=random_episode&series=south+park.
+
+    Setting ResumeTime/playcount on the picker ListItem does NOT fix this
+    (those only affect how the row is drawn, not what the player persists),
+    which is why the first attempt failed. The picker must instead hand off
+    to ?action=play&ident=...&name=... so Kodi attributes playback — and the
+    bookmark — to the episode.
+    """
+    import xbmc as _xbmc
+    versions = _versions('id1', 'ep1.mkv')
+    grouped = _grouped_series({1: {1: versions}})
+
+    builtins = []
+    xbmcplugin_mod = sys.modules['xbmcplugin']
+    xbmcgui_mod = sys.modules['xbmcgui']
+    dialog = _ScriptedDialog([0])
+    rand = _ScriptedRandom([(1, 1)])
+
+    with patch.object(series_ui, 'revalidate', return_value='tok'), \
+         patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
+         patch.object(series_ui, 'random', rand), \
+         patch.object(series_ui, 'resolve_and_play') as direct_play, \
+         patch.object(series_ui, 'popinfo'), \
+         patch.object(_xbmc, 'executebuiltin', lambda c: builtins.append(c)), \
+         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
+         patch.object(xbmcplugin_mod, 'setResolvedUrl') as resolved:
+        series_ui.show_random_episode_dialog({'series': 'show', 'what': 'q'})
+
+    # The picker must NOT resolve the stream against its own URL.
+    direct_play.assert_not_called()
+    # It must NOT resolve its own handle as failed: PlayMedia starts real
+    # playback, and a failed resolve in the same playlist makes Kodi tear it
+    # down again ("Playlist Player: skipping unplayable item" in kodi.log,
+    # measured — the episode opened then immediately stopped).
+    resolved.assert_not_called()
+    assert len(builtins) == 1, builtins
+    cmd = builtins[0]
+    assert cmd.startswith('PlayMedia('), cmd
+    assert 'action=play' in cmd, cmd
+    assert 'ident=id1' in cmd, cmd
+    # And crucially: the picker's own action must not be the playing URL.
+    assert 'random_episode' not in cmd, cmd
+    # The handoff URL MUST also carry series/season/episode. Without them,
+    # play() -> _build_state_key -> state_key_for cannot emit an
+    # "ep:<series>|S..E.." key and silently falls back to "file:{ident}"
+    # (lib/state.py:178), which bypasses lib/keys.py dual-name normalization
+    # so watched/resume stop following the episode across re-groupings or a
+    # different version of it. This assertion is the one that was MISSING
+    # when that regression shipped green — asserting action+ident alone
+    # cannot distinguish a correct handoff from a state-losing one.
+    assert 'series=' in cmd, cmd
+    assert 'season=1' in cmd, cmd
+    assert 'episode=1' in cmd, cmd
+

@@ -373,3 +373,103 @@ class TestPickRandom(MoviePoolTestBase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestMutateSerialization(MoviePoolTestBase):
+    """Coverage gap named by the audit: 33 tests, none covering _mutate's
+    read-modify-write under the cross-process lock. These do not prove
+    cross-PROCESS safety (that needs real processes and a real flock), but
+    they do pin the in-process contract _mutate promises."""
+
+    def test_mutate_reads_then_writes_under_one_lock_acquisition(self):
+        """_mutate must take the lock ONCE and do read+write inside it —
+        a read outside the lock would be the classic lost-update race."""
+        movie_pool._save_envelope(1000, [{'id': 'Q1', 'cs': None, 'en': 'A'}])
+        order = []
+        real_lock = movie_pool.file_lock
+
+        class _TracingLock(object):
+            def __init__(self, path):
+                self._inner = real_lock(path)
+
+            def __enter__(self):
+                order.append('lock')
+                return self._inner.__enter__()
+
+            def __exit__(self, *a):
+                order.append('unlock')
+                return self._inner.__exit__(*a)
+
+        def _fn(fetched_at, items):
+            order.append('read+modify')
+            return 2000, items + [{'id': 'Q2', 'cs': None, 'en': 'B'}], 'ok'
+
+        with mock.patch.object(movie_pool, 'file_lock', _TracingLock):
+            result = movie_pool._mutate(_fn)
+
+        self.assertEqual(result, 'ok')
+        self.assertEqual(order, ['lock', 'read+modify', 'unlock'])
+        self.assertEqual(len(movie_pool.load_pool()), 2)
+
+    def test_mutate_none_fetched_at_writes_nothing(self):
+        """The keep-last-good-pool contract (lib/wdqs.py evidence archive; orig. doc:181): a
+        refresh failure returns None for fetched_at and must leave the file
+        byte-identical."""
+        movie_pool._save_envelope(1234, [{'id': 'Q1', 'cs': None, 'en': 'A'}])
+        before = io.open(movie_pool._pool_path(), encoding='utf8').read()
+
+        movie_pool._mutate(lambda fa, items: (None, [], 'skipped'))
+
+        after = io.open(movie_pool._pool_path(), encoding='utf8').read()
+        self.assertEqual(before, after)
+
+    def test_interleaved_mutations_do_not_lose_the_earlier_write(self):
+        """Two sequential _mutate calls each re-read inside the lock, so the
+        second sees the first's write rather than clobbering it."""
+        movie_pool._save_envelope(1000, [{'id': 'Q1', 'cs': None, 'en': 'A'}])
+        movie_pool._mutate(
+            lambda fa, items: (1, items + [{'id': 'Q2', 'cs': None, 'en': 'B'}], None))
+        movie_pool._mutate(
+            lambda fa, items: (2, items + [{'id': 'Q3', 'cs': None, 'en': 'C'}], None))
+        ids = sorted(i['id'] for i in movie_pool.load_pool())
+        self.assertEqual(ids, ['Q1', 'Q2', 'Q3'])
+
+
+class TestPoolFloorPersistence(MoviePoolTestBase):
+    """The learned pool-size floor must survive Kodi's one-process-per-action
+    lifecycle, which means it has to live in the envelope on disk."""
+
+    def test_floor_round_trips_through_the_envelope(self):
+        movie_pool._pool_total_floor = 12345
+        movie_pool._save_envelope(1000, [{'id': 'Q1', 'cs': None, 'en': 'A'}])
+        raw = json.loads(io.open(movie_pool._pool_path(), encoding='utf8').read())
+        self.assertEqual(raw['pool_floor'], 12345)
+
+        movie_pool._pool_total_floor = None
+        movie_pool.invalidate_cache()
+        self.assertEqual(movie_pool.pool_total_hint(), 12345)
+
+    def test_envelope_without_floor_still_loads(self):
+        """Backward compatibility: pre-existing pools have no 'pool_floor'
+        key and must stay valid (no ENVELOPE_VERSION bump was made)."""
+        cache.atomic_write_text(movie_pool._pool_path(), json.dumps(
+            {'version': movie_pool.ENVELOPE_VERSION, 'fetched_at': 5,
+             'items': [{'id': 'Q1', 'cs': None, 'en': 'A'}]}))
+        movie_pool._pool_total_floor = None
+        movie_pool.invalidate_cache()
+        self.assertEqual(len(movie_pool.load_pool()), 1)
+        self.assertIsNone(movie_pool.pool_total_hint())
+
+    def test_absorb_only_ever_raises_the_floor(self):
+        movie_pool._pool_total_floor = 9000
+        with mock.patch.object(movie_pool.wdqs, 'LAST_OBSERVED_FLOOR', 5000):
+            movie_pool._absorb_observed_floor()
+        self.assertEqual(movie_pool._pool_total_floor, 9000)
+
+        with mock.patch.object(movie_pool.wdqs, 'LAST_OBSERVED_FLOOR', 11000):
+            movie_pool._absorb_observed_floor()
+        self.assertEqual(movie_pool._pool_total_floor, 11000)
+
+        with mock.patch.object(movie_pool.wdqs, 'LAST_OBSERVED_FLOOR', None):
+            movie_pool._absorb_observed_floor()
+        self.assertEqual(movie_pool._pool_total_floor, 11000)

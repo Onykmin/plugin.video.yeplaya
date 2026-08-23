@@ -21,6 +21,8 @@ Covers:
 
 import os
 import re
+import threading
+import time
 import unittest
 import unittest.mock as mock
 
@@ -151,6 +153,27 @@ class _ScriptedDialog(object):
         return self._selections.pop(0)
 
 
+class _RecordingProgressBG(object):
+    """Stub for xbmcgui.DialogProgressBG().
+
+    Records create/update/close so tests can assert the cold-path progress
+    dialog is shown AND always closed (an unclosed DialogProgressBG would
+    persist for the whole Kodi session).
+    """
+
+    def __init__(self, log):
+        self._log = log
+
+    def create(self, heading, message=''):
+        self._log.append(('create', heading, message))
+
+    def update(self, percent=0, heading=None, message=None):
+        self._log.append(('update', percent))
+
+    def close(self):
+        self._log.append(('close',))
+
+
 def _item(qid, cs=None, en=None, y=None):
     item = {'id': qid, 'cs': cs, 'en': en}
     if y is not None:
@@ -184,6 +207,7 @@ def _run(pick_script, params=None, selections=None, load_pool_result=None,
     end_of_directory_calls = []
 
     popinfo_calls = []
+    progress_calls = []
 
     def _fake_popinfo(message, **kw):
         popinfo_calls.append(message)
@@ -213,6 +237,9 @@ def _run(pick_script, params=None, selections=None, load_pool_result=None,
         mock.patch.object(rmu, 'storesearch', lambda title: storesearch_calls.append(title)),
         mock.patch.object(rmu, 'popinfo', _fake_popinfo),
         mock.patch.object(xbmcgui_mod, 'Dialog', lambda: dialog),
+        mock.patch.object(xbmcgui_mod, 'DialogProgressBG',
+                          lambda: _RecordingProgressBG(progress_calls),
+                          create=True),
         mock.patch.object(xbmcplugin_mod, 'setResolvedUrl', _fake_set_resolved),
         mock.patch.object(xbmc_mod, 'executebuiltin', _fake_executebuiltin),
         mock.patch.object(xbmcplugin_mod, 'addDirectoryItem', _fake_add_directory_item),
@@ -237,6 +264,7 @@ def _run(pick_script, params=None, selections=None, load_pool_result=None,
         'add_directory_item_calls': add_directory_item_calls,
         'end_of_directory_calls': end_of_directory_calls,
         'popinfo_calls': popinfo_calls,
+        'progress_calls': progress_calls,
         'resolved_calls': resolved_calls,
     }
 
@@ -527,6 +555,52 @@ class TestMainResolveActionsIncludesRandomMovie(unittest.TestCase):
         entries = {a or b for a, b in entries}
 
         self.assertIn('random_movie', entries)
+
+
+
+class TestColdPoolProgressAnimates(unittest.TestCase):
+    """Regression: a FIXED percentage renders as a frozen number beside
+    Kodi's own busy spinner and reads as hung, not working (user-reported
+    with screenshot: percentage stuck at 50 with a stalled second arc)."""
+
+    def test_sweep_issues_increasing_updates_and_never_hits_100(self):
+        updates = []
+
+        class _Progress(object):
+            def create(self, *a, **k):
+                pass
+
+            def update(self, percent=0, **k):
+                updates.append(percent)
+
+            def close(self):
+                pass
+
+        def _slow_pick(excluded):
+            time.sleep(0.9)
+            return _item('Q1', en='Slow')
+
+        with mock.patch.object(rmu, 'pick_random', _slow_pick):
+            result = rmu._pick_with_progress(set(), _Progress())
+
+        self.assertIsNotNone(result)
+        self.assertGreater(len(updates), 1,
+                           'progress must animate, not sit at one value')
+        self.assertEqual(updates, sorted(updates),
+                         'sweep must be monotonically increasing')
+        self.assertLessEqual(max(updates), 95,
+                             'must not claim 100% while still waiting')
+
+    def test_worker_exception_propagates(self):
+        """A failure inside the threaded fetch must not be swallowed into a
+        silent "no movies found" — it must surface like the inline call."""
+
+        def _boom(excluded):
+            raise RuntimeError('wdqs exploded')
+
+        with mock.patch.object(rmu, 'pick_random', _boom):
+            with self.assertRaises(RuntimeError):
+                rmu._pick_with_progress(set(), None)
 
 
 if __name__ == '__main__':
