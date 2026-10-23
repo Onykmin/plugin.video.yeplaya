@@ -42,6 +42,8 @@ zip -r "${ADDON_ID}/${EXPORT_DIR}/${ZIP_NAME}" "${ADDON_ID}" \
     -x "${ADDON_ID}/test-grouping/*" \
     -x "${ADDON_ID}/TestAddon/*" \
     -x "${ADDON_ID}/feature-*/*" \
+    -x "${ADDON_ID}/docs/*" \
+    -x "*/__pycache__/*" \
     -x "${ADDON_ID}/.pytest_cache/*" \
     -x "${ADDON_ID}/repository.yeplaya/*" \
     -x "${ADDON_ID}/*.pyc" \
