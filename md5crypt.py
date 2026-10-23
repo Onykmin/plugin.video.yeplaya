@@ -38,10 +38,10 @@ apache_md5_crypt() provides a function compatible with Apache's
 
 """
 
+import hashlib
+
 MAGIC = '$1$'			# Magic string
 ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-
-import hashlib
 
 def to64 (v, n):
     ret = ''
@@ -59,7 +59,7 @@ def apache_md5_crypt (pw, salt):
 
 def unix_md5_crypt(pw, salt, magic=None):
 
-    if magic == None:
+    if magic is None:
         magic = MAGIC
 
     # Take care of the magic string if present

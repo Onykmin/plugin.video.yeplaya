@@ -117,7 +117,7 @@ def generate_addons_xml():
     ET.indent(tree, space="    ")
     tree.write(addons_xml_path, encoding="UTF-8", xml_declaration=True)
 
-    print(f"   ✓ Created addons.xml")
+    print("   ✓ Created addons.xml")
 
     # Generate MD5 checksum
     md5_hash = hashlib.md5()

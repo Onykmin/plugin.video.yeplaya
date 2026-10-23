@@ -17,6 +17,7 @@ import xbmcplugin
 from lib.api import getlink, revalidate, get_addon, get_session
 from lib.utils import popinfo, get_handle, get_url, tolistitem, set_video_info
 from lib.playback import toqueue
+from lib.logging import log_warning
 
 try:
     from xbmcvfs import translatePath
@@ -26,8 +27,6 @@ except ImportError:
 _addon = get_addon()
 _profile = translatePath(_addon.getAddonInfo('profile'))
 _session = get_session()
-
-from lib.logging import log_warning
 
 _handle = get_handle()
 
