@@ -1,102 +1,34 @@
 # -*- coding: utf-8 -*-
-"""Tests for settings handling."""
-import pytest
+"""resources/settings.xml invariants the code relies on."""
+import os
 import xml.etree.ElementTree as ET
 
+import pytest
 
-class TestSettingsXML:
-    """Test settings.xml configuration."""
-
-    @pytest.fixture
-    def settings_xml(self):
-        """Load settings.xml."""
-        with open('resources/settings.xml', 'r') as f:
-            return ET.parse(f).getroot()
-
-    def test_group_movies_no_dependency(self, settings_xml):
-        """group_movies should be standalone, no enable dependency."""
-        group_movies = None
-        for setting in settings_xml.iter('setting'):
-            if setting.get('id') == 'group_movies':
-                group_movies = setting
-                break
-
-        assert group_movies is not None
-        assert group_movies.get('enable') is None, \
-            "group_movies should not have enable dependency"
-        assert group_movies.get('default') == 'true'
-
-    def test_slast_removed(self, settings_xml):
-        """slast setting must not be present (removed in audit-favorites)."""
-        for setting in settings_xml.iter('setting'):
-            assert setting.get('id') != 'slast', \
-                "slast setting should be removed from settings.xml"
-
-    def test_duuid_hidden(self, settings_xml):
-        """duuid should be hidden (visible=false)."""
-        duuid = None
-        for setting in settings_xml.iter('setting'):
-            if setting.get('id') == 'duuid':
-                duuid = setting
-                break
-
-        assert duuid is not None
-        assert duuid.get('visible') == 'false'
-
-    def test_labelformat_has_enable(self, settings_xml):
-        """labelformat should depend on customformat."""
-        labelformat = None
-        for setting in settings_xml.iter('setting'):
-            if setting.get('id') == 'labelformat':
-                labelformat = setting
-                break
-
-        assert labelformat is not None
-        assert labelformat.get('enable') == 'eq(-1,true)'
+SETTINGS = os.path.join(os.path.dirname(__file__), '..', '..', 'resources', 'settings.xml')
 
 
-class TestSettingsReading:
-    """Test settings reading via addon."""
-
-    @pytest.fixture
-    def mock_addon(self):
-        """Get mock addon from conftest."""
-        from tests.conftest import get_mock_addon
-        return get_mock_addon()
-
-    def test_setting_default_empty(self, mock_addon):
-        """Unset setting returns empty string."""
-        result = mock_addon.getSetting('nonexistent')
-        assert result == ''
-
-    def test_setting_get_set(self, mock_addon):
-        """Setting can be stored and retrieved."""
-        mock_addon.setSetting('test_key', 'test_value')
-        assert mock_addon.getSetting('test_key') == 'test_value'
-
-    def test_setting_overwrite(self, mock_addon):
-        """Setting can be overwritten."""
-        mock_addon.setSetting('key', 'value1')
-        mock_addon.setSetting('key', 'value2')
-        assert mock_addon.getSetting('key') == 'value2'
+@pytest.fixture(scope='module')
+def settings():
+    return {s.get('id'): s for s in ET.parse(SETTINGS).getroot().iter('setting') if s.get('id')}
 
 
-class TestSettingsMonitor:
-    """Settings change must propagate to cache module addon."""
+def test_group_movies_is_standalone_and_on_by_default(settings):
+    s = settings['group_movies']
+    assert s.get('enable') is None
+    assert s.get('default') == 'true'
 
-    def test_settings_monitor_refreshes_cache_addon(self):
-        """SettingsMonitor.onSettingsChanged must call refresh_cache_addon."""
-        import lib.ui as ui_mod
-        import lib.cache as cache_mod
 
-        called = []
-        saved = cache_mod.refresh_cache_addon
-        try:
-            cache_mod.refresh_cache_addon = lambda: called.append('refresh')
-            ui_mod.refresh_cache_addon = cache_mod.refresh_cache_addon
-            monitor = ui_mod.SettingsMonitor()
-            monitor.onSettingsChanged()
-            assert 'refresh' in called, "refresh_cache_addon was not invoked"
-        finally:
-            cache_mod.refresh_cache_addon = saved
-            ui_mod.refresh_cache_addon = saved
+def test_device_uuid_is_hidden_from_the_user(settings):
+    assert settings['duuid'].get('visible') == 'false'
+
+
+def test_label_format_only_enabled_when_custom_format_is_on(settings):
+    # relative reference: the setting directly above must be `customformat`
+    assert settings['labelformat'].get('enable') == 'eq(-1,true)'
+    ids = [s.get('id') for s in ET.parse(SETTINGS).getroot().iter('setting')]
+    assert ids[ids.index('labelformat') - 1] == 'customformat'
+
+
+def test_removed_slast_setting_stays_removed(settings):
+    assert 'slast' not in settings

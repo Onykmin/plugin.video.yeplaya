@@ -4,11 +4,11 @@
 import sys
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from tests.conftest import MockPlayer, MockMonitor, MockAddon, get_mock_addon
+from tests.conftest import MockPlayer, MockMonitor, get_mock_addon
 
 
 def _ensure_xbmc_mocks():
@@ -123,20 +123,14 @@ class TestPlayerStateTracking:
         assert st is None
         h.cleanup()
 
-    def test_no_state_key_no_write(self):
-        h = _Harness(state_key=None)
-        h.player.getTime = MagicMock(return_value=500.0)
-        h.player.getTotalTime = MagicMock(return_value=1000.0)
-        h.player.onPlayBackStopped()
-        # Nothing to verify other than no crash; state is keyed and absent
-        h.cleanup()
 
     def test_gettime_raises_no_crash(self):
         h = _Harness()
         h.player.getTime = MagicMock(side_effect=RuntimeError("boom"))
         h.player.getTotalTime = MagicMock(return_value=1000.0)
-        # Should not raise
+        # Must not raise, and with no readable position nothing is persisted
         h.player.onPlayBackStopped()
+        assert h.state.get_state('ep:x|S01E01') is None
         h.cleanup()
 
     def test_ended_even_when_gettime_raises(self):
@@ -223,4 +217,47 @@ class TestPerConcernGating:
         h.player.onPlayBackStopped()
         h.player.onPlayBackEnded()
         assert h.state.get_state('ep:x|S01E01') is None
+        h.cleanup()
+
+
+class TestWaitForPlayback:
+    """The plugin script must stay alive while media plays (so stop/end
+    callbacks fire) and must never hang."""
+
+    def test_keepalive_polls_until_stop_then_resume_uses_polled_position(self):
+        h = _Harness()
+        h.player._av_started = True
+        h.player.getTime = MagicMock(return_value=200.0)
+        h.player.getTotalTime = MagicMock(return_value=1000.0)
+        h.player.isPlaying = MagicMock(side_effect=[True, True, False])
+        h.player.wait_for_playback(timeout=1)
+        assert h.player.isPlaying.call_count == 3
+        # Kodi's own getTime is dead by the time the stop callback fires
+        h.player.getTime = MagicMock(side_effect=RuntimeError("stopped"))
+        h.player.onPlayBackStopped()
+        assert h.state.get_state('ep:x|S01E01')['resume_seconds'] == 200
+        h.cleanup()
+
+    def test_returns_on_kodi_abort_while_waiting_for_start(self):
+        h = _Harness()
+        h.player._monitor.waitForAbort = MagicMock(return_value=True)
+        h.player.getTime = MagicMock(return_value=1.0)
+        h.player.wait_for_playback(timeout=5)
+        h.player._monitor.waitForAbort.assert_called_once()
+        h.player.getTime.assert_not_called()
+        h.cleanup()
+
+    def test_gives_up_when_playback_never_starts(self):
+        h = _Harness()
+        h.player.getTime = MagicMock(return_value=1.0)
+        h.player.wait_for_playback(timeout=1)  # MockMonitor never aborts
+        h.player.getTime.assert_not_called()
+        h.cleanup()
+
+    def test_playback_error_during_start_wait_returns_without_keepalive(self):
+        h = _Harness()
+        h.player.onPlayBackError()
+        h.player.isPlaying = MagicMock(return_value=True)
+        h.player.wait_for_playback(timeout=5)
+        h.player.isPlaying.assert_not_called()
         h.cleanup()

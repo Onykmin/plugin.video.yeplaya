@@ -1,302 +1,164 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Unit tests for cache module.
-
-Tests:
-- Cache key consistency
-- TTL expiration
-- Thread safety
-- Cache clearing on new search session
-"""
-
-import sys
-import os
-import time
+"""In-memory search cache: key building, TTL expiry, eviction, fetch-on-miss."""
 import threading
-import unittest
 
-# Add parent directory for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import pytest
 
-# Import cache module (mocks provided by conftest.py)
-from lib.cache import (
-    build_cache_key, cache_set, cache_get, clear_cache,
-    _series_cache, _cache_timestamps, _cache_lock, DEFAULT_CACHE_TTL
-)
+import lib.cache as cache
+from lib.cache import build_cache_key, cache_get, cache_set, clear_cache
+from lib.keys import NONE_WHAT
 
 
-class TestCacheKeyConsistency(unittest.TestCase):
-    """Test cache key generation is consistent."""
-
-    def test_basic_key_format(self):
-        """Cache key should have format: what_category_sort."""
-        key = build_cache_key('southpark', 'video', 'recent')
-        self.assertEqual(key, 'southpark_video_recent')
-
-    def test_empty_category_sort(self):
-        """Empty category and sort should produce valid key."""
-        key = build_cache_key('query', '', '')
-        self.assertEqual(key, 'query__')
-
-    def test_key_with_special_chars(self):
-        """Key should handle special characters in search term."""
-        key = build_cache_key('game.of.thrones', 'video', '')
-        self.assertEqual(key, 'game.of.thrones_video_')
-
-    def test_key_consistency(self):
-        """Same inputs should always produce same key."""
-        key1 = build_cache_key('test', 'cat', 'sort')
-        key2 = build_cache_key('test', 'cat', 'sort')
-        self.assertEqual(key1, key2)
-
-    def test_different_inputs_different_keys(self):
-        """Different inputs should produce different keys."""
-        key1 = build_cache_key('test1', 'cat', 'sort')
-        key2 = build_cache_key('test2', 'cat', 'sort')
-        self.assertNotEqual(key1, key2)
+@pytest.fixture(autouse=True)
+def clean_cache():
+    clear_cache()
+    yield
+    clear_cache()
 
 
-class TestCacheTTL(unittest.TestCase):
-    """Test cache TTL (time-to-live) functionality."""
+@pytest.fixture
+def clock(monkeypatch):
+    """Fake time.time for lib.cache: advance with clock.advance(seconds)."""
+    class Clock:
+        now = 1000.0
 
-    def setUp(self):
-        """Clear cache before each test."""
-        clear_cache()
+        def advance(self, seconds):
+            self.now += seconds
 
-    def tearDown(self):
-        """Clear cache after each test."""
-        clear_cache()
-
-    def test_cache_set_get(self):
-        """Basic set and get should work."""
-        cache_set('test_key', {'data': 'value'})
-        result = cache_get('test_key', ttl=0)  # No expiry
-        self.assertEqual(result, {'data': 'value'})
-
-    def test_cache_miss_returns_none(self):
-        """Missing key should return None."""
-        result = cache_get('nonexistent_key')
-        self.assertIsNone(result)
-
-    def test_cache_expiry(self):
-        """Cache should expire after TTL."""
-        # Set with very short TTL
-        cache_set('expiring_key', {'data': 'value'})
-
-        # Manipulate timestamp to simulate expiry
-        with _cache_lock:
-            _cache_timestamps['expiring_key'] = time.time() - 400  # 400 seconds ago
-
-        # Should be expired (default TTL is 300 seconds)
-        result = cache_get('expiring_key')
-        self.assertIsNone(result, "Expired cache should return None")
-
-    def test_cache_not_expired(self):
-        """Cache should not expire before TTL."""
-        cache_set('fresh_key', {'data': 'value'})
-
-        # Entry is fresh, should not be expired
-        result = cache_get('fresh_key')
-        self.assertEqual(result, {'data': 'value'})
-
-    def test_cache_no_ttl(self):
-        """Cache with ttl=0 should never expire."""
-        cache_set('permanent_key', {'data': 'value'})
-
-        # Manipulate timestamp to simulate old entry
-        with _cache_lock:
-            _cache_timestamps['permanent_key'] = time.time() - 10000
-
-        # With ttl=0, should not expire
-        result = cache_get('permanent_key', ttl=0)
-        self.assertEqual(result, {'data': 'value'})
-
-    def test_clear_cache(self):
-        """clear_cache should remove all entries."""
-        cache_set('key1', 'value1')
-        cache_set('key2', 'value2')
-
-        clear_cache()
-
-        self.assertIsNone(cache_get('key1', ttl=0))
-        self.assertIsNone(cache_get('key2', ttl=0))
+    c = Clock()
+    monkeypatch.setattr(cache.time, 'time', lambda: c.now)
+    return c
 
 
-class TestCacheThreadSafety(unittest.TestCase):
-    """Test cache thread safety."""
-
-    def setUp(self):
-        """Clear cache before each test."""
-        clear_cache()
-
-    def tearDown(self):
-        """Clear cache after each test."""
-        clear_cache()
-
-    def test_concurrent_writes(self):
-        """Concurrent writes should not corrupt cache."""
-        errors = []
-        write_count = 100
-
-        def writer(thread_id):
-            try:
-                for i in range(write_count):
-                    key = 'thread_{}_{}'.format(thread_id, i)
-                    cache_set(key, {'thread': thread_id, 'index': i})
-            except Exception as e:
-                errors.append(e)
-
-        # Start multiple writer threads
-        threads = []
-        for t_id in range(5):
-            t = threading.Thread(target=writer, args=(t_id,))
-            threads.append(t)
-            t.start()
-
-        # Wait for all threads
-        for t in threads:
-            t.join()
-
-        # No errors should have occurred
-        self.assertEqual(len(errors), 0, "Concurrent writes caused errors: {}".format(errors))
-
-        # Verify cache is not empty (some entries survive eviction)
-        found = 0
-        for t_id in range(5):
-            for i in range(write_count):
-                if cache_get('thread_{}_{}'.format(t_id, i), ttl=0) is not None:
-                    found += 1
-        self.assertGreater(found, 0, "Cache should contain some entries")
-
-    def test_concurrent_read_write(self):
-        """Concurrent reads and writes should not corrupt cache."""
-        errors = []
-        iterations = 50
-
-        def writer():
-            try:
-                for i in range(iterations):
-                    cache_set('shared_key', {'iteration': i})
-            except Exception as e:
-                errors.append(('writer', e))
-
-        def reader():
-            try:
-                for i in range(iterations):
-                    result = cache_get('shared_key', ttl=0)
-                    # Result should be None or a valid dict
-                    if result is not None and not isinstance(result, dict):
-                        errors.append(('reader', 'Invalid result type: {}'.format(type(result))))
-            except Exception as e:
-                errors.append(('reader', e))
-
-        # Start reader and writer threads
-        writer_thread = threading.Thread(target=writer)
-        reader_threads = [threading.Thread(target=reader) for _ in range(3)]
-
-        writer_thread.start()
-        for t in reader_threads:
-            t.start()
-
-        writer_thread.join()
-        for t in reader_threads:
-            t.join()
-
-        self.assertEqual(len(errors), 0, "Concurrent read/write caused errors: {}".format(errors))
+@pytest.mark.parametrize('a, b', [
+    (('SouthPark', 'video', ''), ('southpark', 'video', '')),
+    (('  southpark  ', 'video', ''), ('southpark', 'video', '')),
+    ((NONE_WHAT, 'video', 'recent'), (None, 'video', 'recent')),
+])
+def test_equivalent_queries_share_a_key(a, b):
+    assert build_cache_key(*a) == build_cache_key(*b)
 
 
-class TestCacheIntegration(unittest.TestCase):
-    """Integration tests for cache with search session."""
-
-    def setUp(self):
-        """Clear cache before each test."""
-        clear_cache()
-
-    def tearDown(self):
-        """Clear cache after each test."""
-        clear_cache()
-
-    def test_new_search_clears_cache(self):
-        """New search session should clear old cache data."""
-        # Simulate old search session
-        cache_set('old_search__', {'series': {'OldShow': {}}})
-
-        # New search session clears cache
-        clear_cache()
-
-        # Old data should be gone
-        result = cache_get('old_search__', ttl=0)
-        self.assertIsNone(result)
-
-    def test_cache_survives_pagination(self):
-        """Cache should survive during pagination within session."""
-        # Set cache for search
-        cache_set('southpark_video_', {'series': {'Southpark': {'seasons': {1: {}}}}})
-
-        # Pagination should still find cache
-        result = cache_get('southpark_video_', ttl=0)
-        self.assertIsNotNone(result)
-        self.assertIn('Southpark', result['series'])
+@pytest.mark.parametrize('a, b', [
+    (('test1', 'cat', 'sort'), ('test2', 'cat', 'sort')),
+    (('test', 'cat1', 'sort'), ('test', 'cat2', 'sort')),
+    (('test', 'cat', 'recent'), ('test', 'cat', 'largest')),
+])
+def test_different_queries_get_different_keys(a, b):
+    assert build_cache_key(*a) != build_cache_key(*b)
 
 
-class TestCacheKeyNormalization(unittest.TestCase):
-    """build_cache_key normalizes NONE_WHAT/None and casing."""
-
-    def test_build_cache_key_normalizes_none_what(self):
-        """NONE_WHAT sentinel should collapse to '' so Newest queries share a key."""
-        from lib.cache import _NONE_WHAT
-        key = build_cache_key(_NONE_WHAT, 'video', 'recent')
-        self.assertEqual(key, '_video_recent')
-
-    def test_build_cache_key_normalizes_none(self):
-        """None should collapse to '' (no fragment)."""
-        key = build_cache_key(None, 'video', 'recent')
-        self.assertEqual(key, '_video_recent')
-
-    def test_build_cache_key_lowercases(self):
-        """Mixed-case queries should share one cache entry."""
-        a = build_cache_key('SouthPark', 'video', '')
-        b = build_cache_key('southpark', 'video', '')
-        self.assertEqual(a, b)
-
-    def test_build_cache_key_strips_whitespace(self):
-        """Whitespace around query should not fragment cache."""
-        a = build_cache_key('  southpark  ', 'video', '')
-        b = build_cache_key('southpark', 'video', '')
-        self.assertEqual(a, b)
+def test_miss_returns_none():
+    assert cache_get('nope') is None
 
 
-class TestFlockNoop(unittest.TestCase):
-    """_flock / _funlock must never raise."""
+def test_entry_expires_after_default_ttl(clock):
+    cache_set('k', 'v')
+    clock.advance(299)
+    assert cache_get('k') == 'v'
+    clock.advance(2)
+    assert cache_get('k') is None
+    assert 'k' not in cache._series_cache  # expired entries are dropped, not kept
 
-    def test_flock_noop_on_no_locking_backend(self):
-        """If neither fcntl nor msvcrt available, lock helpers must no-op."""
-        import lib.cache as cache_mod
-        saved_fcntl = cache_mod._HAS_FCNTL
-        saved_msvcrt = cache_mod._HAS_MSVCRT
+
+def test_per_entry_ttl_overrides_default(clock):
+    cache_set('short', 'v', ttl=10)
+    clock.advance(11)
+    assert cache_get('short') is None
+
+
+def test_ttl_zero_never_expires(clock):
+    cache_set('k', 'v', ttl=0)
+    clock.advance(10 ** 6)
+    assert cache_get('k') == 'v'
+
+
+def test_rewrite_refreshes_timestamp_and_drops_old_custom_ttl(clock):
+    cache_set('k', 'old', ttl=10)
+    clock.advance(5)
+    cache_set('k', 'new')  # back to default TTL
+    clock.advance(100)
+    assert cache_get('k') == 'new'
+
+
+def test_full_cache_evicts_oldest_entry(clock):
+    for i in range(cache.MAX_CACHE_ENTRIES):
+        cache_set('k%d' % i, i)
+        clock.advance(1)
+    cache_set('new', 'x')
+    assert cache_get('k0') is None
+    assert cache_get('k1') == 1
+    assert cache_get('new') == 'x'
+
+
+def test_overwriting_existing_key_in_full_cache_evicts_nothing(clock):
+    for i in range(cache.MAX_CACHE_ENTRIES):
+        cache_set('k%d' % i, i)
+    cache_set('k0', 'again')
+    assert all(cache_get('k%d' % i) is not None for i in range(cache.MAX_CACHE_ENTRIES))
+
+
+def test_clear_cache_removes_everything():
+    cache_set('a', 1)
+    cache_set('b', 2, ttl=0)
+    clear_cache()
+    assert cache_get('a') is None and cache_get('b') is None
+
+
+def test_concurrent_writers_do_not_exceed_capacity_or_raise():
+    errors = []
+
+    def writer(tid):
         try:
-            cache_mod._HAS_FCNTL = False
-            cache_mod._HAS_MSVCRT = False
-            # Pass garbage 'file' object; should still not raise.
-            cache_mod._flock(object(), exclusive=True)
-            cache_mod._funlock(object())
-        finally:
-            cache_mod._HAS_FCNTL = saved_fcntl
-            cache_mod._HAS_MSVCRT = saved_msvcrt
+            for i in range(100):
+                cache_set('t%d_%d' % (tid, i), i)
+                cache_get('t%d_%d' % (tid, i))
+        except Exception as e:  # pragma: no cover - only on failure
+            errors.append(e)
 
-    def test_flock_swallows_oserror(self):
-        """OSError from underlying locking call must not propagate."""
-        import lib.cache as cache_mod
-
-        class BadFile:
-            def fileno(self):
-                raise OSError("bad fd")
-
-        # Should not raise regardless of which backend is enabled.
-        cache_mod._flock(BadFile(), exclusive=True)
-        cache_mod._funlock(BadFile())
+    threads = [threading.Thread(target=writer, args=(t,)) for t in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    assert len(cache._series_cache) <= cache.MAX_CACHE_ENTRIES
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestGetOrFetchGrouped:
+    @pytest.fixture
+    def fetch(self, monkeypatch):
+        calls = []
+
+        def fake(token, what, category, sort_val):
+            calls.append(what)
+            return {'series': {'South Park': {}}, 'movies': {}}
+
+        monkeypatch.setattr('lib.grouping.fetch_and_group_series', fake)
+        return calls
+
+    def test_second_lookup_is_served_from_cache(self, fetch):
+        params = {'what': 'South Park'}
+        cache.get_or_fetch_grouped(params, 'tok')
+        key, grouped = cache.get_or_fetch_grouped({'what': 'south park'}, 'tok')
+        assert fetch == ['South Park']
+        assert 'South Park' in grouped['series']
+        assert key == 'south park__'
+
+    def test_missing_series_in_cached_result_triggers_refetch(self, fetch):
+        cache.get_or_fetch_grouped({'what': 'x'}, 'tok')
+        cache.get_or_fetch_grouped({'what': 'x'}, 'tok', check_key='Other Show')
+        assert len(fetch) == 2
+
+    def test_no_token_means_no_fetch(self, fetch):
+        _, grouped = cache.get_or_fetch_grouped({'what': 'x'}, None)
+        assert grouped is None and fetch == []
+
+
+def test_lock_helpers_never_raise_on_broken_file():
+    class BadFile:
+        def fileno(self):
+            raise OSError('bad fd')
+
+    cache._flock(BadFile(), exclusive=True)
+    cache._funlock(BadFile())

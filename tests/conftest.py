@@ -2,7 +2,7 @@
 """Pytest configuration with Kodi module mocks."""
 import sys
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 class MockAddon:
@@ -237,7 +237,9 @@ def make_kodi_recorder(dialog_yesno=True):
     Callers should call this in setUp and tear back to MagicMock in
     tearDown, since it mutates module-level globals.
     """
-    import xbmc, xbmcgui, xbmcplugin
+    import xbmc
+    import xbmcgui
+    import xbmcplugin
     events = []
 
     xbmc.executebuiltin = lambda cmd: events.append(('exec', cmd))

@@ -62,7 +62,6 @@ class DosearchSignalTestBase(unittest.TestCase):
         self.end_of_directory_calls = []
         xbmcplugin_mod.endOfDirectory = lambda *a, **k: self.end_of_directory_calls.append((a, k))
 
-        xbmcgui_mod = search_ui.xbmcgui
         self._saved_add_directory_item = xbmcplugin_mod.addDirectoryItem
         xbmcplugin_mod.addDirectoryItem = lambda *a, **k: None
 

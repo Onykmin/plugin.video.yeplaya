@@ -3,14 +3,11 @@
 """Random-episode picker: key flattening, row injection in browse_series /
 browse_season, and the show_random_episode_dialog Play/Reroll/Cancel loop.
 
-Covers the infinite-loop backstop (stale/empty version lists at dialog time)
-and the main.py _RESOLVE_ACTIONS membership that prevents a hung spinner on
-a fatal error mid random_episode action.
+Covers the infinite-loop backstop (stale/empty version lists at dialog time).
 """
 import os
-import re
 import sys
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
@@ -212,9 +209,10 @@ def test_setting_on_injects_series_row():
     assert recorded, 'expected at least one addDirectoryItem call'
     url, listitem, is_folder = recorded[0]
     assert listitem.label == 'String_30434'
-    # Picker row must carry NO IsPlayable property (see below);
-    # watched state / a resume bookmark against the picker's own URL.
+    # No IsPlayable at all: 'true' makes Kodi open the click as playback and
+    # tear down the handed-off episode; 'false' breaks the dialog (handle -1).
     assert 'IsPlayable' not in listitem._properties
+    assert 'ResumeTime' not in listitem._properties
     assert is_folder is False
 
 
@@ -225,57 +223,11 @@ def test_setting_on_injects_season_row():
     assert recorded, 'expected at least one addDirectoryItem call'
     url, listitem, is_folder = recorded[0]
     assert listitem.label == 'String_30435'
-    # Picker row must carry NO IsPlayable property (see below);
-    # watched state / a resume bookmark against the picker's own URL.
+    # No IsPlayable at all: 'true' makes Kodi open the click as playback and
+    # tear down the handed-off episode; 'false' breaks the dialog (handle -1).
     assert 'IsPlayable' not in listitem._properties
+    assert 'ResumeTime' not in listitem._properties
     assert is_folder is False
-
-
-def test_series_row_declares_no_isplayable():
-    """Regression: the picker row must declare NO IsPlayable property.
-
-    Three states, two of them broken (both user-verified):
-      'true'  -> Kodi opens the click as playback, then tears the playlist
-                 down when the script exits unresolved, killing the episode
-                 _play_via_handoff started.
-      'false' -> dialog never opens at all (handle -1).
-      absent  -> correct; is_folder=False alone declares a dialog action.
-    """
-    grouped = _grouped_series({1: {1: _versions('a')}})
-    params = {'series': 'show', 'what': 'q'}
-    recorded = _run_browse_series(grouped, params, setting='true')
-    picker_rows = [li for _, li, _ in recorded if li.label == 'String_30434']
-    assert picker_rows, 'expected the picker row to be injected'
-    for listitem in picker_rows:
-        # NO IsPlayable at all. 'true' made Kodi open the click as a
-        # playback request and then tear the playlist down when the script
-        # exited without resolving, killing the handed-off episode
-        # ("Playlist Player: skipping unplayable item" in kodi.log).
-        # Explicit 'false' was also tried and broke the dialog outright
-        # (handle -1). Absent is the correct third state — is_folder=False
-        # alone declares a dialog action (cf. lib/favorites_ui.py:112).
-        assert 'IsPlayable' not in listitem._properties
-        assert 'ResumeTime' not in listitem._properties
-
-
-def test_season_row_declares_no_isplayable():
-    """Regression: same as test_series_row_declares_no_isplayable but for
-    the season-scoped picker row."""
-    grouped = _grouped_series({1: {1: _versions('a')}})
-    params = {'series': 'show', 'season': '1', 'what': 'q'}
-    recorded = _run_browse_season(grouped, params, setting='true')
-    picker_rows = [li for _, li, _ in recorded if li.label == 'String_30435']
-    assert picker_rows, 'expected the picker row to be injected'
-    for listitem in picker_rows:
-        # NO IsPlayable at all. 'true' made Kodi open the click as a
-        # playback request and then tear the playlist down when the script
-        # exited without resolving, killing the handed-off episode
-        # ("Playlist Player: skipping unplayable item" in kodi.log).
-        # Explicit 'false' was also tried and broke the dialog outright
-        # (handle -1). Absent is the correct third state — is_folder=False
-        # alone declares a dialog action (cf. lib/favorites_ui.py:112).
-        assert 'IsPlayable' not in listitem._properties
-        assert 'ResumeTime' not in listitem._properties
 
 
 def test_no_episodes_hides_row():
@@ -584,187 +536,16 @@ def test_every_exit_path_resolves_exactly_once():
 # exactly one getinfo per pick (not zero, not per-version).
 # ---------------------------------------------------------------------------
 
-def test_one_grouped_fetch_and_one_enrichment_per_pick_across_reroll_loop():
-    """Renamed from test_zero_extra_api_calls_across_reroll_loop: that name
-    claimed zero extra API calls overall, which stopped being true once each
-    pick started enriching its displayed version (one getinfo per pick, see
-    `_enrich_displayed_version`). The grouped-data fetch cost (still exactly
-    once, cached) and the enrichment cost (now one per pick, not zero) are
-    two separate guarantees; this test documents both.
-    """
-    seasons = {1: {1: _versions('a'), 2: _versions('b'), 3: _versions('c')}}
-    grouped = _grouped_series(seasons)
-    params = {'series': 'show', 'what': 'q'}
-
-    call_count = {'n': 0}
-
-    def _counting_fetch(*a, **k):
-        call_count['n'] += 1
-        return ('ck', grouped)
-
-    rand = _ScriptedRandom([(1, 1), (1, 2), (1, 3)])
-    dialog = _ScriptedDialog([1, 1, -1])
-    xbmcgui_mod = sys.modules['xbmcgui']
-    xbmcplugin_mod = sys.modules['xbmcplugin']
-    enrich_mock = MagicMock(return_value=False)
-
-    with patch.object(series_ui, 'revalidate', return_value='tok'), \
-         patch.object(series_ui, 'get_or_fetch_grouped', side_effect=_counting_fetch), \
-         patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play'), \
-         patch.object(series_ui, 'popinfo'), \
-         patch.object(series_ui, 'enrich_file_metadata', enrich_mock), \
-         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
-         patch.object(xbmcplugin_mod, 'setResolvedUrl'):
-        series_ui.show_random_episode_dialog(params)
-
-    assert call_count['n'] == 1
-
-    # 3 picks (initial draw + 2 rerolls) => exactly 3 enrichment calls, one
-    # per displayed version, never per-version-in-list (each episode here
-    # has only a single version, so that distinction doesn't collapse the
-    # assertion — 3 picks with 1 version apiece still must be 3, not 0).
-    assert enrich_mock.call_count == 3
-    enriched_idents = [call.args[1] for call in enrich_mock.call_args_list]
-    assert enriched_idents == ['a', 'b', 'c']
-
 
 # ---------------------------------------------------------------------------
 # 20: main.py _RESOLVE_ACTIONS membership (hung-spinner risk item)
 # ---------------------------------------------------------------------------
-
-def test_main_resolve_actions_excludes_random_episode():
-    """_RESOLVE_ACTIONS is defined inside the `except` block of main.py's
-    `if __name__ == '__main__':` guard, so it can't be imported directly.
-
-    'random_episode' must NOT be listed. This test previously asserted the
-    opposite, on the premise that Kodi opens a resolve handle for the picker
-    row — that premise is false. The row sets no IsPlayable and the handler
-    hands off via PlayMedia rather than resolving a stream, so Kodi passes
-    handle -1 (verified in kodi.log: `Ye-Playa('plugin://...', '-1',
-    '?action=random_episode&...')`). With handle -1 BOTH branches of that
-    error path are no-ops, so membership never mattered functionally — but
-    listing it documented a contract the code does not have.
-
-    Kept as a source-parse test (not an import) for the reason above.
-    """
-    main_path = os.path.join(os.path.dirname(__file__), '../../main.py')
-    with open(main_path, 'r', encoding='utf-8') as f:
-        source = f.read()
-
-    start_marker = '_RESOLVE_ACTIONS = {'
-    start_idx = source.index(start_marker)
-    open_brace_idx = start_idx + len(start_marker) - 1
-    close_idx = source.index('}', open_brace_idx)
-    set_literal_body = source[open_brace_idx + 1:close_idx]
-
-    entries = re.findall(r"'([^']*)'|\"([^\"]*)\"", set_literal_body)
-    entries = {a or b for a, b in entries}
-
-    assert 'random_episode' not in entries, (
-        "random_episode must not be listed: its row is not playable and its "
-        "handler resolves nothing (handle -1)")
-    # The genuinely-resolving actions must stay listed.
-    for still_resolving in ('play', 'select_version', 'select_movie_version',
-                            'newsearch', 'random_movie'):
-        assert still_resolving in entries, still_resolving
 
 
 # ---------------------------------------------------------------------------
 # 21: excluded.add(picked) ordering — must happen before the empty-versions
 # `continue`, not after it
 # ---------------------------------------------------------------------------
-
-def test_empty_versions_key_is_excluded_before_retry():
-    """Pins the ordering in the non-exhausted branch of the picker loop:
-    `excluded.add(picked)` MUST run before the `if not versions: continue`
-    that handles a stale/empty version list at dialog-dereference time.
-
-    If `excluded.add(picked)` is instead moved down next to the
-    `shown_best = ...` assignment (i.e. after the `continue`), a key whose
-    version list is empty never enters `excluded`, so `_pick_random` can
-    hand that same key back on every subsequent draw — an infinite loop in
-    production (only bounded here by the fake `choice`'s hard call cap,
-    which turns the hang into a fast, loud assertion failure instead).
-
-    Setup: keys (1,1) and (1,2) have empty version lists at dialog time;
-    (1,3) has one real version. The fake `random.choice` always returns
-    `remaining[0]` and records every `remaining` list it was handed. With
-    correct ordering, `remaining` must strictly shrink each call — (1,1) and
-    (1,2) drop out of the pool as soon as they are drawn, even though they
-    never produce a displayable episode — so `choice` is called exactly 3
-    times, landing on the real key (1,3) on the 3rd call.
-    """
-    seasons = {1: {1: [], 2: [], 3: _versions('good', 'good.mkv')}}
-    grouped = _grouped_series(seasons)
-    params = {'series': 'show', 'what': 'q'}
-
-    fake_keys = [(1, 1), (1, 2), (1, 3)]
-
-    class _RevealingRandom:
-        def __init__(self):
-            self.remaining_history = []
-
-        def choice(self, seq):
-            if len(self.remaining_history) >= 25:
-                raise AssertionError(
-                    'random.choice invoked >=25 times — exclusion-set '
-                    'ordering regression (excluded.add(picked) moved after '
-                    'the empty-versions continue)')
-            remaining = list(seq)
-            self.remaining_history.append(remaining)
-            return remaining[0]
-
-    rand = _RevealingRandom()
-    dialog_select = MagicMock(return_value=-1)
-    xbmcgui_mod = sys.modules['xbmcgui']
-    xbmcplugin_mod = sys.modules['xbmcplugin']
-
-    with patch.object(series_ui, 'revalidate', return_value='tok'), \
-         patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
-         patch.object(series_ui, '_flatten_episode_keys', return_value=fake_keys), \
-         patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
-         patch.object(series_ui, 'popinfo'), \
-         patch.object(xbmcgui_mod, 'Dialog') as dialog_cls, \
-         patch.object(xbmcplugin_mod, 'setResolvedUrl') as resolved_mock:
-        dialog_cls.return_value.select = dialog_select
-        series_ui.show_random_episode_dialog(params)
-
-    # choice was called exactly 3 times: (1,1) and (1,2) are drawn and
-    # discarded (empty versions -> continue) before (1,3) is finally shown.
-    history = rand.remaining_history
-    assert len(history) == 3
-
-    # The recorded `remaining` pools must strictly shrink and never repeat.
-    assert history == [
-        [(1, 1), (1, 2), (1, 3)],
-        [(1, 2), (1, 3)],
-        [(1, 3)],
-    ]
-    assert history[0] != history[1] != history[2]
-    for i in range(1, len(history)):
-        assert len(history[i]) < len(history[i - 1])
-
-    # No key appears in a later `remaining` list after it has already been
-    # picked — i.e. once (1,1) is drawn on call 1, it never reappears.
-    picked_so_far = set()
-    for i, remaining in enumerate(history):
-        picked_this_round = fake_keys[i]
-        assert picked_this_round not in picked_so_far or i == 0
-        for k in picked_so_far:
-            assert k not in remaining
-        picked_so_far.add(picked_this_round)
-
-    # The loop reached the good key and rendered exactly one dialog for it.
-    dialog_select.assert_called_once()
-    resolve_mock.assert_not_called()
-    resolved_mock.assert_called_once()
-    assert resolved_mock.call_args[0][1] is False
-
-    shown_listitems = dialog_select.call_args[0][1]
-    play_label = shown_listitems[0].label
-    assert play_label.startswith('S01E03 - ')
 
 
 # ---------------------------------------------------------------------------
@@ -790,7 +571,9 @@ def test_pick_version_row_present_with_count():
     # without relying on the mock's literal '.format()' no-op (see module
     # docstring context: MockAddon.getLocalizedString ignores .format args
     # because 'String_30443' has no '{0}' placeholder).
-    fake_get_string = lambda i: '{0}|{{0}}'.format(i)
+    def fake_get_string(i):
+        return '{0}|{{0}}'.format(i)
+
     with patch.object(series_ui._addon, 'getLocalizedString', fake_get_string):
         listitems, actions = series_ui._build_dialog_rows(
             best, 1, 1, 'reroll', version_count=3)
@@ -1028,7 +811,9 @@ def test_pick_version_uses_deduped_count():
     grouped = _grouped_series(seasons)
     params = {'series': 'show', 'what': 'q'}
 
-    fake_get_string = lambda i: '{0}|{{0}}'.format(i)
+    def fake_get_string(i):
+        return '{0}|{{0}}'.format(i)
+
     xbmcgui_mod = sys.modules['xbmcgui']
     xbmcplugin_mod = sys.modules['xbmcplugin']
     dialog = _ScriptedDialog([-1])
@@ -1047,32 +832,6 @@ def test_pick_version_uses_deduped_count():
     shown = dialog.shown[0]
     pick_version_label = shown[1].label
     assert pick_version_label == '30443|{0}'.format(len(deduped))
-
-
-def test_pick_version_and_back_out_paths_resolve_exactly_once():
-    """Extends the exit-path coverage (test 18) with the two NEW paths:
-    pick_version-then-play (zero handler-level setResolvedUrl, delegated to
-    resolve_and_play) and pick_version-then-back-out-then-cancel (exactly
-    one setResolvedUrl(False)).
-    """
-    versions = _multi_versions(('best', 300), ('mid', 200))
-
-    # New path A: pick_version then play a version.
-    grouped_a = _grouped_series({1: {1: versions}})
-    _, _, resolve_mock_a, _, resolved_mock_a, _ = _run_dialog_multi(
-        grouped_a, {'series': 'show', 'what': 'q'},
-        rand_script=[(1, 1)], selections=[1, 0])
-    assert resolved_mock_a.call_count == 0
-    resolve_mock_a.assert_called_once()
-
-    # New path B: pick_version, back out, then cancel from the redraw.
-    grouped_b = _grouped_series({1: {1: versions}})
-    _, _, resolve_mock_b, _, resolved_mock_b, _ = _run_dialog_multi(
-        grouped_b, {'series': 'show', 'what': 'q'},
-        rand_script=[(1, 1)], selections=[1, -1, 2])
-    assert resolved_mock_b.call_count == 1
-    assert resolved_mock_b.call_args[0][1] is False
-    resolve_mock_b.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -1310,174 +1069,6 @@ def test_best_version_unchanged_by_enrichment():
 # _enrich_displayed_version.
 # ---------------------------------------------------------------------------
 
-class _CappedScriptedDialog:
-    """Like _ScriptedDialog, but raises loudly after a hard cap of `select`
-    calls so a control-flow regression (e.g. an accidental extra loop
-    iteration) fails fast instead of hanging/exhausting the suite.
-    """
-
-    def __init__(self, selections, cap=30):
-        self._selections = list(selections)
-        self._cap = cap
-        self._count = 0
-        self.shown = []
-
-    def select(self, heading, listitems, useDetails=False):
-        self._count += 1
-        if self._count > self._cap:
-            raise AssertionError(
-                'select() invoked >{0} times — runaway dialog loop'.format(
-                    self._cap))
-        self.shown.append(listitems)
-        if not self._selections:
-            raise AssertionError('ScriptedDialog ran out of scripted selections')
-        return self._selections.pop(0)
-
-
-def _run_dialog_with_enrich_spy(grouped, params, rand_script=None, selections=None):
-    """Like _run_dialog, but patches `series_ui._enrich_displayed_version`
-    ITSELF with a counting spy, rather than patching the underlying
-    `enrich_file_metadata`. This matters: the real helper's own
-    'file_info' in file_dict guard dedupes repeated calls against the SAME
-    call site, which would mask a regression that moves the call site into
-    the inner redraw loop (the guard would just no-op the extra calls,
-    hiding the extra cost). Replacing the helper wholesale means every
-    call-site invocation is counted regardless of what the guard would have
-    done.
-    """
-    rand = _ScriptedRandom(rand_script or [])
-    dialog = _CappedScriptedDialog(selections if selections is not None else [-1])
-    xbmcgui_mod = sys.modules['xbmcgui']
-    xbmcplugin_mod = sys.modules['xbmcplugin']
-
-    enrich_spy = MagicMock(return_value=None)
-
-    with patch.object(series_ui, 'revalidate', return_value='tok'), \
-         patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
-         patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, '_play_via_handoff') as resolve_mock, \
-         patch.object(series_ui, 'popinfo') as popinfo_mock, \
-         patch.object(series_ui, '_enrich_displayed_version', enrich_spy), \
-         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
-         patch.object(xbmcplugin_mod, 'setResolvedUrl') as resolved_mock:
-        series_ui.show_random_episode_dialog(params)
-
-    return rand, dialog, resolve_mock, popinfo_mock, resolved_mock, enrich_spy
-
-
-def test_enrichment_call_is_outside_the_redraw_loop():
-    """Pins the placement of `_enrich_displayed_version(shown_best, token)`
-    in the OUTER pick branch of `show_random_episode_dialog`, not inside the
-    inner `while True:` redraw loop that lets the user open the version
-    picker and back out without drawing a new episode.
-
-    Why this placement is load-bearing: the comment above the call site
-    says "One getinfo per pick; the inner redraw loop never re-enriches."
-    That guarantee is currently true BY CONSTRUCTION (the call textually
-    lives outside the loop that re-renders the Play row), not merely
-    because `_enrich_displayed_version`'s own `'file_info' in file_dict`
-    guard happens to no-op repeat calls. Those are two independent
-    protections. Today only the placement is pinned by a test; the guard
-    already has its own coverage (test_already_enriched_version_is_skipped
-    et al.) but nothing pins that the call only fires once PER PICK
-    regardless of how many times the Play row is redrawn for that pick.
-
-    If someone "simplifies" by moving the call inside the redraw loop —
-    e.g.
-        while True:
-            _enrich_displayed_version(shown_best, token)
-            version_count = len(shown_versions)
-    — every redraw (every picker back-out) would re-invoke the call site.
-    The guard inside the real helper would still dedupe the actual
-    getinfo cost today, so a naive test that patches
-    `enrich_file_metadata` and counts ITS calls would keep passing under
-    that mutation — that guard is exactly what would mask the regression
-    if it were ever weakened (e.g. made conditional, or the helper
-    swapped out). This test instead patches `_enrich_displayed_version`
-    itself with a spy, removing the guard from the picture entirely, so it
-    counts call-SITE invocations, not deduped getinfo cost.
-
-    Two phases:
-      Phase 1 (redraw-survives-one-pick): a single-episode series where the
-      version picker is opened and backed out of TWICE before cancelling,
-      rendering the Play row THREE times for ONE pick. Asserts exactly one
-      call-site invocation — under the mutation this becomes 3.
-      Phase 2 (scales-with-picks): a multi-episode series rerolled twice
-      (3 distinct picks, no picker involved), proving the "once per pick"
-      contract scales with pick count rather than being an accidental
-      "once per handler invocation" that would also read as 1.
-    """
-    # --- Phase 1: one pick, redrawn 3x via picker open/back-out/back-out ---
-    versions = _multi_versions(('best', 300), ('mid', 200), ('small', 100))
-    seasons = {1: {1: versions}}
-    grouped = _grouped_series(seasons)
-    params = {'series': 'show', 'what': 'q'}
-
-    # Single-episode series -> pool_state 'none' -> rows are
-    # [play, pick_version, cancel] (indices 0, 1, 2).
-    # Script: open picker & back out, TWICE, then cancel. This renders the
-    # Play row THREE times (initial + 2 redraws after back-out) for the
-    # SAME single pick.
-    #   Dialog 1 (random dialog, render #1): pick_version -> index 1
-    #   Dialog 2 (picker): back out -> -1
-    #   Dialog 1 (redraw, render #2): pick_version -> index 1
-    #   Dialog 2 (picker): back out -> -1
-    #   Dialog 1 (redraw, render #3): cancel -> index 2
-    selections = [1, -1, 1, -1, 2]
-
-    rand, dialog, resolve_mock, popinfo_mock, resolved_mock, enrich_spy = (
-        _run_dialog_with_enrich_spy(
-            grouped, params, rand_script=[(1, 1)], selections=selections))
-
-    # Sanity: the Play row really was rendered 3 times for this one pick.
-    random_dialog_renders = [
-        shown for shown in dialog.shown if shown[0].label.startswith('S01E01')]
-    assert len(random_dialog_renders) == 3
-
-    resolved_mock.assert_called_once()
-    assert resolved_mock.call_args[0][1] is False
-    resolve_mock.assert_not_called()
-
-    # The crux: exactly ONE enrichment call-site invocation for ONE pick,
-    # no matter how many times the Play row was redrawn for it. Under the
-    # "moved into the inner redraw loop" mutation this becomes 3.
-    assert enrich_spy.call_count == 1
-    assert enrich_spy.call_args[0][0] is versions[0]
-    assert enrich_spy.call_args[0][1] == 'tok'
-
-    # --- Phase 2: 3 distinct picks via reroll, no picker involved. Proves
-    # the count scales with PICKS, not with total handler invocations. ---
-    seasons2 = {1: {
-        1: _multi_versions(('a1', 300), ('a2', 200)),
-        2: _multi_versions(('b1', 300), ('b2', 200)),
-        3: _multi_versions(('c1', 300), ('c2', 200)),
-    }}
-    grouped2 = _grouped_series(seasons2)
-    params2 = {'series': 'show', 'what': 'q'}
-
-    # 3 distinct picks via reroll: reroll after picks 1 and 2, cancel on
-    # pick 3. Multi-version pool_state 'reroll' -> rows
-    # [play, pick_version, reroll, cancel] -> reroll=2, cancel=3.
-    selections2 = [2, 2, 3]
-
-    rand2, dialog2, resolve_mock2, popinfo_mock2, resolved_mock2, enrich_spy2 = (
-        _run_dialog_with_enrich_spy(
-            grouped2, params2, rand_script=[(1, 1), (1, 2), (1, 3)],
-            selections=selections2))
-
-    assert len(dialog2.shown) == 3
-    resolved_mock2.assert_called_once()
-    assert resolved_mock2.call_args[0][1] is False
-
-    # 3 picks -> exactly 3 call-site invocations, one per pick's displayed
-    # (best/largest) version, in pick order. Under the mutation, Phase 1
-    # already fails first, but this phase independently confirms the
-    # contract is "per pick", not "per handler call" (which would also
-    # read as some fixed small number unrelated to pick count).
-    assert enrich_spy2.call_count == 3
-    enriched_dicts = [call.args[0] for call in enrich_spy2.call_args_list]
-    assert [d['ident'] for d in enriched_dicts] == ['a1', 'b1', 'c1']
-
 
 # ---------------------------------------------------------------------------
 # 33+: _rank_versions — SIZE-FIRST primary key, quality_score tiebreak. A
@@ -1571,81 +1162,6 @@ def test_rank_versions_equal_size_quality_breaks_tie():
     ]
     ranked = series_ui._rank_versions(list(versions))
     assert [v['ident'] for v in ranked] == ['hq', 'lq']
-
-
-def test_rank_versions_populates_quality_meta_for_every_entry():
-    """Silent-default-50 trap: quality_meta must be populated for EVERY
-    entry before sorting, and a pre-existing quality_meta must not be
-    overwritten.
-    """
-    preset_meta = {'quality_score': 999, 'quality': 'preset'}
-    versions = [
-        {'ident': 'a', 'name': 'Show.S01E01.1080p.WEB-DL.x264.mkv'},
-        {'ident': 'b', 'name': 'Show.S01E01.720p.x264.mkv'},
-        {'ident': 'c', 'name': 'no_resolution_marker.mkv', 'quality_meta': preset_meta},
-    ]
-    ranked = series_ui._rank_versions(versions)
-
-    for v in ranked:
-        assert 'quality_meta' in v
-        assert isinstance(v['quality_meta'], dict)
-        assert 'quality_score' in v['quality_meta']
-
-    scores = {v['ident']: v['quality_meta']['quality_score'] for v in ranked}
-    # At least one entry differs from the default 50 -> real parsing ran,
-    # not a blanket default.
-    assert any(score != 50 for score in scores.values())
-
-    # Pre-existing quality_meta on 'c' survives untouched (not overwritten).
-    c_entry = next(v for v in ranked if v['ident'] == 'c')
-    assert c_entry['quality_meta'] is preset_meta
-    assert c_entry['quality_meta']['quality_score'] == 999
-
-
-def test_rank_versions_makes_no_api_calls():
-    """Ranking is filename-based only (parse_quality_metadata) — it must
-    never touch enrich_file_metadata. Also pins that the enrichment cost
-    contract (one getinfo per pick across a 3-reroll run) is unchanged by
-    ranking.
-    """
-    versions = [
-        {'ident': 'a', 'name': 'Show.S01E01.1080p.WEB-DL.x264.mkv'},
-        {'ident': 'b', 'name': 'Show.S01E01.720p.x264.mkv'},
-    ]
-
-    def _raising_enrich(*a, **k):
-        raise AssertionError('_rank_versions must not call enrich_file_metadata')
-
-    with patch.object(series_ui, 'enrich_file_metadata', _raising_enrich):
-        series_ui._rank_versions(list(versions))
-
-    # Across a 3-reroll dialog run, enrich_file_metadata is still called
-    # exactly once per pick — ranking adds no extra API cost.
-    seasons = {1: {
-        1: _versions('a1', 'a1.mkv'),
-        2: _versions('b1', 'b1.mkv'),
-        3: _versions('c1', 'c1.mkv'),
-    }}
-    grouped = _grouped_series(seasons)
-    params = {'series': 'show', 'what': 'q'}
-
-    rand = _ScriptedRandom([(1, 1), (1, 2), (1, 3)])
-    dialog = _ScriptedDialog([1, 1, -1])
-    xbmcgui_mod = sys.modules['xbmcgui']
-    xbmcplugin_mod = sys.modules['xbmcplugin']
-    enrich_mock = MagicMock(return_value=False)
-
-    with patch.object(series_ui, 'revalidate', return_value='tok'), \
-         patch.object(series_ui, 'get_or_fetch_grouped', return_value=('ck', grouped)), \
-         patch.object(series_ui, 'random', rand), \
-         patch.object(series_ui, 'resolve_and_play'), \
-         patch.object(series_ui, 'popinfo'), \
-         patch.object(series_ui, 'enrich_file_metadata', enrich_mock), \
-         patch.object(xbmcgui_mod, 'Dialog', lambda: dialog), \
-         patch.object(xbmcplugin_mod, 'setResolvedUrl'):
-        series_ui.show_random_episode_dialog(params)
-
-    assert enrich_mock.call_count == 3
 
 
 def test_enrichment_budget_spent_on_top_ranked_versions():

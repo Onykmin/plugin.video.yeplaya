@@ -1,256 +1,221 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Unit tests for API error handling - token refresh, network failures."""
-import sys
-import os
+"""lib.api: input validation, XML handling, token revalidation, error paths.
 
-# Add parent directory for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+The Webshare HTTP layer is replaced by a scripted fake session; everything
+above it (api, revalidate, login, getlink, getinfo) is real code.
+"""
+import importlib
 
+import pytest
+import requests
 
-def test_token_cache_clearing():
-    """Test token cache is cleared on invalidation."""
-    settings = {}
-    settings['token'] = 'old_stale_token'
+from tests.conftest import MockAddon
 
-    # Simulate clear_token_cache
-    settings['token'] = ''
 
-    assert settings['token'] == '', "Token should be cleared"
+class FakeResponse:
+    def __init__(self, body, status=200):
+        self.content = body.encode() if isinstance(body, str) else body
+        self.status = status
 
+    def raise_for_status(self):
+        if self.status >= 400:
+            raise requests.exceptions.HTTPError('%d' % self.status)
 
-def test_revalidation_retry_logic():
-    """Test revalidation retries on failure."""
-    max_attempts = 3
-    attempts = 0
-    success = False
 
-    for attempt in range(max_attempts):
-        attempts += 1
-        # Simulate first two failures, third success
-        if attempt == 2:
-            success = True
-            break
+class FakeSession:
+    """Answers POST /api/<fn>/ from a dict of fn -> response | [responses] | exception."""
 
-    assert attempts == 3, "Should try 3 times"
-    assert success, "Should succeed on third attempt"
+    def __init__(self, script):
+        self.script = {k: (list(v) if isinstance(v, list) else [v]) for k, v in script.items()}
+        self.calls = []
 
+    def post(self, url, data=None, timeout=None):
+        fn = url.rstrip('/').rsplit('/', 1)[-1]
+        self.calls.append((fn, data))
+        queue = self.script[fn]
+        item = queue.pop(0) if len(queue) > 1 else queue[0]
+        if isinstance(item, Exception):
+            raise item
+        return item
 
-def test_revalidation_max_failures():
-    """Test revalidation returns None after max failures."""
-    max_attempts = 3
-    result = None
 
-    for attempt in range(max_attempts):
-        # All attempts fail
-        is_ok = False
-        if is_ok:
-            result = 'token'
-            break
-        if attempt == max_attempts - 1:
-            result = None
+def ok(**fields):
+    inner = ''.join('<%s>%s</%s>' % (k, v, k) for k, v in fields.items())
+    return FakeResponse('<response><status>OK</status>%s</response>' % inner)
 
-    assert result is None, "Should return None after max failures"
 
+ERR = FakeResponse('<response><status>ERROR</status></response>')
 
-def test_api_timeout_handling():
-    """Test API timeout returns None."""
-    # Simulate timeout scenario
-    def mock_api_timeout():
-        return None  # Timeout returns None
 
-    result = mock_api_timeout()
-    assert result is None, "Timeout should return None"
+@pytest.fixture
+def env(monkeypatch):
+    api = importlib.import_module('lib.api')
+    utils = importlib.import_module('lib.utils')
+    addon = MockAddon()
+    notices = []
+    monkeypatch.setattr(api, '_addon', addon)
+    monkeypatch.setattr(utils, 'popinfo', lambda msg, **kw: notices.append(msg))
 
+    def use(script):
+        session = FakeSession(script)
+        monkeypatch.setattr(api, '_session', session)
+        return session
 
-def test_api_request_exception_handling():
-    """Test API request exception returns None."""
-    # Simulate request exception
-    def mock_api_error():
-        return None  # Exception returns None
+    class Env:
+        pass
 
-    result = mock_api_error()
-    assert result is None, "Request exception should return None"
+    e = Env()
+    e.api, e.addon, e.notices, e.use = api, addon, notices, use
+    return e
 
 
-def test_xml_parse_error_handling():
-    """Test XML parse error returns None."""
-    from xml.etree import ElementTree as ET
+@pytest.mark.parametrize('ident', ['valid_ident-123', 'a' * 100, 'AbC'])
+def test_validate_ident_accepts_safe_values(env, ident):
+    assert env.api.validate_ident(ident) is True
 
-    # Invalid XML
-    invalid_xml = b"<not>valid<xml"
 
-    try:
-        result = ET.fromstring(invalid_xml)
-    except ET.ParseError:
-        result = None
+@pytest.mark.parametrize('ident', [
+    None, '', 0, 123, b'abc', 'abc!@#', '../etc/passwd', 'id;DROP TABLE',
+    '<script>alert(1)</script>', 'with space', 'a' * 101,
+])
+def test_validate_ident_rejects_unsafe_values(env, ident):
+    assert env.api.validate_ident(ident) is False
 
-    assert result is None, "Parse error should return None"
 
+@pytest.mark.parametrize('content', [b'<not>valid<xml', b'', None, b'x' * (10 * 1024 * 1024 + 1)])
+def test_parse_xml_returns_none_for_bad_or_oversized_input(env, content):
+    assert env.api.parse_xml(content) is None
 
-def test_is_ok_with_none_xml():
-    """Test is_ok handles None XML."""
-    xml = None
 
-    # Replicate is_ok logic
-    if xml is None:
-        result = False
-    else:
-        status_elem = xml.find('status')
-        result = status_elem is not None and status_elem.text == 'OK'
+@pytest.mark.parametrize('body, expected', [
+    ('<response><status>OK</status></response>', True),
+    ('<response><status>ERROR</status></response>', False),
+    ('<response><data>x</data></response>', False),
+])
+def test_is_ok(env, body, expected):
+    assert env.api.is_ok(env.api.parse_xml(body)) is expected
 
-    assert result is False, "is_ok should return False for None"
 
+def test_is_ok_none(env):
+    assert env.api.is_ok(None) is False
 
-def test_is_ok_with_missing_status():
-    """Test is_ok handles missing status element."""
-    from xml.etree import ElementTree as ET
 
-    xml = ET.fromstring('<response><data>test</data></response>')
-
-    status_elem = xml.find('status')
-    if status_elem is None:
-        result = False
-    else:
-        result = status_elem.text == 'OK'
-
-    assert result is False, "is_ok should return False for missing status"
-
-
-def test_is_ok_with_error_status():
-    """Test is_ok handles error status."""
-    from xml.etree import ElementTree as ET
-
-    xml = ET.fromstring('<response><status>ERROR</status></response>')
-
-    status_elem = xml.find('status')
-    result = status_elem is not None and status_elem.text == 'OK'
-
-    assert result is False, "is_ok should return False for ERROR status"
-
-
-def test_is_ok_with_ok_status():
-    """Test is_ok returns True for OK status."""
-    from xml.etree import ElementTree as ET
-
-    xml = ET.fromstring('<response><status>OK</status></response>')
-
-    status_elem = xml.find('status')
-    result = status_elem is not None and status_elem.text == 'OK'
-
-    assert result is True, "is_ok should return True for OK status"
-
-
-def test_validate_ident_empty():
-    """Test ident validation rejects empty values."""
-    test_cases = [None, '', 0, False]
-
-    for ident in test_cases:
-        result = bool(ident)
-        assert result is False, f"Should reject: {ident}"
-
-
-def test_validate_ident_invalid_chars():
-    """Test ident validation rejects invalid characters."""
-    import string
-
-    allowed = string.ascii_letters + string.digits + '_-'
-
-    test_cases = [
-        ('valid_ident-123', True),
-        ('abc!@#', False),
-        ('../etc/passwd', False),
-        ('id;DROP TABLE', False),
-        ('<script>alert(1)</script>', False),
-    ]
-
-    for ident, expected in test_cases:
-        is_valid = ident and all(c in allowed for c in ident)
-        assert is_valid == expected, f"Ident '{ident}' validation failed"
-
-
-def test_validate_ident_too_long():
-    """Test ident validation rejects overly long values."""
-    max_length = 100
-
-    short_ident = 'a' * 50
-    long_ident = 'a' * 150
-
-    assert len(short_ident) <= max_length, "Short ident should pass"
-    assert len(long_ident) > max_length, "Long ident should fail"
-
-
-def test_xml_size_limit():
-    """Test XML size limit prevents DoS."""
-    max_size = 10 * 1024 * 1024  # 10MB
-
-    small_content = b'<response>test</response>'
-    large_content = b'<response>' + b'x' * (11 * 1024 * 1024) + b'</response>'
-
-    assert len(small_content) < max_size, "Small content should pass"
-    assert len(large_content) > max_size, "Large content should be rejected"
-
-
-def test_401_clears_token():
-    """Test 401-like response clears token cache."""
-    settings = {}
-    settings['token'] = 'valid_token'
-
-    # Simulate 401 response (is_ok returns False)
-    is_ok = False
-
-    if not is_ok:
-        # Clear token on auth failure
-        settings['token'] = ''
-
-    assert settings['token'] == '', "Token should be cleared on 401"
-
-
-def test_network_error_specific_message():
-    """Test network errors get specific messages."""
-    error_codes = {
-        'timeout': 30305,  # Network error
-        'connection': 30305,  # Network error
-        'auth': 30102,  # Auth error
-        'generic': 30107,  # Generic API error
-    }
-
-    for error_type, expected_code in error_codes.items():
-        assert expected_code > 0, f"Error code for {error_type} should be positive"
-
-
-if __name__ == '__main__':
-    print("Running API error tests...")
-    test_token_cache_clearing()
-    print("  [OK] test_token_cache_clearing")
-    test_revalidation_retry_logic()
-    print("  [OK] test_revalidation_retry_logic")
-    test_revalidation_max_failures()
-    print("  [OK] test_revalidation_max_failures")
-    test_api_timeout_handling()
-    print("  [OK] test_api_timeout_handling")
-    test_api_request_exception_handling()
-    print("  [OK] test_api_request_exception_handling")
-    test_xml_parse_error_handling()
-    print("  [OK] test_xml_parse_error_handling")
-    test_is_ok_with_none_xml()
-    print("  [OK] test_is_ok_with_none_xml")
-    test_is_ok_with_missing_status()
-    print("  [OK] test_is_ok_with_missing_status")
-    test_is_ok_with_error_status()
-    print("  [OK] test_is_ok_with_error_status")
-    test_is_ok_with_ok_status()
-    print("  [OK] test_is_ok_with_ok_status")
-    test_validate_ident_empty()
-    print("  [OK] test_validate_ident_empty")
-    test_validate_ident_invalid_chars()
-    print("  [OK] test_validate_ident_invalid_chars")
-    test_validate_ident_too_long()
-    print("  [OK] test_validate_ident_too_long")
-    test_xml_size_limit()
-    print("  [OK] test_xml_size_limit")
-    test_401_clears_token()
-    print("  [OK] test_401_clears_token")
-    test_network_error_specific_message()
-    print("  [OK] test_network_error_specific_message")
-    print("\nAll API error tests passed!")
+@pytest.mark.parametrize('exc', [
+    requests.exceptions.Timeout(), requests.exceptions.ConnectionError('down')])
+def test_api_returns_none_on_network_failure(env, exc):
+    env.use({'ping': exc})
+    assert env.api.api('ping', {}) is None
+
+
+def test_api_returns_none_on_http_error(env):
+    env.use({'ping': FakeResponse('', status=503)})
+    assert env.api.api('ping', {}) is None
+
+
+def test_revalidate_returns_existing_valid_token(env):
+    env.addon.setSetting('token', 'good')
+    session = env.use({'user_data': ok(vip='1')})
+    assert env.api.revalidate() == 'good'
+    assert [fn for fn, _ in session.calls] == ['user_data']
+    assert env.notices == []
+
+
+def test_revalidate_warns_when_account_is_not_vip(env):
+    env.addon.setSetting('token', 'good')
+    env.use({'user_data': ok(vip='0')})
+    assert env.api.revalidate() == 'good'
+    assert env.notices == ['String_30103']
+
+
+def test_revalidate_rejected_token_is_cleared_then_relogin_is_attempted(env):
+    env.addon.setSetting('token', 'stale')
+    session = env.use({'user_data': ERR})
+    assert env.api.revalidate() is None  # no stored credentials -> login prompt
+    assert env.addon.getSetting('token') == ''
+    assert [fn for fn, _ in session.calls] == ['user_data']
+    assert env.notices == ['String_30101']
+
+
+def test_revalidate_recovers_from_stale_token_by_logging_in_again(env):
+    env.addon.setSetting('token', 'stale')
+    env.addon.setSetting('wsuser', 'bob')
+    env.addon.setSetting('wspass', 'secret')
+    env.use({
+        'user_data': [ERR, ok(vip='1')],
+        'salt': ok(salt='abc123'),
+        'login': ok(token='FRESH'),
+    })
+    assert env.api.revalidate() == 'FRESH'
+
+
+def test_revalidate_network_failure_returns_none_without_clearing_token(env):
+    env.addon.setSetting('token', 'good')
+    env.use({'user_data': requests.exceptions.ConnectionError('down')})
+    assert env.api.revalidate() is None
+    assert env.addon.getSetting('token') == 'good'
+
+
+def test_revalidate_logs_in_when_no_token(env):
+    env.addon.setSetting('wsuser', 'bob')
+    env.addon.setSetting('wspass', 'secret')
+    session = env.use({
+        'salt': ok(salt='abc123'),
+        'login': ok(token='NEWTOKEN'),
+        'user_data': ok(vip='1'),
+    })
+    assert env.api.revalidate() == 'NEWTOKEN'
+    login_data = dict(session.calls)['login']
+    assert login_data['username_or_email'] == 'bob'
+    assert 'secret' not in login_data.values()  # only the hashed password goes out
+
+
+def test_login_without_credentials_prompts_settings_and_makes_no_request(env):
+    session = env.use({})
+    assert env.api.login() is None
+    assert session.calls == []
+    assert env.notices == ['String_30101']
+
+
+def test_login_wrong_password_notifies_and_stores_no_token(env):
+    env.addon.setSetting('wsuser', 'bob')
+    env.addon.setSetting('wspass', 'wrong')
+    env.use({'salt': ok(salt='abc123'), 'login': ERR})
+    assert env.api.login() is None
+    assert env.addon.getSetting('token') == ''
+    assert env.notices == ['String_30102']
+
+
+def test_getlink_returns_link_and_persists_device_uuid(env):
+    session = env.use({'file_link': ok(link='https://dl.example/f')})
+    assert env.api.getlink('abc123', 'tok') == 'https://dl.example/f'
+    uuid_sent = session.calls[0][1]['device_uuid']
+    assert uuid_sent and env.addon.getSetting('duuid') == uuid_sent
+    env.api.getlink('abc123', 'tok')
+    assert session.calls[1][1]['device_uuid'] == uuid_sent
+
+
+def test_getlink_rejects_bad_ident_without_network(env):
+    session = env.use({})
+    assert env.api.getlink('../x', 'tok') is None
+    assert session.calls == []
+
+
+@pytest.mark.parametrize('reply', [ERR, requests.exceptions.Timeout()])
+def test_getlink_failure_notifies_user(env, reply):
+    env.use({'file_link': reply})
+    assert env.api.getlink('abc123', 'tok') is None
+    assert env.notices == ['String_30107']
+
+
+def test_getinfo_retries_as_maybe_removed_when_first_lookup_fails(env):
+    session = env.use({'file_info': [ERR, ok(name='f.mkv')]})
+    xml = env.api.getinfo('abc123', 'tok')
+    assert xml.find('name').text == 'f.mkv'
+    assert 'maybe_removed' not in session.calls[0][1]
+    assert session.calls[1][1]['maybe_removed'] == 'true'
+
+
+def test_getinfo_gives_up_when_both_lookups_fail(env):
+    env.use({'file_info': ERR})
+    assert env.api.getinfo('abc123', 'tok') is None
+    assert env.notices == ['String_30107']

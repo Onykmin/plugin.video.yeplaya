@@ -1,202 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Unit tests for playback module - None handling and error cases."""
+"""Playback: state-key derivation from play-URL params, cross-process download lock."""
 import sys
 import os
 
-# Add parent directory for imports
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-# Mocks provided by conftest.py
+import tests.conftest  # noqa: F401 — installs Kodi mocks
+from lib import playback
 
 
-def test_getinfo_none_handling():
-    """Test getinfo returns None safely when API fails."""
-    # Mock getinfo returning None
-    result = None  # Simulates failed API call
-
-    # Old code would crash: info.find('name').text
-    # New code checks for None first
-    if result is None:
-        name = None
-    else:
-        name_elem = result.find('name')
-        name = name_elem.text if name_elem is not None else None
-
-    assert name is None, "Should handle None from getinfo"
-
-
-def test_getinfo_missing_name_element():
-    """Test handling when XML has no name element."""
-    from xml.etree import ElementTree as ET
-
-    # XML without name element
-    xml = ET.fromstring('<response><status>OK</status></response>')
-
-    name_elem = xml.find('name')
-    if name_elem is None or name_elem.text is None:
-        name = None
-    else:
-        name = name_elem.text
-
-    assert name is None, "Should handle missing name element"
-
-
-def test_getinfo_valid_response():
-    """Test normal case with valid XML response."""
-    from xml.etree import ElementTree as ET
-
-    xml = ET.fromstring('<response><status>OK</status><name>test_file.mkv</name></response>')
-
-    name_elem = xml.find('name')
-    if name_elem is None or name_elem.text is None:
-        name = None
-    else:
-        name = name_elem.text
-
-    assert name == 'test_file.mkv', "Should extract filename"
-
-
-def test_session_headers_safety():
-    """Test safe access to session headers."""
-    # Case 1: None session
-    session = None
-    headers = session.headers if session and hasattr(session, 'headers') else None
-    assert headers is None, "Should handle None session"
-
-    # Case 2: Session without headers attr
-    class BadSession:
-        pass
-    session = BadSession()
-    headers = session.headers if session and hasattr(session, 'headers') else None
-    assert headers is None, "Should handle session without headers"
-
-    # Case 3: Valid session
-    class GoodSession:
-        headers = {'User-Agent': 'Test'}
-    session = GoodSession()
-    headers = session.headers if session and hasattr(session, 'headers') else None
-    assert headers == {'User-Agent': 'Test'}, "Should get headers from valid session"
-
-
-def test_download_progress_no_content_length():
-    """Test download progress estimation without Content-Length header."""
-    # Simulate response without content-length
-    total = None
-    dl = 5 * 1024 * 1024  # 5MB downloaded
-
-    if total is not None:
-        done = int(dl / (total / 100))
-    else:
-        # Fallback: show MB downloaded
-        done = dl // (1024 * 1024)
-
-    assert done == 5, "Should show 5MB downloaded"
-
-
-def test_download_progress_with_content_length():
-    """Test download progress with Content-Length header."""
-    total = 100 * 1024 * 1024  # 100MB total
-    dl = 25 * 1024 * 1024  # 25MB downloaded
-
-    if total is not None:
-        total_int = int(total)
-        pct = total_int / 100 if total_int > 0 else 1
-        done = int(dl / pct)
-    else:
-        done = dl // (1024 * 1024)
-
-    assert done == 25, "Should show 25% progress"
-
-
-def test_token_none_check():
-    """Test token None check in play function."""
-    token = None
-
-    # Old code might continue without token
-    # New code returns early with error
-    if token is None:
-        result = 'auth_error'
-    else:
-        result = 'proceed'
-
-    assert result == 'auth_error', "Should detect missing token"
-
-
-def test_getlink_none_check():
-    """Test getlink None check before proceeding."""
-    link = None
-
-    if link is None:
-        result = 'link_error'
-    else:
-        result = 'proceed'
-
-    assert result == 'link_error', "Should detect missing link"
-
-
-def test_filename_sanitization():
-    """Test filename sanitization for download."""
-    # Malicious filenames
-    test_cases = [
-        ('../../../etc/passwd', 'passwd'),
-        ('..\\..\\Windows\\System32\\config', 'config'),
-        ('test/file.mkv', 'file.mkv'),
-        ('normal_file.mkv', 'normal_file.mkv'),
-    ]
-
-    for malicious, expected in test_cases:
-        # Apply sanitization
-        sanitized = os.path.basename(
-            malicious.replace('..', '').replace('/', '_').replace('\\', '_')
-        )
-        # Note: actual result may differ due to order of operations
-        # Just verify no path traversal remains
-        assert '..' not in sanitized, f"Path traversal in: {sanitized}"
-        assert '/' not in sanitized, f"Forward slash in: {sanitized}"
-        assert '\\' not in sanitized, f"Backslash in: {sanitized}"
-
-
-def test_build_state_key_season_zero_episode_zero():
-    """Fix E: int(0) for season/episode must still build a valid ep:... key."""
-    from lib.playback import _build_state_key
-    key = _build_state_key({
-        'series': 's', 'season': 0, 'episode': 0, 'ident': 'x',
-    })
-    assert key == 'ep:s|S00E00', "season=0/episode=0 should not fall back to file:"
-
-
-def test_build_state_key_empty_season_falls_back():
-    """Fix E: empty-string season must fall back to file:<ident>."""
-    from lib.playback import _build_state_key
-    key = _build_state_key({
-        'series': 's', 'season': '', 'episode': 0, 'ident': 'x',
-    })
-    assert key == 'file:x', "empty-string season should fall back to file key"
-
-
-def test_build_state_key_string_ints():
-    """URL params come as strings; '0'/'0' must still yield ep:... not file:."""
-    from lib.playback import _build_state_key
-    key = _build_state_key({
-        'series': 's', 'season': '0', 'episode': '0', 'ident': 'x',
-    })
-    assert key == 'ep:s|S00E00'
+@pytest.mark.parametrize('params, expected', [
+    # season/episode 0 are real (specials) and must not fall back to file:
+    ({'series': 's', 'season': 0, 'episode': 0, 'ident': 'x'}, 'ep:s|S00E00'),
+    # URL params arrive as strings
+    ({'series': 's', 'season': '0', 'episode': '0', 'ident': 'x'}, 'ep:s|S00E00'),
+    ({'series': 's', 'season': '', 'episode': 0, 'ident': 'x'}, 'file:x'),
+    ({'ident': 'x'}, 'file:x'),
+    ({'movie_key': 'inception|2010', 'ident': 'x'}, 'mv:inception|2010'),
+])
+def test_build_state_key(params, expected):
+    assert playback._build_state_key(params) == expected
 
 
 class TestCrossProcessDownloadLock:
     """The cross-process flock guard (Kodi runs each call in its own process)."""
 
-    def _tmp(self, tmp_path):
-        from lib import playback
-        playback.translatePath = lambda p: str(tmp_path) + '/'
+    @pytest.fixture
+    def pb(self, tmp_path, monkeypatch):
+        if playback._fcntl is None:
+            pytest.skip("no fcntl on this platform")
+        monkeypatch.setattr(playback, 'translatePath', lambda p: str(tmp_path) + '/')
         return playback
 
-    def test_second_acquire_blocks_while_held(self, tmp_path):
-        pb = self._tmp(tmp_path)
-        if pb._fcntl is None:
-            import pytest
-            pytest.skip("no fcntl on this platform")
+    def test_second_acquire_blocks_while_held(self, pb):
         h1 = pb._acquire_cross_process_lock('ID1')
         assert h1 not in (None, 'noflock')
         assert pb._acquire_cross_process_lock('ID1') is None, "held lock must block"
@@ -205,43 +44,57 @@ class TestCrossProcessDownloadLock:
         assert h2 not in (None, 'noflock'), "lock re-acquirable after release"
         h2.close()
 
-    def test_distinct_idents_independent(self, tmp_path):
-        pb = self._tmp(tmp_path)
-        if pb._fcntl is None:
-            import pytest
-            pytest.skip("no fcntl on this platform")
+    def test_distinct_idents_independent(self, pb):
         a = pb._acquire_cross_process_lock('A')
         b = pb._acquire_cross_process_lock('B')
         assert a not in (None, 'noflock') and b not in (None, 'noflock')
-        a.close(); b.close()
+        a.close()
+        b.close()
 
-    def test_bad_lock_path_degrades_not_blocks(self, tmp_path):
-        """A missing/unwritable lock dir must NOT wedge downloads — degrade."""
-        from lib import playback
-        playback.translatePath = lambda p: '/nonexistent_dir_xyz_zzz/'
-        result = playback._acquire_cross_process_lock('X')
-        # 'noflock' on POSIX (open failed) or 'noflock' on no-fcntl: never None.
-        assert result == 'noflock'
+    def test_bad_lock_path_degrades_not_blocks(self, monkeypatch):
+        """A missing/unwritable lock dir must NOT wedge downloads: degrade."""
+        monkeypatch.setattr(playback, 'translatePath', lambda p: '/nonexistent_dir_xyz_zzz/')
+        assert playback._acquire_cross_process_lock('X') == 'noflock'
 
 
-if __name__ == '__main__':
-    print("Running playback tests...")
-    test_getinfo_none_handling()
-    print("  [OK] test_getinfo_none_handling")
-    test_getinfo_missing_name_element()
-    print("  [OK] test_getinfo_missing_name_element")
-    test_getinfo_valid_response()
-    print("  [OK] test_getinfo_valid_response")
-    test_session_headers_safety()
-    print("  [OK] test_session_headers_safety")
-    test_download_progress_no_content_length()
-    print("  [OK] test_download_progress_no_content_length")
-    test_download_progress_with_content_length()
-    print("  [OK] test_download_progress_with_content_length")
-    test_token_none_check()
-    print("  [OK] test_token_none_check")
-    test_getlink_none_check()
-    print("  [OK] test_getlink_none_check")
-    test_filename_sanitization()
-    print("  [OK] test_filename_sanitization")
-    print("\nAll playback tests passed!")
+class TestPlayEntry:
+    """play(): every failure path must resolve the handle as failed (no hung
+    spinner) and the happy path must hand the derived state key to playback."""
+
+    @pytest.fixture
+    def seams(self, monkeypatch):
+        from unittest.mock import MagicMock
+        s = type('S', (), {})()
+        s.resolve = MagicMock()
+        s.popinfo = MagicMock()
+        s.set_resolved = MagicMock()
+        monkeypatch.setattr(playback, 'resolve_and_play', s.resolve)
+        monkeypatch.setattr(playback, 'popinfo', s.popinfo)
+        monkeypatch.setattr(playback.xbmcplugin, 'setResolvedUrl', s.set_resolved)
+        monkeypatch.setattr(playback, 'revalidate', lambda: 'tok')
+        return s
+
+    def test_success_passes_token_and_state_key(self, seams):
+        playback.play({'ident': 'abc', 'name': 'f.mkv', 'series': 'show',
+                       'season': '1', 'episode': '2'})
+        seams.resolve.assert_called_once_with('abc', 'f.mkv', 'tok',
+                                              state_key='ep:show|S01E02')
+        seams.set_resolved.assert_not_called()
+
+    def test_no_token_notifies_and_fails_resolve(self, seams, monkeypatch):
+        monkeypatch.setattr(playback, 'revalidate', lambda: None)
+        playback.play({'ident': 'abc', 'name': 'f.mkv'})
+        seams.resolve.assert_not_called()
+        seams.popinfo.assert_called_once()
+        assert seams.set_resolved.call_args[0][1] is False
+
+    def test_missing_ident_fails_resolve_without_playing(self, seams):
+        playback.play({'name': 'f.mkv'})
+        seams.resolve.assert_not_called()
+        assert seams.set_resolved.call_args[0][1] is False
+
+    def test_unexpected_error_notifies_and_fails_resolve(self, seams):
+        seams.resolve.side_effect = RuntimeError('boom')
+        playback.play({'ident': 'abc', 'name': 'f.mkv'})
+        seams.popinfo.assert_called_once()
+        assert seams.set_resolved.call_args[0][1] is False

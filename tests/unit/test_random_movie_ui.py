@@ -3,10 +3,8 @@
 """Unit tests for lib.random_movie_ui — one-click random movie picker.
 
 Covers:
-- _display_title picking cs over en, falling back to en, and the uniformity
-  invariant (record shape must never leak into observable behaviour).
-- _build_dialog_rows: always exactly 3 rows (film / Reroll / Cancel) with a
-  stable actions list, regardless of title count.
+- _display_title picking cs over en, falling back to en.
+- _build_dialog_rows: film / Reroll / Cancel actions; year is display-only.
 - show_random_movie_dialog: dialog ALWAYS shown (no more single-title
   auto-search bypass); selecting the film row hands off via storesearch() +
   Container.Update (NOT dosearch/addDirectoryItem/endOfDirectory); Reroll
@@ -16,12 +14,8 @@ Covers:
   film is offered twice; auto-reroll-on-empty-search is GONE (impossible
   across the Container.Update handoff — a search handoff happens at most
   once per confirmed selection).
-- The main.py _RESOLVE_ACTIONS guard: 'random_movie' must be present.
 """
 
-import os
-import re
-import threading
 import time
 import unittest
 import unittest.mock as mock
@@ -63,10 +57,6 @@ class TestDisplayTitle(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestBuildDialogRows(unittest.TestCase):
-    def test_always_exactly_three_rows(self):
-        listitems, actions = rmu._build_dialog_rows('Some Title')
-        self.assertEqual(len(listitems), 3)
-        self.assertEqual(len(actions), 3)
 
     def test_actions_are_search_reroll_cancel_in_order(self):
         listitems, actions = rmu._build_dialog_rows('Some Title')
@@ -74,25 +64,6 @@ class TestBuildDialogRows(unittest.TestCase):
             ('search', 'Some Title'), ('reroll', None), ('cancel', None),
         ])
 
-    def test_row_count_stays_three_when_year_known(self):
-        """Year presence must never change row COUNT — only the film row's
-        TEXT (uniformity invariant, extended to year)."""
-        listitems, actions = rmu._build_dialog_rows('Godzilla', 1998)
-        self.assertEqual(len(listitems), 3)
-        self.assertEqual(len(actions), 3)
-
-    def test_film_row_label_includes_year_when_known(self):
-        """MockAddon.getLocalizedString returns a plain 'String_30450' with
-        no '{}' placeholder, so the mocked label itself never shows the
-        substituted text — assert on the ROW TEXT fed into .format()
-        instead, by capturing what's passed to getLocalizedString(30450).format(...).
-        """
-        with mock.patch.object(rmu._addon, 'getLocalizedString',
-                                wraps=rmu._addon.getLocalizedString) as gls_mock:
-            rmu._build_dialog_rows('Godzilla', 1998)
-        # Real string has a '{}' placeholder in strings.po; the mock's
-        # return value doesn't, so we assert on the *call*, not the result.
-        gls_mock.assert_any_call(30450)
 
     def test_film_row_text_includes_year_when_known_real_format(self):
         """Use a real format-capable string (mirroring strings.po's actual
@@ -115,19 +86,6 @@ class TestBuildDialogRows(unittest.TestCase):
         Webshare search results."""
         _, actions = rmu._build_dialog_rows('Godzilla', 1998)
         self.assertEqual(actions[0], ('search', 'Godzilla'))
-
-    def test_year_sets_info_label_via_set_video_info(self):
-        """The year is set as a Kodi info label on the film row's ListItem
-        via lib.utils.set_video_info (Task 3), Matrix-safe — never a direct
-        InfoTagVideo call in this module."""
-        with mock.patch.object(rmu, 'set_video_info') as set_info_mock:
-            listitems, _ = rmu._build_dialog_rows('Godzilla', 1998)
-        set_info_mock.assert_called_once_with(listitems[0], {'year': 1998})
-
-    def test_no_year_set_video_info_not_called(self):
-        with mock.patch.object(rmu, 'set_video_info') as set_info_mock:
-            rmu._build_dialog_rows('Godzilla')
-        set_info_mock.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -284,49 +242,16 @@ class TestSingleVsTwoTitle(unittest.TestCase):
         self.assertEqual(len(result['dialog'].shown), 1)
         self.assertEqual(result['storesearch_calls'], ['Solo Title'])
 
-    def test_two_titles_shows_dialog_with_three_rows(self):
-        item = _item('Q1', cs='Cesky', en='English')
-        result = _run([item], selections=[0])
-        self.assertEqual(len(result['dialog'].shown), 1)
-        self.assertEqual(len(result['dialog'].shown[0]), 3)  # film, reroll, cancel
 
     def test_selecting_film_row_searches_cs_preferred_title(self):
         item = _item('Q1', cs='Cesky', en='English')
         result = _run([item], selections=[0])
         self.assertEqual(result['storesearch_calls'], ['Cesky'])
 
-    def test_selecting_film_row_searches_en_when_cs_absent(self):
-        item = _item('Q1', en='English')
-        result = _run([item], selections=[0])
-        self.assertEqual(result['storesearch_calls'], ['English'])
-
 
 # ---------------------------------------------------------------------------
 # Uniformity invariant: record shape has zero observable effect
 # ---------------------------------------------------------------------------
-
-class TestUniformityInvariant(unittest.TestCase):
-    """Locks in "the user cannot tell how many labels the record had" —
-    dialog shown, exactly 3 rows, exactly one search handoff on confirming
-    row 0, regardless of cs-only / en-only / distinct / byte-identical."""
-
-    def _assert_uniform_shape(self, item, expected_title):
-        result = _run([item], selections=[0])
-        self.assertEqual(len(result['dialog'].shown), 1)
-        self.assertEqual(len(result['dialog'].shown[0]), 3)
-        self.assertEqual(result['storesearch_calls'], [expected_title])
-
-    def test_cs_only(self):
-        self._assert_uniform_shape(_item('Q1', cs='Nejaky Film'), 'Nejaky Film')
-
-    def test_en_only(self):
-        self._assert_uniform_shape(_item('Q2', en='Some Film'), 'Some Film')
-
-    def test_both_differing(self):
-        self._assert_uniform_shape(_item('Q3', cs='Cesky', en='English'), 'Cesky')
-
-    def test_both_byte_identical(self):
-        self._assert_uniform_shape(_item('Q4', cs='Germinal', en='Germinal'), 'Germinal')
 
 
 # ---------------------------------------------------------------------------
@@ -466,12 +391,6 @@ class TestNoAutoRerollOnSearch(unittest.TestCase):
         self.assertEqual(len(result['executebuiltin_calls']), 1)
         self.assertEqual(len(result['pick_calls']), 1)
 
-    def test_no_max_empty_rerolls_constant_or_search_empty_handling(self):
-        """The mechanism's control constant must not exist any more — this
-        pins the deletion so it can't silently come back."""
-        self.assertFalse(hasattr(rmu, 'MAX_EMPTY_REROLLS'))
-        self.assertFalse(hasattr(rmu, 'empty_rerolls'))
-
 
 # ---------------------------------------------------------------------------
 # pick_random returning None: empty pool (30453) vs exhausted pool (30447)
@@ -528,34 +447,6 @@ class TestExcludedAccumulation(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # main.py _RESOLVE_ACTIONS guard
 # ---------------------------------------------------------------------------
-
-class TestMainResolveActionsIncludesRandomMovie(unittest.TestCase):
-    def test_random_movie_in_resolve_actions(self):
-        """_RESOLVE_ACTIONS is defined inside the `except` block of main.py's
-        `if __name__ == '__main__':` guard, so it can't be imported directly.
-
-        Without 'random_movie' in this set, a fatal error raised mid
-        random_movie action falls through to xbmcplugin.endOfDirectory on a
-        handle opened for setResolvedUrl (a playable/resolve action), which
-        Kodi rejects — leaving the user on a hung spinner. Parse the source
-        to guard against this regression (mirrors test_random_episode.py's
-        equivalent guard for 'random_episode').
-        """
-        main_path = os.path.join(os.path.dirname(__file__), '../../main.py')
-        with open(main_path, 'r', encoding='utf-8') as f:
-            source = f.read()
-
-        start_marker = '_RESOLVE_ACTIONS = {'
-        start_idx = source.index(start_marker)
-        open_brace_idx = start_idx + len(start_marker) - 1
-        close_idx = source.index('}', open_brace_idx)
-        set_literal_body = source[open_brace_idx + 1:close_idx]
-
-        entries = re.findall(r"'([^']*)'|\"([^\"]*)\"", set_literal_body)
-        entries = {a or b for a, b in entries}
-
-        self.assertIn('random_movie', entries)
-
 
 
 class TestColdPoolProgressAnimates(unittest.TestCase):

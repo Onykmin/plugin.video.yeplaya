@@ -1,75 +1,47 @@
 # -*- coding: utf-8 -*-
-"""Tests for safe_extract_zip — path traversal security."""
-import sys
-import os
+"""safe_extract_zip: archive members must never land outside the target dir."""
 import zipfile
-import tempfile
-import shutil
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+
+import pytest
 
 from lib.database import safe_extract_zip
 
 
-class TestSafeExtractZip:
-    def _make_zip(self, members, tmpdir):
-        """Create a ZIP with given member names and return path."""
-        zip_path = os.path.join(tmpdir, 'test.zip')
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for name in members:
-                zf.writestr(name, 'content')
-        return zip_path
+def make_zip(tmp_path, members):
+    path = tmp_path / 'test.zip'
+    with zipfile.ZipFile(path, 'w') as zf:
+        for name in members:
+            zf.writestr(name, 'content')
+    return str(path)
 
-    def test_valid_extraction(self):
-        tmpdir = tempfile.mkdtemp()
-        try:
-            zip_path = self._make_zip(['file.txt', 'subdir/file2.txt'], tmpdir)
-            extract_to = os.path.join(tmpdir, 'out')
-            os.makedirs(extract_to)
-            assert safe_extract_zip(zip_path, extract_to) is True
-            assert os.path.exists(os.path.join(extract_to, 'file.txt'))
-            assert os.path.exists(os.path.join(extract_to, 'subdir', 'file2.txt'))
-        finally:
-            shutil.rmtree(tmpdir)
 
-    def test_path_traversal_blocked(self):
-        tmpdir = tempfile.mkdtemp()
-        try:
-            zip_path = self._make_zip(['../../../etc/passwd'], tmpdir)
-            extract_to = os.path.join(tmpdir, 'out')
-            os.makedirs(extract_to)
-            assert safe_extract_zip(zip_path, extract_to) is False
-            # File should NOT have been extracted
-            assert not os.path.exists(os.path.join(tmpdir, 'etc', 'passwd'))
-        finally:
-            shutil.rmtree(tmpdir)
+@pytest.fixture
+def dest(tmp_path):
+    d = tmp_path / 'out'
+    d.mkdir()
+    return d
 
-    def test_absolute_path_blocked(self):
-        tmpdir = tempfile.mkdtemp()
-        try:
-            zip_path = self._make_zip(['/tmp/evil.txt'], tmpdir)
-            extract_to = os.path.join(tmpdir, 'out')
-            os.makedirs(extract_to)
-            assert safe_extract_zip(zip_path, extract_to) is False
-        finally:
-            shutil.rmtree(tmpdir)
 
-    def test_bad_zip_file(self):
-        tmpdir = tempfile.mkdtemp()
-        try:
-            bad_path = os.path.join(tmpdir, 'bad.zip')
-            with open(bad_path, 'w') as f:
-                f.write('not a zip')
-            assert safe_extract_zip(bad_path, tmpdir) is False
-        finally:
-            shutil.rmtree(tmpdir)
+def test_valid_archive_is_extracted(tmp_path, dest):
+    assert safe_extract_zip(make_zip(tmp_path, ['file.txt', 'sub/file2.txt']), str(dest)) is True
+    assert (dest / 'file.txt').is_file()
+    assert (dest / 'sub' / 'file2.txt').is_file()
 
-    def test_deep_traversal_blocked(self):
-        tmpdir = tempfile.mkdtemp()
-        try:
-            # ../../../ goes well outside extract_to
-            zip_path = self._make_zip(['a/../../../outside.txt'], tmpdir)
-            extract_to = os.path.join(tmpdir, 'out')
-            os.makedirs(extract_to)
-            assert safe_extract_zip(zip_path, extract_to) is False
-        finally:
-            shutil.rmtree(tmpdir)
+
+@pytest.mark.parametrize('member', [
+    '../../../etc/passwd',
+    'a/../../../outside.txt',
+    '/tmp/evil.txt',
+    '../out_evil/x.txt',  # sibling sharing the destination's name as prefix
+])
+def test_escaping_member_rejects_whole_archive(tmp_path, dest, member):
+    assert safe_extract_zip(make_zip(tmp_path, ['ok.txt', member]), str(dest)) is False
+    # validation happens before extraction: nothing is written, even the harmless member
+    assert list(dest.iterdir()) == []
+    assert not (tmp_path / 'out_evil').exists()
+
+
+def test_corrupt_archive_returns_false(tmp_path, dest):
+    bad = tmp_path / 'bad.zip'
+    bad.write_text('not a zip')
+    assert safe_extract_zip(str(bad), str(dest)) is False

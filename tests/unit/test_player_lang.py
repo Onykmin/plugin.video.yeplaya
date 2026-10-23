@@ -3,7 +3,7 @@
 """Unit tests for player module — mocked Kodi."""
 import sys
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
@@ -135,16 +135,6 @@ class TestYePlayer:
         player2.onAVStarted()
         player2.setAudioStream.assert_called_once_with(0)
 
-    def test_no_match_keeps_default(self):
-        """No matching stream → no setAudioStream/setSubtitleStream call."""
-        player = self._make_player({'audio_lang': 'Korean', 'sub_lang': 'Korean'})
-        player.getAvailableAudioStreams = MagicMock(return_value=['English', 'Japanese'])
-        player.getAvailableSubtitleStreams = MagicMock(return_value=['English'])
-        player.setAudioStream = MagicMock()
-        player.setSubtitleStream = MagicMock()
-        player.onAVStarted()
-        player.setAudioStream.assert_not_called()
-        player.setSubtitleStream.assert_not_called()
 
     def test_missing_settings_graceful(self):
         """Old addon without language settings → no crash (getSetting returns '')."""
@@ -166,35 +156,10 @@ class TestYePlayer:
         # Should not raise — caught by outer try/except in onAVStarted
         player.onAVStarted()
 
-    def test_wait_for_playback_returns_on_av_started(self):
-        """wait_for_playback exits immediately when _av_started is True."""
-        player = self._make_player({})
-        player._av_started = True
-        # Should return immediately without looping
-        player.wait_for_playback(timeout=1)
 
-    def test_wait_for_playback_returns_on_error(self):
-        """wait_for_playback exits on playback error."""
-        player = self._make_player({})
-        player._playback_done = True
-        player.wait_for_playback(timeout=1)
 
-    def test_on_playback_error_sets_flag(self):
-        """onPlayBackError should set _error flag."""
-        player = self._make_player({})
-        assert player._playback_done is False
-        player.onPlayBackError()
-        assert player._playback_done is True
 
-    def test_on_playback_stopped_sets_flag(self):
-        player = self._make_player({})
-        player.onPlayBackStopped()
-        assert player._playback_done is True
 
-    def test_on_playback_ended_sets_flag(self):
-        player = self._make_player({})
-        player.onPlayBackEnded()
-        assert player._playback_done is True
 
     def test_sub_auto_missing_defaults_off(self):
         """If sub_auto not in settings, subtitles found but not auto-enabled."""

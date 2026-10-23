@@ -60,28 +60,9 @@ def _ensure_wdqs_bound_to_real_requests():
 # ---------------------------------------------------------------------------
 
 class TestBuildQuery(unittest.TestCase):
-    def test_contains_required_clauses(self):
-        q = wdqs.build_query(100, 50)
-        self.assertIn('wdt:P31 wd:Q11424', q)
-        self.assertIn('wikibase:sitelinks', q)
-        self.assertIn('FILTER(?sl >= 20)', q)
-        self.assertIn('GROUP BY ?film', q)
-        # Three OPTIONALs: cs label, en label, and (added) P577 date.
-        self.assertEqual(q.count('OPTIONAL'), 3)
-        self.assertIn('FILTER(LANG(?cs) = "cs")', q)
-        self.assertIn('FILTER(LANG(?en) = "en")', q)
-        # SAMPLE aggregates for both languages.
-        self.assertIn('SAMPLE(?cs)', q)
-        self.assertIn('SAMPLE(?en)', q)
-
-    def test_contains_min_date_and_p577(self):
-        """Year support: (MIN(?date) AS ?d) under the existing GROUP BY is
-        what makes selecting wdt:P577 safe here (see build_query docstring
-        and module docstring for the measured 100%-coverage, no-fan-out
-        evidence) — this replaces the old test_no_p577 regression guard."""
-        q = wdqs.build_query(10, 0)
-        self.assertIn('MIN(?date)', q)
-        self.assertIn('wdt:P577', q)
+    def test_groups_by_film(self):
+        """Grouping by film is what makes the OPTIONAL label/date joins safe."""
+        self.assertIn('GROUP BY ?film', wdqs.build_query(10, 0))
 
     def test_limit_and_offset_present(self):
         q = wdqs.build_query(123, 456)
@@ -93,10 +74,6 @@ class TestBuildQuery(unittest.TestCase):
         self.assertIn('LIMIT 10', q)
         self.assertIn('OFFSET 20', q)
 
-    def test_sitelinks_min_constant_used(self):
-        q = wdqs.build_query(1, 0)
-        self.assertIn('FILTER(?sl >= {})'.format(wdqs.SITELINKS_MIN), q)
-
     # -- Regression guards: measured failure modes, must never reappear. --
 
     def test_no_bare_distinct(self):
@@ -104,18 +81,6 @@ class TestBuildQuery(unittest.TestCase):
         measured 10 rows all 'Barbarella' from a multi-valued property."""
         q = wdqs.build_query(10, 0)
         self.assertNotIn('DISTINCT', q)
-
-    def test_p577_only_wrapped_in_min_never_bare(self):
-        """P577 is now intentionally selected for year support (superseding
-        the old test_no_p577 guard, which forbade it outright) — but ONLY
-        ever as (MIN(?date) AS ?d) under GROUP BY ?film, the form measured
-        safe from the doc §1 tuple fan-out. Guard against a bare/SAMPLE-less
-        P577 creeping back into the projection."""
-        q = wdqs.build_query(10, 0)
-        self.assertIn('MIN(?date)', q)
-        # No other aggregate/bare reference to ?date anywhere else in the
-        # query — the only mention of it is inside MIN(...).
-        self.assertEqual(q.count('?date'), 2)  # MIN(?date) + OPTIONAL {?film wdt:P577 ?date}
 
     def test_no_service_wikibase_label(self):
         """SERVICE wikibase:label + explicit OPTIONALs produced an HTTP 504

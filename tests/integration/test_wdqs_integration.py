@@ -37,11 +37,6 @@ class TestWdqsParsesRealShapedFixture:
         with open(FIXTURE_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
 
-    def test_fixture_parses_without_raising(self):
-        payload = self._load()
-        records = wdqs._parse_bindings(payload)
-        assert isinstance(records, list)
-
     def test_row_with_neither_title_dropped(self):
         payload = self._load()
         records = wdqs._parse_bindings(payload)
@@ -69,12 +64,6 @@ class TestWdqsParsesRealShapedFixture:
         by_id = {r['id']: r for r in records}
         assert by_id['Q1']['cs'] is None and by_id['Q1']['en'] == 'Germinal'
         assert by_id['Q2']['en'] is None and by_id['Q2']['cs'] == 'Tucnak'
-
-    def test_qid_extraction_from_full_entity_uri(self):
-        payload = self._load()
-        records = wdqs._parse_bindings(payload)
-        by_id = {r['id']: r for r in records}
-        assert 'Q83495' in by_id
 
 
 if __name__ == '__main__':

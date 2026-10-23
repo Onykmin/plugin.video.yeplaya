@@ -253,7 +253,6 @@ def test_match_forced_deprioritized_native_wording():
 def test_match_forced_negative_not_deprioritized():
     """A label that merely contains 'forced' as a substring (Reinforced) must not
     be treated as a forced track — ranking is unaffected, first match wins."""
-    streams = ['Reinforced', 'Czech']
     # 'Reinforced' carries no recognizable language token, so it is skipped by
     # normalize_lang regardless; the real assertion is the predicate itself
     # (see test_is_forced_label_negative_false_positives). Here we additionally
