@@ -14,11 +14,11 @@ import time
 import sqlite3
 import threading
 import xbmc
-import xbmcaddon
 import xbmcvfs
 
 from lib.keys import normalize_series_key as _normalize_series_key
 from lib.keys import normalize_movie_key as _normalize_movie_key
+from lib.keys import legacy_row_seasons
 
 try:
     from xbmcvfs import translatePath
@@ -177,6 +177,51 @@ def state_key_for(file_dict):
     if ident:
         return "file:{0}".format(ident)
     return None
+
+
+def _newest_stored(keys):
+    """The stored key among `keys` whose row was updated last, else None."""
+    keys = sorted(keys)
+    if not keys:
+        return None
+    with _db_lock:
+        row = _connect().execute(
+            'SELECT state_key FROM playback_state WHERE state_key IN (%s) '
+            'ORDER BY updated_at DESC, state_key LIMIT 1' % ','.join('?' * len(keys)),
+            keys).fetchone()
+    return row[0] if row else None
+
+
+def resolve_state_key(file_dict, aliases=None):
+    """state_key_for, falling back to a row stored under an older key of the same content.
+
+    Merges re-key a group (and used to pick the survivor by input order), so a row
+    may sit under any key the group was merged from: `aliases` are the group's
+    pre-merge keys (grouping's `aliases`), `premerge_series_name` the stale series
+    key list items carried before series_name was rebound to the group key.
+    A file that used to be grouped as a movie (`legacy_movie_key`) also resolves its old `mv:` row.
+    Read-only: a row under the current key always wins; among legacy rows the most
+    recently updated one is used; nothing is moved or rewritten (an alias can also
+    be the live key of an unrelated group, so deleting or copying it is not safe).
+    """
+    key = state_key_for(file_dict)
+    if not key or get_state(key) is not None:
+        return key
+    if key.startswith('ep:'):
+        names = [file_dict.get('premerge_series_name'), *(aliases or ())]
+        candidates = [dict(file_dict, series_name=n, season=s) for n in names if n
+                      for s in legacy_row_seasons(n, file_dict.get('season'), file_dict.get('series_name'))]
+    elif key.startswith('mv:'):
+        candidates = [dict(file_dict, canonical_key=n) for n in aliases or () if n]
+    else:
+        return key
+    legacy = {state_key_for(c) for c in candidates}
+    if key.startswith('ep:') and file_dict.get('legacy_movie_key'):
+        legacy.add(build_mv_state_key(file_dict['legacy_movie_key']))
+    hits = sorted(k for k in legacy - {key, None} if get_state(k) is not None)
+    if len(hits) > 1:
+        return _newest_stored(hits) or hits[0]
+    return hits[0] if hits else key
 
 
 def _upsert_locked(key, watched, resume, total):

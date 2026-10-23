@@ -3,39 +3,38 @@
 # Author: onykmin
 # License: AGPL v.3 https://www.gnu.org/licenses/agpl-3.0.html
 
+import itertools
+import re
+
 import xbmc
 import xbmcaddon
 from lib.logging import log_debug, log_error, log_warning
-from lib.parsing import (parse_episode_info, parse_movie_info,
+from lib.parsing import (clean_series_name, parse_episode_info, parse_movie_info,
                          extract_language_tag, extract_dual_names, get_display_name,
-                         get_s00e00_pattern, get_0x00_pattern, get_word_set_key,
-                         parse_quality_metadata)
+                         match_episode_marker, EPISODE_MARKER_ANYWHERE, LEGACY_EPISODE_MARKER_ANYWHERE,
+                         extract_season_from_text, apply_season_readings,
+                         get_word_set_key, legacy_site_prefix_key, parse_quality_metadata,
+                         strip_site_prefix)
 from lib.api import api, parse_xml, is_ok
 from lib.utils import todict
 
 # NONE_WHAT lives in lib.keys (single source of truth); keys has no
 # intra-package imports so this top-level import cannot cause a cycle.
-from lib.keys import NONE_WHAT
+from lib.keys import NONE_WHAT, alias_keys, normalize_series_key, normalize_movie_key
 
 _addon = xbmcaddon.Addon()
 
 # Check if dual names available
 try:
-    from csfd_scraper import create_canonical_from_dual_names
+    from csfd_scraper import create_canonical_from_dual_names, format_display_name
     DUAL_NAMES_AVAILABLE = True
 except ImportError:
     DUAL_NAMES_AVAILABLE = False
 
-_PATTERN_S00E00 = get_s00e00_pattern()
-_PATTERN_0x00 = get_0x00_pattern()
-
-# Pattern to detect an episode marker (S##E## or ##x##) ANYWHERE for the
-# movie-vs-series gate. Permissive about surrounding chars — accepts ()/[]/:/
-# etc. wrappers — so a bracketed marker on a file that also carries a year
-# ("Westworld 2016 (S01E01)") is still routed to series parsing (#1).
-import re
-_PATTERN_EPISODE_MARKER = re.compile(
-    r'(?<![A-Za-z0-9])(?:[Ss]\d{1,2}[Ee]\d{1,3}|\d{1,2}x\d{1,3})(?![A-Za-z0-9])')
+# "Alias (Original) - 10": the name part of an absolute-numbered file whose
+# name ends in a bracketed second name (extract_dual_names rejects years/tags).
+_PATTERN_ABSOLUTE_ALIAS = re.compile(
+    r'^(.+?\s*[\(\[][^\)\]]+[\)\]])\s*-\s*(?:ep?\.?\s*)?\d{1,3}(?!\d)', re.IGNORECASE)
 
 # Compiled patterns for display name cleaning (used in pick_best_display_name_from_list)
 _RE_FILE_EXT = re.compile(r'\.(mkv|mp4|avi|rar|zip|7z|ts|iso|m4v|flac|mp3)$', re.IGNORECASE)
@@ -44,6 +43,11 @@ _RE_SOURCE = re.compile(r'\b(BluRay|Blu-ray|WEB-DL|WEBDL|WEBRip|HDTV|BRRip|DVDRi
 _RE_CODEC = re.compile(r'\b(x264|x265|H\.?264|H\.?265|HEVC|XviD|AAC|AC3|DTS|DD5\.1|Atmos|TrueHD)\b', re.IGNORECASE)
 _RE_LANG_LABEL = re.compile(r'\b(CZ|EN|SK|MULTi)\s+(DABING|dabing|TITULKY|titulky|sub|dub)\b', re.IGNORECASE)
 _RE_LANG_CODE = re.compile(r'\s+(CZ|EN|SK)\b', re.IGNORECASE)
+_RE_INNER_HYPHEN = re.compile(r'(?<=\w)-(?=\w)')
+_RE_DANGLING_HYPHEN = re.compile(r'(?<=\w)-(?=\s|$)')
+_RE_LEADING_HYPHEN = re.compile(r'(?:^|\s)-\w')
+_RE_LANG_CODE_TAIL = re.compile(r'\s+(CZ|EN|SK)$', re.IGNORECASE)
+_RE_UNCLOSED_TAIL = re.compile(r'\s*[\(\[](?![^\)\]]*[^\W\d_]{2})[^\)\]]*$')
 _RE_BRACKET_GROUP = re.compile(r'\s*[\(\[][^\)\]]{0,40}[\)\]]$')
 _RE_TRAILING_NUM = re.compile(r'[-\s]+\d{1,3}(?:\.\d+)?(\s+(serie|série|season|sezona|disk))?\s*(dab|BEZ HESLA)?$', re.IGNORECASE)
 _RE_SE_MARKER = re.compile(r'\s*[Ss]\d{1,2}[Ee]\d{1,3}.*$')
@@ -60,25 +64,12 @@ _FILTER_STOP_WORDS = {'the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to
 def _dual_canonical(name1, name2):
     """Build (canonical_key, display_name) from a dual-name pair.
 
-    Uses csfd_scraper.create_canonical_from_dual_names when available, else
-    falls back to the same core algorithm (clean both, substring→longer,
-    otherwise pipe-join sorted) so a series does not split in two merely
-    because the optional csfd module is absent (audit finding #18). The keys
-    track csfd's output but are not guaranteed byte-identical if csfd's
-    cleaning ever diverges from clean_series_name; the goal is stable grouping
-    within a single run (the chosen backend does not change mid-run). Returns
+    The one dual-key algorithm: clean both names like every series key
+    (clean_series_name), a name inside the other gives the longer one,
+    otherwise the two are pipe-joined sorted. The key never depends on whether
+    csfd_scraper is importable; csfd only words the display name. Returns
     (None, None) when the pair is not a usable dual name.
     """
-    from lib.parsing import clean_series_name
-    if DUAL_NAMES_AVAILABLE:
-        try:
-            r = create_canonical_from_dual_names(name1, name2)
-            if r:
-                return r.get('canonical_key'), r.get('display_name')
-            return None, None
-        except Exception as e:
-            log_error(f'Dual names processing error: {e}')
-            # fall through to the deterministic fallback
     c1 = clean_series_name(name1)
     c2 = clean_series_name(name2)
     if not c1 or not c2 or c1 == c2:
@@ -87,7 +78,22 @@ def _dual_canonical(name1, name2):
         return c2, name2
     if c2 in c1:
         return c1, name1
-    return '|'.join(sorted([c1, c2])), '{} / {}'.format(name1, name2)
+    display = format_display_name(name1, name2) if DUAL_NAMES_AVAILABLE else '{} / {}'.format(name1, name2)
+    return '|'.join(sorted([c1, c2])), display
+
+
+def _legacy_dual_key(name1, name2):
+    """The key csfd_scraper's own cleaning built for this pair before dual keys shared
+    clean_series_name ("penguin, the|tucnak", "star wars ii|..."), else None. Rows
+    stored under it resolve through the group's aliases."""
+    if not DUAL_NAMES_AVAILABLE:
+        return None
+    try:
+        found = create_canonical_from_dual_names(name1, name2)
+    except Exception as e:
+        log_error(f'Dual names processing error: {e}')
+        return None
+    return found.get('canonical_key') if found else None
 
 
 def _safe_size(v):
@@ -114,8 +120,9 @@ def _safe_size(v):
 
 
 def _version_sort_key(v):
-    """Sort key for a version: (quality_score, size), used with reverse=True
-    so higher quality wins and size breaks ties.
+    """Sort key for a version: (quality_score, size, ident), used with reverse=True
+    so higher quality wins, size breaks ties and ident makes the order independent
+    of input order (mirrors with equal name+size are kept, policy: distinct idents).
 
     quality_score is derived from the filename via parse_quality_metadata. The
     result is CACHED on the version dict under 'quality_meta' the first time it
@@ -125,7 +132,7 @@ def _version_sort_key(v):
     the same 'quality_meta' field, so populating it here is purely beneficial.
     """
     if not isinstance(v, dict):
-        return (50, 0)
+        return (50, 0, '')
     meta = v.get('quality_meta')
     if not isinstance(meta, dict):
         try:
@@ -134,7 +141,7 @@ def _version_sort_key(v):
             meta = {'quality_score': 50}
         v['quality_meta'] = meta
     score = meta.get('quality_score', 50)
-    return (score, _safe_size(v))
+    return (score, _safe_size(v), str(v.get('ident') or ''))
 
 # Module-level unidecode for _filter_irrelevant (avoid re-import per call)
 try:
@@ -207,6 +214,8 @@ def _filter_irrelevant(files, query):
         # Tokenize on any non-alphanumeric run ("c.s.i. new york" -> c,s,i,new,york)
         words = [w for w in re.split(r'[^a-z0-9]+', folded) if w]
         acronyms = _acronyms(words)
+        # A title glued to an upload counter ("1Dune") also matches as "dune".
+        words += [re.sub(r'^\d+', '', w) for w in words if re.match(r'\d+[a-z]', w)]
         if any(_matches(s, words, acronyms) for s in stems):
             filtered.append(f)
 
@@ -217,15 +226,208 @@ def _filter_irrelevant(files, query):
     return filtered if filtered else files
 
 
-def merge_substring_series(grouped):
-    """Merge series where one canonical key is substring of another.
+def _merge_roots(edges, order):
+    """{loser: survivor} for directed (loser, winner) pairs: a loser joins the
+    best-ordered winner offered to it (order(k) smaller = better, total because
+    keys are unique), and a winner that is itself a loser leads on to its own
+    winner. A loser offered two unrelated winners joins only one, so the result
+    does not depend on the order the pairs or keys arrive in."""
+    parent = {}
+    for lo, hi in edges:
+        if lo not in parent or order(hi) < order(parent[lo]):
+            parent[lo] = hi
 
-    Example: "south park" and "mestecko south park" → merge into "south park"
+    def root(k):
+        path = []
+        while k in parent and k not in path:
+            path.append(k)
+            k = parent[k]
+        # a chain that loops back (reachable only via dual-name keys): the
+        # smallest key on the loop leads
+        return min(path[path.index(k):]) if k in path else k
+    roots = {k: root(k) for k in parent}
+    return {k: r for k, r in roots.items() if k != r}
+
+
+def _carry_aliases(target, source_key, source):
+    """Record that `source_key` (and everything already merged into it) is now
+    part of `target`: any of them may have been a user's stored key."""
+    target.setdefault('aliases', []).extend([source_key] + source.get('aliases', []))
+
+
+def _merge_to_fixpoint(result, bucket, passes):
+    """Run the merge passes in order, again and again until a round leaves the
+    group keys unchanged. Every merge removes a group, so this terminates."""
+    while True:
+        before = set(result[bucket])
+        for merge in passes:
+            result = merge(result)
+        if set(result[bucket]) == before:
+            return result
+
+
+def _carry_dual_name_aliases(series):
+    """A dual key ("starcom|u s space force") also answers to each of its names:
+    rows stored before the name pair was known sit under one of them. A name is
+    skipped when another group holds it as its key or in a dual key of its own
+    (a franchise stub, or one name shared by two shows): it would be ambiguous."""
+    claims = {}
+    for key in series:
+        for name in set(key.split('|')) if '|' in key else ():
+            claims[name] = claims.get(name, 0) + 1
+    for key, group in series.items():
+        if '|' in key:
+            group.setdefault('aliases', []).extend(
+                n for n in key.split('|') if n not in series and claims[n] == 1)
+
+
+def _separate_colliding_identities(series):
+    """Give dual groups of different shows distinct state identities.
+
+    A group's playback state and favorite sit under its identity, the LAST `|`
+    segment of its key (keys.normalize_series_key). "odboj|star wars" and
+    "povstalci|star wars" (and the plain "star wars") all read "star wars": one
+    show's S01E01 would mark the others'. Groups that share an identity AND hold
+    different uploads at the same episodes (_only_collisions) are different shows:
+    each dual one moves its own name (a part no other key mentions) to the end.
+    The old key stays an alias. No such name: the key is left as it is.
+    """
+    by_identity = {}
+    for key in series:
+        by_identity.setdefault(normalize_series_key(key), []).append(key)
+    mentioned = {}
+    for key in series:
+        for part in key.split('|'):
+            mentioned[part] = mentioned.get(part, 0) + 1
+    coords = {k: _coord_sizes(g) for k, g in series.items()}
+    for keys in by_identity.values():
+        for key in sorted(keys):
+            if '|' not in key or not any(_only_collisions(coords[key], coords[o]) for o in keys if o != key):
+                continue
+            parts = key.split('|')
+            own = [p for p in parts[:-1] if mentioned[p] == 1]
+            if own:
+                new_key = '|'.join([p for p in parts if p != own[0]] + [own[0]])
+                series[new_key] = series.pop(key)
+                series[new_key].setdefault('aliases', []).append(key)
+
+
+def _owned_elsewhere(series):
+    """Predicate (group key, old key): the old key's identity is that of another
+    show (a group holding other uploads at the same episodes), so rows stored
+    under it belong to that group, not to this one."""
+    holders = {}
+    for key in series:
+        holders.setdefault(normalize_series_key(key), []).append(key)
+    coords = {k: _coord_sizes(g) for k, g in series.items()}
+
+    def owned_elsewhere(key, old):
+        identity = normalize_series_key(old)
+        return identity != normalize_series_key(key) and any(
+            _only_collisions(coords[key], coords[o]) for o in holders.get(identity, ()))
+    return owned_elsewhere
+
+
+def _finalize_aliases(groups, normalize, owned_elsewhere=None):
+    """Every group exposes `aliases` (sorted list; see keys.alias_keys), minus
+    any `owned_elsewhere(group key, alias)`."""
+    for key, group in groups.items():
+        group['aliases'] = [a for a in alias_keys(key, group.get('aliases', ()), normalize)
+                            if not (owned_elsewhere and owned_elsewhere(key, a))]
+
+
+def _series_order(series, longer_wins=False):
+    """Survivor order: most episodes, then most files, then (typo variants only,
+    `longer_wins`: a typo is usually a truncation) the longer key, then the key
+    itself. Snapshot of the groups before the pass so earlier merges of the same
+    pass cannot change the decision."""
+    size = {k: (-v.get('total_episodes', 0),
+                -sum(len(vs) for eps in v['seasons'].values() for vs in eps.values()))
+            for k, v in series.items()}
+    return lambda k: (size[k][0], size[k][1], -len(k) if longer_wins else 0, k)
+
+
+# Content evidence for merges. A coordinate is (season, episode); one file size
+# at a coordinate in both groups means both names carry the same upload.
+_MIN_SHARED_COORDS = 3
+_MIN_SHARED_FRACTION = 0.25
+
+
+def _coord_sizes(group):
+    """{(season, episode): known file sizes} of a group."""
+    return {(s, e): {_safe_size(v) for v in vs} - {0}
+            for s, eps in group['seasons'].items() for e, vs in eps.items()}
+
+
+def _content_overlap(a, b):
+    """(shared, collided) over the coordinates both size maps hold: `shared`
+    when some file size is common to both, `collided` when none is."""
+    shared = collided = 0
+    for coord in a.keys() & b.keys():
+        if a[coord] & b[coord]:
+            shared += 1
+        else:
+            collided += 1
+    return shared, collided
+
+
+def _is_same_show(shared, collided):
+    """Enough shared (coordinate, size) pairs, and not a fringe of a mostly
+    colliding overlap (different uploads of one show still share a few)."""
+    return (shared >= _MIN_SHARED_COORDS
+            and shared >= _MIN_SHARED_FRACTION * (shared + collided))
+
+
+def _only_collisions(a, b):
+    """True when the groups collide on several coordinates, season 1 among them,
+    and share no file on any. One collision is just another upload of an
+    episode; a distinct show or spinoff numbers from S01, while collisions only
+    in later seasons are a continuation released under another title ("The
+    Culling Game S03E01")."""
+    shared, collided = _content_overlap(a, b)
+    return (collided >= _MIN_SHARED_COORDS and shared == 0
+            and any(c[0] == 1 for c in a.keys() & b.keys()))
+
+
+def _franchise_stubs(series):
+    """Plain keys that name a franchise, not a show: at least two unrelated
+    substantial (>= 3 episodes) longer names contain the key's words and the
+    key itself holds fewer episodes than the largest of them ("star wars" next
+    to "star wars rebels" and "star wars resistance"). Such a key absorbs
+    none of them; the dominant key of a family ("south park") is no stub."""
+    plain = {k: set(k.split()) for k in series if '|' not in k}
+    eps = {k: series[k].get('total_episodes', 0) for k in plain}
+    stubs = set()
+    for short, words in plain.items():
+        longer = [k for k in plain if words < plain[k] and eps[k] >= 3]
+        minimal = [k for k in longer if not any(plain[o] < plain[k] for o in longer)]
+        if len(minimal) >= 2 and eps[short] < max(eps[k] for k in minimal):
+            stubs.add(short)
+    return stubs
+
+
+def _absorb_series(series, survivors):
+    """Merge each loser into its survivor (sorted: deterministic version lists)."""
+    for source_key in sorted(survivors):
+        target_key = survivors[source_key]
+        log_debug(f'Series merge: "{source_key}" → "{target_key}"')
+        merge_season_data(series[target_key], series[source_key])
+        _merge_display_names(series, target_key, source_key)
+        _carry_aliases(series[target_key], source_key, series[source_key])
+        del series[source_key]
+
+
+def merge_substring_series(grouped):
+    """Merge series where one canonical key's words are a subset of another's.
+
+    Example: "south park" and "mestecko south park" → merge into one group.
 
     Uses precomputed word sets and length-sorted keys for O(N log N) performance.
+    The survivor is the better-ordered related key (see _series_order); a key
+    related to two incomparable groups joins only the better one.
     """
     series = grouped['series']
-    keys_list = list(series.keys())
+    keys_list = sorted(series)
 
     if len(keys_list) < 2:
         return grouped
@@ -234,12 +436,21 @@ def merge_substring_series(grouped):
     word_sets = {key: set(key.split()) for key in keys_list}
 
     # Sort by word count (fewer words first) for directional matching
-    keys_by_words = sorted(keys_list, key=lambda k: len(word_sets[k]))
+    keys_by_words = sorted(keys_list, key=lambda k: (len(word_sets[k]), k))
 
-    keys_to_merge = []
+    # Spinoff protection reads each group's ORIGINAL episode count (#22).
+    eps = {k: series[k].get('total_episodes', 0) for k in series}
+    stubs = _franchise_stubs(series)
+    coords = {k: _coord_sizes(series[k]) for k in series}
+
+    edges = []
     for i, short_key in enumerate(keys_by_words):
         short_words = word_sets[short_key]
         short_wc = len(short_words)
+
+        # A franchise stub ("star wars") is not the parent of its sibling shows
+        if short_key in stubs:
+            continue
 
         # Safety: don't merge very short keys (single short words like "lost", "dark")
         # Require >=2 words OR single word with >=6 chars for substring merging
@@ -254,49 +465,40 @@ def merge_substring_series(grouped):
                 continue
 
             if short_words.issubset(long_words):
-                # Defer the spinoff guard to merge time (it depends on episode
-                # counts that change as merges happen — #22). Record the extra
-                # words so the guard can be re-evaluated then.
+                # If both groups had significant episodes and the extra words
+                # are short (likely sequel/spinoff markers like Z, GT, Super),
+                # they are distinct series.
                 extra_words = long_words - short_words
-                keys_to_merge.append((short_key, long_key, extra_words))
+                if min(eps[short_key], eps[long_key]) >= 3 and all(len(w) <= 5 for w in extra_words):
+                    continue
+                # Same episodes under both names but no file in common: two
+                # uploads of different shows, not one show. Exempt: a dual key
+                # and a key that spells out two other keys ("hra na olihen" +
+                # "squid game") state in their own file names that the names
+                # are one show.
+                if ('|' not in short_key and '|' not in long_key
+                        and _only_collisions(coords[short_key], coords[long_key])
+                        and not any(short_words | word_sets[k] == long_words
+                                    and not short_words & word_sets[k]
+                                    for k in keys_list if '|' not in k)):
+                    continue
+                edges.append((long_key, short_key))
 
-    # Snapshot episode counts BEFORE any merge runs. The spinoff guard below
-    # must see each group's ORIGINAL episode count; reading the live
-    # total_episodes makes the decision depend on merge order, because an
-    # earlier merge into `short_key` inflates the count that a later guard reads
-    # (audit round-2 #4/#11 — order-dependent merge decisions).
-    eps_snapshot = {k: series[k].get('total_episodes', 0) for k in series}
-
-    # Perform merges
-    for short_key, long_key, extra_words in keys_to_merge:
-        if short_key not in series or long_key not in series:
-            continue
-
-        # Spinoff protection against the PRE-MERGE counts: if both groups had
-        # significant episodes and the extra words are short (likely sequel/
-        # spinoff markers like Z, GT, Super), they are distinct series.
-        short_eps = eps_snapshot.get(short_key, 0)
-        long_eps = eps_snapshot.get(long_key, 0)
-        if min(short_eps, long_eps) >= 3 and all(len(w) <= 5 for w in extra_words):
-            continue
-
-        merge_season_data(series[short_key], series[long_key])
-
-        short_display = series[short_key].get('display_name', short_key.title())
-        long_display = series[long_key].get('display_name', long_key.title())
-        series[short_key]['display_name'] = pick_best_display_name(short_display, long_display)
-
-        del series[long_key]
-
+    # The generic (fewest-words) key stays the survivor, as before; among
+    # equally generic candidates the one with more episodes/files, then key.
+    rank = _series_order(series)
+    _absorb_series(series, _merge_roots(
+        edges, lambda k: (len(word_sets[k]),) + rank(k)))
     return grouped
 
 
 def merge_word_order_series(grouped):
     """Merge series with same words but different order.
 
-    Example: "south park" and "park south" → merge into first encountered
+    Example: "south park" and "park south" → merge into one group.
 
-    Uses get_word_set_key() to create order-independent comparison keys.
+    Uses get_word_set_key() to create order-independent comparison keys; the
+    survivor is the best-ordered member (see _series_order).
 
     Args:
         grouped: Dict with 'series' and 'non_series' keys
@@ -308,40 +510,17 @@ def merge_word_order_series(grouped):
     if not series:
         return grouped
 
-    # Build word-set to keys mapping
-    word_set_map = {}  # {word_set_key: [series_keys...]}
-    for key in series.keys():
-        ws_key = get_word_set_key(key)
-        if ws_key not in word_set_map:
-            word_set_map[ws_key] = []
-        word_set_map[ws_key].append(key)
+    by_words = {}
+    for key in series:
+        by_words.setdefault(get_word_set_key(key), []).append(key)
 
-    # Find and merge duplicates
-    for ws_key, keys in word_set_map.items():
-        if len(keys) < 2:
-            continue
-
-        # Deterministic target so the surviving canonical_key does NOT depend on
-        # the order files arrived from the API (#20). Prefer the key with the
-        # most episodes (richest group), tie-break lexicographically.
-        target = max(keys, key=lambda k: (series[k]['total_episodes'], k))
-        sources = [k for k in keys if k != target]
-        for source in sources:
-            if source not in series or target not in series:
-                continue
-
-            log_debug(f'Word-order merge: "{source}" → "{target}"')
-
-            # Merge season data
-            merge_season_data(series[target], series[source])
-
-            # Pick best display name
-            target_display = series[target].get('display_name', target.title())
-            source_display = series[source].get('display_name', source.title())
-            series[target]['display_name'] = pick_best_display_name(target_display, source_display)
-
-            del series[source]
-
+    order = _series_order(series)
+    survivors = {}
+    for keys in by_words.values():
+        # ties on content go to the greater key ("south park" over "park south")
+        best = max(keys, key=lambda k: (-order(k)[0], -order(k)[1], k))
+        survivors.update({k: best for k in keys if k != best})
+    _absorb_series(series, survivors)
     return grouped
 
 
@@ -353,7 +532,10 @@ def merge_dual_canonical_series(grouped):
     - "Tučňák S01E02" → canonical="tucnak"
     - "The Penguin - Tučňák S01E03" → canonical="the penguin|tucnak"
 
-    Merges all three into one series.
+    Merges all three into one series. A dual key's own target is its first
+    component (or the dual key itself when that is absent); a component key
+    shared by several dual keys joins only one of them (the best-ordered), and
+    two dual keys are never merged with each other.
 
     Args:
         grouped: Dict with 'series' and 'non_series' keys
@@ -365,68 +547,18 @@ def merge_dual_canonical_series(grouped):
     if not series:
         return grouped
 
-    log_debug(f'merge_dual_canonical_series: checking {len(series)} series')
-
-    keys_to_merge = {}  # {target_key: [source_keys_to_merge]}
-
-    # Find all series with pipe in canonical key
-    dual_keys = [k for k in series.keys() if '|' in k]
-    log_debug(f'Found {len(dual_keys)} dual-name keys: {dual_keys}')
-
-    for dual_key in dual_keys:
-        parts = dual_key.split('|')  # e.g., ["the penguin", "tucnak"]
-
-        # Find other series that match either component
-        matches = []
-        for key in series.keys():
-            if key != dual_key and key in parts:
-                matches.append(key)
-
-        if matches:
-            # Use first component as target
-            target = parts[0]
-
-            # If target doesn't exist as series, use dual_key as target
-            if target not in series:
-                target = dual_key
-
-            if target not in keys_to_merge:
-                keys_to_merge[target] = []
-
-            # Add dual_key and matches to merge list
-            if target != dual_key:
-                keys_to_merge[target].append(dual_key)
-            # Only add matches that aren't the target itself
-            for match in matches:
-                if match != target:
-                    keys_to_merge[target].append(match)
-
-    # Perform merges
-    for target_key, source_keys in keys_to_merge.items():
-        if target_key not in series:
-            log_debug(f'Merge target not found: {target_key}')
+    stubs = _franchise_stubs(series)
+    edges = []
+    for dual_key in sorted(k for k in series if '|' in k):
+        parts = dual_key.split('|')
+        # a franchise stub shared by several dual keys would bridge unrelated shows
+        related = [p for p in parts if p in series and p not in stubs]
+        if not related:
             continue
+        target = parts[0] if parts[0] in related else dual_key
+        edges.extend((k, target) for k in [dual_key] + related if k != target)
 
-        for source_key in source_keys:
-            if source_key not in series:
-                log_debug(f'Merge source not found: {source_key}')
-                continue
-
-            log_debug(f'Merging "{source_key}" → "{target_key}"')
-
-            # Merge season data
-            merge_season_data(series[target_key], series[source_key])
-
-            # Pick best display name
-            target_display = series[target_key].get('display_name', target_key.title())
-            source_display = series[source_key].get('display_name', source_key.title())
-
-            series[target_key]['display_name'] = pick_best_display_name(target_display, source_display)
-
-            # Remove merged series
-            del series[source_key]
-            log_debug(f'Merged complete: removed "{source_key}"')
-
+    _absorb_series(series, _merge_roots(edges, _series_order(series)))
     return grouped
 
 
@@ -437,7 +569,8 @@ def merge_similar_series(grouped):
     - "jujuts kaisen" → "jujutsu kaisen"
     - "stranger thing" → "stranger things"
 
-    Only merges if one group is much smaller (likely the typo variant).
+    Only merges if one group is much smaller (likely the typo variant); on a
+    tie the longer key survives (a typo is usually a truncation).
     """
     from difflib import SequenceMatcher
 
@@ -445,42 +578,61 @@ def merge_similar_series(grouped):
     if len(series) < 2:
         return grouped
 
-    keys = list(series.keys())
-    merges = []  # (target, source)
+    # Skip pipe-separated keys (already handled by dual merge)
+    keys = sorted(k for k in series if '|' not in k)
+    eps = {k: series[k]['total_episodes'] for k in keys}
+    coords = {k: _coord_sizes(series[k]) for k in keys}
+    words = {k: set(k.split()) for k in keys}
+    rank = _series_order(series, longer_wins=True)
+    edges = []
 
     for i, key1 in enumerate(keys):
         for key2 in keys[i+1:]:
-            # Skip pipe-separated keys (already handled by dual merge)
-            if '|' in key1 or '|' in key2:
-                continue
-
-            ratio = SequenceMatcher(None, key1, key2).ratio()
-            if ratio > 0.85:
-                eps1 = series[key1]['total_episodes']
-                eps2 = series[key2]['total_episodes']
-
+            if SequenceMatcher(None, key1, key2).ratio() > 0.85:
+                # A key that merely extends the other by whole words is the
+                # substring pass's business (stub and spinoff guards), not a typo
+                if words[key1] <= words[key2] or words[key2] <= words[key1]:
+                    continue
                 # Safety: don't merge if both have significant episode counts
                 # (suggests genuinely different series, e.g., "dragon ball z" vs "dragon ball super")
-                if min(eps1, eps2) >= 3:
+                if min(eps[key1], eps[key2]) >= 3:
                     continue
+                if _only_collisions(coords[key1], coords[key2]):
+                    continue
+                # The better-ordered key of the pair survives.
+                lo, hi = (key1, key2) if rank(key2) < rank(key1) else (key2, key1)
+                edges.append((lo, hi))
 
-                # Merge smaller into larger
-                if eps1 >= eps2:
-                    merges.append((key1, key2))
-                else:
-                    merges.append((key2, key1))
+    _absorb_series(series, _merge_roots(edges, rank))
+    return grouped
 
-    for target, source in merges:
-        if target not in series or source not in series:
-            continue
 
-        log_debug(f'Similarity merge ({SequenceMatcher(None, target, source).ratio():.2f}): "{source}" → "{target}"')
-        merge_season_data(series[target], series[source])
-        target_display = series[target].get('display_name', target.title())
-        source_display = series[source].get('display_name', source.title())
-        series[target]['display_name'] = pick_best_display_name(target_display, source_display)
-        del series[source]
+def merge_same_content_series(grouped):
+    """Merge groups that hold the same files under different names.
 
+    Two groups with enough shared (coordinate, file size) pairs are one show
+    uploaded under two names ("game of thrones" / "game of thrones hra o truny"),
+    whatever their key text says. Candidate pairs come from a size index, so
+    groups sharing no file size are never compared; the survivor is the
+    best-ordered key (see _series_order).
+    """
+    series = grouped.get('series', {})
+    coords = {k: _coord_sizes(g) for k, g in series.items()}
+    holders = {}
+    for key in sorted(coords):
+        for sizes in coords[key].values():
+            for size in sizes:
+                holders.setdefault(size, set()).add(key)
+    pairs = set()
+    for keys in holders.values():
+        pairs.update(itertools.combinations(sorted(keys), 2))
+
+    rank = _series_order(series)
+    edges = []
+    for a, b in sorted(pairs):
+        if _is_same_show(*_content_overlap(coords[a], coords[b])):
+            edges.append((a, b) if rank(b) < rank(a) else (b, a))
+    _absorb_series(series, _merge_roots(edges, rank))
     return grouped
 
 
@@ -503,12 +655,14 @@ def _strip_display_metadata(name, strip_trailing_num):
     cleaned = cleaned.replace('.', ' ').replace('_', ' ')
     # Normalize multiple dashes/hyphens to single space
     cleaned = _RE_MULTI_DASH.sub(' ', cleaned)
+    cleaned = _unhyphenate(cleaned)
     cleaned = _RE_QUALITY.sub('', cleaned)
     cleaned = _RE_SOURCE.sub('', cleaned)
     cleaned = _RE_CODEC.sub('', cleaned)
     cleaned = _RE_LANG_LABEL.sub('', cleaned)
     cleaned = _RE_LANG_CODE.sub('', cleaned)
     cleaned = _RE_BRACKET_GROUP.sub('', cleaned)
+    cleaned = _RE_UNCLOSED_TAIL.sub('', cleaned)
     if strip_trailing_num:
         cleaned = _RE_TRAILING_NUM.sub('', cleaned)
     cleaned = _RE_SE_MARKER.sub('', cleaned)
@@ -518,10 +672,42 @@ def _strip_display_metadata(name, strip_trailing_num):
     return cleaned.strip()
 
 
-def pick_best_display_name_from_list(names):
-    """Pick best display name from a list of candidates.
+def _unhyphenate(name):
+    """Scene names use hyphens as word separators ("Barbie-a-ruzove-balerinky").
+    Hyphens inside words are separators when there are at least two and they
+    outnumber the spaces; otherwise ("Spider-Man", "Gekijo-ban Chenso Man Reze-hen")
+    they are part of the title."""
+    inner = len(_RE_INNER_HYPHEN.findall(name))
+    if inner >= 2 and inner > name.count(' '):
+        return _RE_INNER_HYPHEN.sub(' ', name)
+    return name
 
-    Strategy: Clean all names aggressively, then pick shortest unique name.
+
+def _pick_majority(pairs):
+    """Pick the display string from (vote_key, display) pairs.
+
+    The vote key groups spellings of one title (hyphens fold into spaces so
+    "Fight-Club" counts for "Fight Club"); the biggest group wins, ties go to
+    the shorter key. Inside the winning group the most common display wins, so
+    the result depends only on the multiset of pairs, never on their order.
+    """
+    from collections import Counter
+    key_counts = Counter(vk for vk, _ in pairs)
+    best_key = min(key_counts, key=lambda k: (-key_counts[k], len(k), k))
+    shown = Counter(d for vk, d in pairs if vk == best_key)
+    return min(shown, key=lambda d: (-shown[d], d.isupper(), d.count('-'), len(d), d))
+
+
+def _fold_hyphens(name):
+    return _RE_MULTI_SPACE.sub(' ', name.replace('-', ' ')).strip()
+
+
+def pick_best_display_name_from_list(names):
+    """Pick the display name by majority vote over ALL candidate names.
+
+    Each candidate is cleaned aggressively (trailing number stripped) to group
+    encodings of one title; the winner is shown in its lightly cleaned form,
+    which keeps title numbers ("Cobra Kai 3", "Blade Runner 2049").
 
     Args:
         names: List of candidate names
@@ -532,54 +718,34 @@ def pick_best_display_name_from_list(names):
     if not names:
         return None
 
-    def clean_name(name):
-        return _strip_display_metadata(name, strip_trailing_num=True)
+    pairs = []
+    for n in names:
+        heavy = _strip_display_metadata(n, strip_trailing_num=True)
+        light = _strip_display_metadata(n, strip_trailing_num=False)
+        if heavy and len(heavy) >= 2 and light:
+            pairs.append((_fold_hyphens(heavy), light))
 
-    def _light_clean(name):
-        return _strip_display_metadata(name, strip_trailing_num=False)
-
-    # Vote on the heavily-cleaned form (groups encodings of one title), but
-    # remember a representative ORIGINAL for each so we can return a faithful
-    # display string rather than the stripped vote key.
-    from collections import Counter
-    cleaned_list = [clean_name(n) for n in names]
-    cleaned_counts = Counter(c for c in cleaned_list if c and len(c) >= 2)
-    rep_original = {}  # cleaned -> first original that produced it
-    for orig, c in zip(names, cleaned_list):
-        if c and len(c) >= 2 and c not in rep_original:
-            rep_original[c] = orig
-
-    if not cleaned_counts:
+    if not pairs:
         # Every candidate cleaned to nothing usable — fall back to the lightly
         # cleaned first candidate, not the raw filename (#29).
-        return _light_clean(names[0]) or names[0]
+        return _strip_display_metadata(names[0], strip_trailing_num=False) or names[0]
 
-    # Sort by: count (desc), then length (asc), then alphabetically
-    sorted_names = sorted(
-        cleaned_counts.items(),
-        key=lambda x: (-x[1], len(x[0]), x[0])
-    )
-    best_cleaned = sorted_names[0][0]
-
-    # Return a faithful, lightly-cleaned ORIGINAL for the winning group.
-    display = _light_clean(rep_original.get(best_cleaned, best_cleaned))
-    if not display:
-        display = best_cleaned
-    log_debug(f'Name picker: "{display}" (group "{best_cleaned}" x{sorted_names[0][1]} of {len(names)})')
+    display = _pick_majority(pairs)
+    log_debug(f'Name picker: "{display}" of {len(names)} candidates')
     return display
 
 
-def pick_best_display_name(name1, name2):
-    """Smart name picker: choose best display name from two candidates.
-
-    Args:
-        name1: First candidate name
-        name2: Second candidate name
-
-    Returns:
-        Best name choice
-    """
-    return pick_best_display_name_from_list([name1, name2])
+def _merge_display_names(series, target_key, source_key):
+    """Carry source's display candidates into target and re-vote its display
+    name over the whole merged multiset (counts survive any number of merges)."""
+    target, source = series[target_key], series[source_key]
+    for key, entry in ((target_key, target), (source_key, source)):
+        if not entry.get('display_name_candidates'):
+            entry['display_name_candidates'] = [entry.get('display_name', key.title())]
+    target['display_name_candidates'].extend(source['display_name_candidates'])
+    voted = pick_best_display_name_from_list(target['display_name_candidates'])
+    if voted:
+        target['display_name'] = voted
 
 
 def merge_season_data(target, source):
@@ -661,6 +827,68 @@ def deduplicate_versions(versions):
     return result
 
 
+def _file_series_keys(filename, ep_info, legacy_site=False):
+    """(canonical_key, display_name, legacy_keys) a parsed series file is grouped under.
+
+    `legacy_keys` are the keys it had before its alias / dual name was read: rows stored under
+    them resolve through the group's aliases. `legacy_site` reads the name with the site-prefix
+    list older versions used (key derivation for `_site_legacy_series_keys`).
+    """
+    series = ep_info['series_name']
+    canonical_key = series
+    legacy_key = None   # key this file had before its alias was read
+    legacy_dual_key = None
+    display_name = get_display_name(ep_info['original_name'])
+
+    # Extract raw name for dual-name detection (works even when CSFD disabled)
+    bare = strip_site_prefix(filename, legacy_site)
+    match = match_episode_marker(bare)
+    alias_read_from_parens = not match
+    if not match:  # season text ("S3") is not part of the name the alias key is built from
+        match = _PATTERN_ABSOLUTE_ALIAS.match(extract_season_from_text(bare)[1])
+    if match:
+        raw_name = match.group(1)
+        if '\u2013' in raw_name or '\u2014' in raw_name:
+            # keys used to keep the text after an en/em dash ("peaky
+            # blinders – gangy z birminghamu"): rows stored under it
+            old_key = clean_series_name(raw_name)
+            if old_key != series:
+                legacy_key = old_key
+        dual_names = extract_dual_names(raw_name)
+
+        # Priority 1: Dual names in filename
+        if dual_names:
+            dual_ck, dual_dn = _dual_canonical(dual_names[0], dual_names[1])
+            if dual_ck:
+                canonical_key = dual_ck
+                legacy_dual_key = _legacy_dual_key(dual_names[0], dual_names[1])
+                if alias_read_from_parens:
+                    legacy_key = series
+                if dual_dn:
+                    display_name = dual_dn
+                log_debug(f'Dual names detected: {dual_names[0]} / {dual_names[1]}')
+
+        # CSFD lookup removed (feature disabled)
+
+    return canonical_key, display_name, [k for k in (legacy_key, legacy_dual_key) if k]
+
+
+def _site_legacy_series_keys(filename):
+    """Keys this file had before its release-site prefix was recognised (group aliases).
+
+    The key that was only the site ("7hitmovies best") is left out: it names every title of that
+    site, so no row or favorite under it can be attributed to this series.
+    """
+    if strip_site_prefix(filename) == strip_site_prefix(filename, legacy=True):
+        return []
+    old_info = parse_episode_info(filename, legacy_site=True)
+    if not old_info or not old_info['is_series']:
+        return []
+    old_key, _, old_legacy = _file_series_keys(filename, old_info, legacy_site=True)
+    site_only = legacy_site_prefix_key(filename)
+    return [k for k in (old_key, *old_legacy, old_info.get('legacy_series_name')) if k and k != site_only]
+
+
 def group_by_series(files, token=None, enable_csfd=True, search_query=None):
     """Group file list by series, movies, and deduplicate.
 
@@ -710,70 +938,64 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
 
     result = {'series': {}, 'movies': {}, 'non_series': []}
 
+    # Parse everything first: "Name NN - MM" is season NN only given the show's other files.
+    parsed = []
     for file_dict in files:
+        filename = file_dict.get('name', '')
+        # Check for movie year pattern BEFORE episode parsing
+        # This prevents movies from being misclassified as series
+        movie_info = parse_movie_info(filename) if filename else None
+
+        # Try episode parsing when it's not a movie, OR when the filename has a
+        # genuine episode marker even alongside a year ("Series 2016 (S01E01)").
+        # Use the parsing marker pattern (which accepts ()/[] wrappers and a gap
+        # between season and episode) — the old local pattern only matched _ space . - , and
+        # silently misrouted bracketed-marker episodes to movies (#1).
+        ep_info = None
+        if filename and (not movie_info or EPISODE_MARKER_ANYWHERE.search(filename)):
+            ep_info = parse_episode_info(filename)
+        parsed.append((movie_info, ep_info))
+    apply_season_readings([ep_info for _, ep_info in parsed])
+
+    for index, file_dict in enumerate(files):  # no zip(strict=): Kodi 19 ships Python < 3.10
+        movie_info, ep_info = parsed[index]
         filename = file_dict.get('name', '')
         if not filename:  # Handle empty/None filenames
             result['non_series'].append(file_dict)
             continue
 
-        # Check for movie year pattern BEFORE episode parsing
-        # This prevents movies from being misclassified as series
-        movie_info = parse_movie_info(filename)
-
-        # Try episode parsing when it's not a movie, OR when the filename has a
-        # genuine episode marker even alongside a year ("Series 2016 (S01E01)").
-        # Use the parsing S##E##/##x## patterns (which accept ()/[] wrappers) —
-        # the old local _PATTERN_EPISODE_MARKER only matched _ space . - , and
-        # silently misrouted bracketed-marker episodes to movies (#1).
-        ep_info = None
-        if not movie_info or _PATTERN_EPISODE_MARKER.search(filename):
-            ep_info = parse_episode_info(filename)
-
         # If it's a series match, process it
         if ep_info and ep_info['is_series']:
-            series = ep_info['series_name']
             season = ep_info['season']
             episode = ep_info['episode']
 
-            # Default: use normalized name as key
-            canonical_key = series
-            display_name = get_display_name(ep_info['original_name'])
-
-            # Extract raw name for dual-name detection (works even when CSFD disabled)
-            match = _PATTERN_S00E00.match(filename) or _PATTERN_0x00.match(filename)
-            if match:
-                raw_name = match.group(1)
-                dual_names = extract_dual_names(raw_name)
-
-                # Priority 1: Dual names in filename
-                if dual_names:
-                    dual_ck, dual_dn = _dual_canonical(dual_names[0], dual_names[1])
-                    if dual_ck:
-                        canonical_key = dual_ck
-                        if dual_dn:
-                            display_name = dual_dn
-                        log_debug(f'Dual names detected: {dual_names[0]} / {dual_names[1]}')
-
-                # CSFD lookup removed (feature disabled)
+            canonical_key, display_name, legacy_keys = _file_series_keys(filename, ep_info)
 
             # Initialize series structure if needed (use canonical_key)
             if canonical_key not in result['series']:
                 series_meta = {
                     'display_name': display_name,
-                    'display_name_candidates': [display_name],  # Track all candidates
+                    'display_name_candidates': [display_name],
                     'seasons': {},
                     'total_episodes': 0
                 }
                 result['series'][canonical_key] = series_meta
             else:
                 # Add this episode's display name as candidate
-                if 'display_name_candidates' not in result['series'][canonical_key]:
-                    result['series'][canonical_key]['display_name_candidates'] = []
                 result['series'][canonical_key]['display_name_candidates'].append(display_name)
+            # keys this file had before its season marker was parsed ("suits s03")
+            for old_key in (*legacy_keys, ep_info.get('legacy_series_name'), *_site_legacy_series_keys(filename)):
+                if old_key and old_key != canonical_key:
+                    result['series'][canonical_key].setdefault('aliases', []).append(old_key)
 
             # Initialize season dict if needed
             if season not in result['series'][canonical_key]['seasons']:
                 result['series'][canonical_key]['seasons'][season] = {}
+
+            if movie_info and not LEGACY_EPISODE_MARKER_ANYWHERE.search(filename):
+                # a movie until its marker spelling was recognised ("Show.S03.E01.2025"): playback
+                # state stored under that movie key resolves for the episode (state.resolve_state_key)
+                file_dict['legacy_movie_key'] = _movie_key_and_display(movie_info)[0]
 
             # Add episode and metadata to file dict
             file_dict['episode'] = episode
@@ -789,39 +1011,14 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
             if episode not in result['series'][canonical_key]['seasons'][season]:
                 result['series'][canonical_key]['seasons'][season][episode] = []
 
-            # Check for duplicates before adding
-            existing_versions = result['series'][canonical_key]['seasons'][season][episode]
-            is_duplicate = False
-
-            for existing in existing_versions:
-                # Primary: Check by ident (skip if None, empty, or "unknown")
-                file_ident = file_dict.get('ident')
-                existing_ident = existing.get('ident')
-
-                if (file_ident and existing_ident and
-                    file_ident != 'unknown' and existing_ident != 'unknown'):
-                    if file_ident == existing_ident:
-                        is_duplicate = True
-                        log_debug(f"Skipping duplicate (ident): {filename} [ident={file_ident}]")
-                        break
-
-                # Fallback: Check by name+size
-                name_match = file_dict.get('name') == existing.get('name')
-                size_match = file_dict.get('size') == existing.get('size')
-
-                if name_match and size_match and file_dict.get('name'):
-                    is_duplicate = True
-                    log_debug(f"Skipping duplicate (name+size): {filename} [{file_dict.get('size')} bytes]")
-                    break
-
-            # Only add if not duplicate
-            if not is_duplicate:
-                result['series'][canonical_key]['seasons'][season][episode].append(file_dict)
+            # Duplicates (same ident) are collapsed by deduplicate_versions below;
+            # same name+size with a distinct ident is a mirror and is kept.
+            result['series'][canonical_key]['seasons'][season][episode].append(file_dict)
         else:
             result['non_series'].append(file_dict)
 
     # Sort versions by quality score (highest first) and calculate unique episode counts
-    for series_name, series_data in result['series'].items():
+    for _series_key, series_data in result['series'].items():
         unique_episodes = set()
         for season_num, episodes in series_data['seasons'].items():
             for ep_num, versions in episodes.items():
@@ -837,31 +1034,41 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
         series_data['total_episodes'] = len(unique_episodes)
 
         # Pick best display name from all candidates
-        candidates = series_data.get('display_name_candidates', [])
-        if candidates:
-            best_name = pick_best_display_name_from_list(candidates)
-            if best_name:
-                series_data['display_name'] = best_name
-            # Clean up candidates list (no longer needed)
-            del series_data['display_name_candidates']
+        # Candidates are kept: merges re-vote over every member file's name.
+        best_name = pick_best_display_name_from_list(series_data['display_name_candidates'])
+        if best_name:
+            series_data['display_name'] = best_name
 
-    # Merge series with substring relationships
-    result = merge_substring_series(result)
+    # Substring, word-order, dual-name ("the penguin|tucnak") and typo-similarity
+    # merges, repeated until a round merges nothing (a merge can create a key
+    # that relates to another group).
+    result = _merge_to_fixpoint(result, 'series', (
+        merge_substring_series, merge_word_order_series,
+        merge_dual_canonical_series, merge_similar_series,
+        merge_same_content_series))
 
-    # Merge series with same words but different order
-    result = merge_word_order_series(result)
+    _separate_colliding_identities(result['series'])
+    _carry_dual_name_aliases(result['series'])
+    owned_elsewhere = _owned_elsewhere(result['series'])
+    _finalize_aliases(result['series'], normalize_series_key, owned_elsewhere)
 
-    # Merge series with dual canonical names (e.g., "the penguin|tucnak")
-    result = merge_dual_canonical_series(result)
-
-    # Merge series with similar names (typo tolerance)
-    result = merge_similar_series(result)
 
     # Single dedup+sort pass after all merges (avoids redundant per-merge dedup)
-    for series_data in result['series'].values():
+    for group_key, series_data in result['series'].items():
         unique_episodes = set()
         for season_num, episodes in series_data['seasons'].items():
             for ep_num, versions in episodes.items():
+                # Merges re-key groups after series_name was set. Rebind each
+                # member to its final group key so the state key built from the
+                # file (list time) equals the one play() builds from the URL.
+                for v in versions:
+                    if v.get('series_name') != group_key:
+                        if not owned_elsewhere(group_key, v.get('series_name') or ''):
+                            v['premerge_series_name'] = v.get('series_name')
+                        v['series_name'] = group_key
+                    # list-item state lookup (utils.tolistitem) resolves rows
+                    # stored under any key this group was merged from
+                    v['series_aliases'] = series_data['aliases']
                 episodes[ep_num] = deduplicate_versions(versions)
                 episodes[ep_num].sort(
                     key=_version_sort_key,
@@ -912,6 +1119,63 @@ def group_by_series(files, token=None, enable_csfd=True, search_query=None):
     return result
 
 
+def _movie_key_and_display(movie_info):
+    """Canonical key "title|year" and raw display title of one parsed movie file."""
+    canonical_key = f"{movie_info['title']}|{movie_info['year']}"
+    display_name = movie_info['raw_title']
+    # Handle dual names (deterministic regardless of csfd availability).
+    if movie_info['dual_names']:
+        dual_ck, dual_dn = _dual_canonical(
+            movie_info['dual_names'][0], movie_info['dual_names'][1])
+        if dual_ck:
+            canonical_key = f"{dual_ck}|{movie_info['year']}"
+            if dual_dn:
+                display_name = dual_dn
+    return canonical_key, display_name
+
+
+def _vote_movie_display(key, movie_data):
+    """Display name voted over the member files of a (merged) movie group.
+
+    Every version's own title is cleaned and votes; only files whose own key is
+    the group's key count (an edition/alias merged in cannot rename the group),
+    falling back to everyone. Versions survive merges, so counts do too.
+    """
+    own, every = [], []
+    for v in movie_data['versions']:
+        info = parse_movie_info(v.get('name', ''))
+        if not info:
+            continue
+        k, display = _movie_key_and_display(info)
+        cleaned = _clean_movie_display_name(display)
+        if cleaned:
+            every.append((_fold_hyphens(cleaned), cleaned))
+            if k == key:
+                own.append(every[-1])
+    pairs = own or every
+    if not pairs:
+        return _clean_movie_display_name(movie_data['display_name'])
+    return _pick_majority(pairs)
+
+
+def _legacy_dual_alias(dual_names, year, canonical_key):
+    """The pre-shared-cleaning dual key of a parsed movie ("a|b|year"), else None."""
+    old_key = _legacy_dual_key(*dual_names[:2]) if dual_names else None
+    old_key = '{}|{}'.format(old_key, year) if old_key else None
+    return old_key if old_key != canonical_key else None
+
+
+def _site_legacy_movie_keys(filename):
+    """Keys this file had before its release-site prefix was recognised (group aliases)."""
+    if strip_site_prefix(filename) == strip_site_prefix(filename, legacy=True):
+        return []
+    old_info = parse_movie_info(filename, legacy_site=True)
+    if not old_info:
+        return []
+    old_key = _movie_key_and_display(old_info)[0]
+    return [k for k in (old_key, _legacy_dual_alias(old_info['dual_names'], old_info['year'], old_key)) if k]
+
+
 def group_movies(files):
     """Group movie files by title + year.
 
@@ -938,18 +1202,7 @@ def group_movies(files):
         if not movie_info:
             continue  # Not a movie pattern
 
-        # Create canonical key: "title|year"
-        canonical_key = f"{movie_info['title']}|{movie_info['year']}"
-
-        # Handle dual names (deterministic regardless of csfd availability).
-        display_name = movie_info['raw_title']
-        if movie_info['dual_names']:
-            dual_ck, dual_dn = _dual_canonical(
-                movie_info['dual_names'][0], movie_info['dual_names'][1])
-            if dual_ck:
-                canonical_key = f"{dual_ck}|{movie_info['year']}"
-                if dual_dn:
-                    display_name = dual_dn
+        canonical_key, display_name = _movie_key_and_display(movie_info)
 
         # Initialize movie entry
         if canonical_key not in result['movies']:
@@ -959,6 +1212,10 @@ def group_movies(files):
                 'versions': [],
                 'canonical_key': canonical_key
             }
+        old_keys = [*_site_legacy_movie_keys(file_dict.get('name', '')),
+                    _legacy_dual_alias(movie_info['dual_names'], movie_info['year'], canonical_key)]
+        result['movies'][canonical_key].setdefault('aliases', []).extend(
+            k for k in old_keys if k and k != canonical_key)
 
         # Add version
         result['movies'][canonical_key]['versions'].append(file_dict)
@@ -974,23 +1231,18 @@ def group_movies(files):
             reverse=True
         )
 
-    # Merge movies with substring title relationships (same year)
-    result = merge_substring_movies(result)
+    # Substring-title (same year), identical title across nearby years (uploader
+    # year errors), dual-name keys into simple keys ("blade 2|blade ii|2002" into
+    # "blade 2|2002"), then 1-version orphans into larger same-year groups.
+    result = _merge_to_fixpoint(result, 'movies', (
+        merge_substring_movies, merge_crossyear_movies,
+        merge_dual_key_movies, merge_orphan_movies))
 
-    # Merge movies with identical titles across nearby years (uploader year errors)
-    result = merge_crossyear_movies(result)
+    # Display names: majority vote over every member file's cleaned title
+    for key, movie_data in result['movies'].items():
+        movie_data['display_name'] = _vote_movie_display(key, movie_data)
 
-    # Merge dual-name movie keys with matching simple keys
-    # e.g., "blade 2|blade ii|2002" merges into "blade 2|2002"
-    result = merge_dual_key_movies(result)
-
-    # Final merge: absorb 1-version orphans into larger same-year groups
-    result = merge_orphan_movies(result)
-
-    # Clean display names (dots→spaces, strip artifacts, fix reversed dual names)
-    for movie_data in result['movies'].values():
-        movie_data['display_name'] = _clean_movie_display_name(movie_data['display_name'])
-
+    _finalize_aliases(result['movies'], normalize_movie_key)
     return result
 
 
@@ -1009,6 +1261,24 @@ def _finalize_merged_versions(movies, target_keys, keys_to_delete):
         versions = deduplicate_versions(movies[key].get('versions', []))
         versions.sort(key=_version_sort_key, reverse=True)
         movies[key]['versions'] = versions
+
+
+def _movie_order(movies):
+    """Survivor order for movie groups: most files, then the shorter key, then
+    the key. Snapshot of the groups before the pass."""
+    size = {k: len(v.get('versions', [])) for k, v in movies.items()}
+    return lambda k: (-size[k], len(k), k)
+
+
+def _absorb_movies(movies, survivors):
+    """Merge each loser's versions into its survivor, then dedup+sort once."""
+    for source_key in sorted(survivors):
+        target_key = survivors[source_key]
+        log_debug(f'Movie merge: "{source_key}" → "{target_key}"')
+        movies[target_key]['versions'].extend(movies[source_key]['versions'])
+        _carry_aliases(movies[target_key], source_key, movies[source_key])
+        del movies[source_key]
+    _finalize_merged_versions(movies, set(survivors.values()), ())
 
 
 def merge_dual_key_movies(result):
@@ -1060,6 +1330,7 @@ def merge_dual_key_movies(result):
         if target and target in movies and dual_key in movies:
             # Extend only; dedup+sort once per target after the loops (#9).
             movies[target]['versions'].extend(movies[dual_key]['versions'])
+            _carry_aliases(movies[target], dual_key, movies[dual_key])
             touched_targets.add(target)
             log_debug(f'Dual-key movie merge: "{dual_key}" → "{target}"')
             keys_to_delete.add(dual_key)
@@ -1076,6 +1347,7 @@ def merge_dual_key_movies(result):
             target = simple_keys[(spaced, year)]
             if target in movies and key in movies:
                 movies[target]['versions'].extend(movies[key]['versions'])
+                _carry_aliases(movies[target], key, movies[key])
                 touched_targets.add(target)
                 log_debug(f'Spaceless movie merge: "{key}" → "{target}"')
                 keys_to_delete.add(key)
@@ -1113,7 +1385,7 @@ def merge_orphan_movies(result):
 
     keys_to_delete = set()
     touched_targets = set()
-    for orphan_key, orphan_data in orphans.items():
+    for orphan_key, orphan_data in sorted(orphans.items()):
         if orphan_key in keys_to_delete:
             continue
         orphan_year = orphan_data.get('year', 0)
@@ -1125,7 +1397,8 @@ def merge_orphan_movies(result):
         best_target = None
         best_versions = 0
 
-        for group_key, group_data in groups.items():
+        # Sorted: a tie on version count goes to the first key, not the first arrival.
+        for group_key, group_data in sorted(groups.items()):
             if group_data.get('year', 0) != orphan_year:
                 continue
             group_title = group_key.rsplit('|', 1)[0].replace('|', ' ') if '|' in group_key else group_key
@@ -1145,6 +1418,7 @@ def merge_orphan_movies(result):
         if best_target and best_target in movies:
             # Extend only; dedup+sort once per target after the loop (#9).
             movies[best_target]['versions'].extend(movies[orphan_key]['versions'])
+            _carry_aliases(movies[best_target], orphan_key, movies[orphan_key])
             touched_targets.add(best_target)
             keys_to_delete.add(orphan_key)
 
@@ -1162,6 +1436,14 @@ def _clean_movie_display_name(name):
     cleaned = name
     cleaned = cleaned.replace('.', ' ').replace('_', ' ')
     cleaned = _RE_MULTI_DASH.sub(' ', cleaned)  # Multiple dashes → space
+    cleaned = _unhyphenate(cleaned)
+    # Release tags are not part of the title ("BRrip CZ dabing", "1080p")
+    for tag in (_RE_QUALITY, _RE_SOURCE, _RE_CODEC, _RE_LANG_LABEL, _RE_LANG_CODE_TAIL):
+        cleaned = tag.sub('', cleaned)
+    # Unclosed bracket tail with no word in it ("Barbie (2023") is a cut-off year/tag
+    cleaned = _RE_UNCLOSED_TAIL.sub('', cleaned)
+    if not _RE_LEADING_HYPHEN.search(cleaned):  # "-Title-" pairs are kept
+        cleaned = _RE_DANGLING_HYPHEN.sub('', cleaned)  # "dvířka-" left by a removed tag
 
     # Fix reversed dual names: "Something / Main Title" → "Main Title"
     # Keep only the part that looks like a proper title (longer, no parenthesized metadata)
@@ -1182,7 +1464,7 @@ def _clean_movie_display_name(name):
 
     # Strip leading/trailing separators
     cleaned = re.sub(r'^[\s\-]+', '', cleaned)
-    cleaned = re.sub(r'[\s\-]+$', '', cleaned)
+    cleaned = re.sub(r'[\s\-,]+$', '', cleaned)
 
     # Remove only consecutive duplicate words: "Blade -Blade" → "Blade", "Matrix Matrix" → "Matrix"
     # Preserves non-consecutive: "Run Lola Run", "New York New York", "Sing Sing"
@@ -1190,33 +1472,12 @@ def _clean_movie_display_name(name):
     if len(words) >= 2:
         deduped = [words[0]]
         for w in words[1:]:
-            if w.lower().strip('-') != deduped[-1].lower().strip('-'):
+            if w.lower().strip('-[]()') != deduped[-1].lower().strip('-[]()'):
                 deduped.append(w)
         cleaned = ' '.join(deduped)
 
     cleaned = _RE_MULTI_SPACE.sub(' ', cleaned).strip()
     return cleaned
-
-
-def _pick_cleaner_movie_name(name1, name2):
-    """Pick the cleaner movie display name from two candidates."""
-    def artifact_score(name):
-        """Lower = cleaner."""
-        score = 0
-        score += name.count('.') * 2
-        score += name.count('---') * 3
-        score += name.count('_') * 2
-        if name.isupper():
-            score += 5
-        if '|' in name or '/' in name:
-            score += 3
-        return score
-
-    s1 = artifact_score(name1)
-    s2 = artifact_score(name2)
-    if s1 <= s2:
-        return name1
-    return name2
 
 
 def merge_crossyear_movies(result, max_gap=3):
@@ -1244,12 +1505,12 @@ def merge_crossyear_movies(result, max_gap=3):
 
     keys_to_delete = set()
     touched_targets = set()
-    for title, entries in by_title.items():
+    for _title, entries in by_title.items():
         if len(entries) < 2:
             continue
 
         # Sort by version count desc (most versions = likely correct year)
-        entries.sort(key=lambda x: -x[2])
+        entries.sort(key=lambda x: (-x[2], x[0]))
         target_key, target_year, _ = entries[0]
 
         for source_key, source_year, source_versions in entries[1:]:
@@ -1270,6 +1531,7 @@ def merge_crossyear_movies(result, max_gap=3):
                     # after the loop (audit round-2 #9 — was O(k^2) re-dedup and
                     # re-sort of the whole growing list on every absorbed source).
                     movies[target_key]['versions'].extend(movies[source_key]['versions'])
+                    _carry_aliases(movies[target_key], source_key, movies[source_key])
                     touched_targets.add(target_key)
                     log_debug(f'Cross-year merge: "{source_key}" → "{target_key}"')
                     keys_to_delete.add(source_key)
@@ -1288,6 +1550,8 @@ def merge_substring_movies(result):
 
     Example: 'avatar|2009' and '1 avatar|2009' -> merge into 'avatar|2009'
              'avatar 1|2009' and 'avatar|2009' -> merge into 'avatar|2009'
+    The survivor is the group with more files (then the shorter key), so the
+    majority title keeps its key whatever order the files arrived in.
 
     Args:
         result: Dict with 'movies' key
@@ -1306,9 +1570,6 @@ def merge_substring_movies(result):
         if year not in by_year:
             by_year[year] = []
         by_year[year].append(key)
-
-    keys_to_delete = set()
-    merges = []  # [(target_key, source_key), ...]
 
     # Non-significant words for merging same-year edition variants
     # Year grouping already separates different-year releases; this handles
@@ -1331,74 +1592,35 @@ def merge_substring_movies(result):
         'r', '(r', 'dvdrip',
     }
 
-    for year, keys in by_year.items():
+    rank = _movie_order(movies)
+    edges = []
+    for _year, keys in by_year.items():
         if len(keys) < 2:
             continue
+        keys = sorted(keys)
 
-        # Extract title part from key (before |year)
-        key_titles = {}
-        for key in keys:
-            if '|' in key:
-                # Handle dual-name keys like 'inception|pocatek|2010'
-                parts = key.rsplit('|', 1)  # Split from right to get year
-                title_part = parts[0] if len(parts) > 1 else key
-            else:
-                title_part = key
-            key_titles[key] = title_part
+        # Word set of the title part, dual-name keys included
+        # ('inception|pocatek|2010' -> {inception, pocatek}).
+        words = {key: set(key.rsplit('|', 1)[0].replace('|', ' ').split()) for key in keys}
 
-        # Find substring relationships
         for i, key1 in enumerate(keys):
-            if key1 in keys_to_delete:
-                continue
-            title1 = key_titles[key1]
-            words1 = set(title1.replace('|', ' ').split())
-
             for key2 in keys[i+1:]:
-                if key2 in keys_to_delete:
-                    continue
-                title2 = key_titles[key2]
-                words2 = set(title2.replace('|', ' ').split())
+                # Related if one title's words are a subset of the other's and
+                # the extra words are non-significant.
+                small, big = ((key1, key2) if words[key1] <= words[key2] else (key2, key1))
+                extra = words[big] - words[small]
+                if words[small] <= words[big] and words[small]:
+                    if all(w in non_significant or w.isdigit() for w in extra):
+                        if extra and not any(w.isdigit() for w in extra):
+                            # edition/language tags are not part of the title:
+                            # the generic key survives
+                            edges.append((big, small))
+                        else:
+                            # a title number or a repeated token: the larger group
+                            # (the majority title) survives
+                            edges.append((key1, key2) if rank(key2) < rank(key1) else (key2, key1))
 
-                # Check substring relationship (word-based)
-                # Merge if one title's words are subset of another
-                # and extra words are non-significant
-                if words1.issubset(words2) and len(words1) >= 1:
-                    extra_words = words2 - words1
-                    if all(w in non_significant or w.isdigit() for w in extra_words):
-                        merges.append((key1, key2))
-                        keys_to_delete.add(key2)
-                elif words2.issubset(words1) and len(words2) >= 1:
-                    extra_words = words1 - words2
-                    if all(w in non_significant or w.isdigit() for w in extra_words):
-                        merges.append((key2, key1))
-                        keys_to_delete.add(key1)
-                        break  # key1 is now a merge source, don't check more
-
-    # Perform merges
-    touched_targets = set()
-    for target_key, source_key in merges:
-        if target_key not in movies or source_key not in movies:
-            continue
-
-        # Merge versions (extend only; dedup+sort once per target after the
-        # loop — a target can absorb several sources, audit round-2 #9).
-        movies[target_key]['versions'].extend(movies[source_key]['versions'])
-        touched_targets.add(target_key)
-
-        # Pick shorter/cleaner display name
-        target_display = movies[target_key].get('display_name', target_key)
-        source_display = movies[source_key].get('display_name', source_key)
-        movies[target_key]['display_name'] = _pick_cleaner_movie_name(target_display, source_display)
-
-        log_debug(f'Movie merge: "{source_key}" → "{target_key}"')
-
-    _finalize_merged_versions(movies, touched_targets, keys_to_delete)
-
-    # Delete merged movies
-    for key in keys_to_delete:
-        if key in movies:
-            del movies[key]
-
+    _absorb_movies(movies, _merge_roots(edges, rank))
     return result
 
 

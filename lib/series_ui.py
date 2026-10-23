@@ -13,8 +13,8 @@ import xbmcplugin
 
 from lib.api import revalidate
 from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
-from lib.state import state_key_for, build_mv_state_key, get_states
-from lib.keys import normalize_series_key, normalize_movie_key
+from lib.state import state_key_for, build_mv_state_key, get_states, resolve_state_key
+from lib.keys import normalize_series_key, normalize_movie_key, identity_set
 from lib.parsing import parse_quality_metadata
 from lib.cache import get_or_fetch_grouped
 from lib.grouping import deduplicate_versions, _safe_size
@@ -37,7 +37,9 @@ def _resolve_drifted_key(bucket, stored_key, fav_display_name, normalize):
     1. Normalized-key equality — the same identity the favorites/state layers
        use; collapses dual-name prefix drift (e.g. "mestecko|south park" and
        "tucnak|south park" both normalize to "south park").
-    2. Case-insensitive EXACT display_name match — last resort for the case
+    2. An alias — a key the live group was merged from (its `aliases`), i.e. a
+       key an older, order-dependent merge may have chosen as the survivor.
+    3. Case-insensitive EXACT display_name match — last resort for the case
        where the aliases differ so much the normalized keys can't bridge.
 
     Substring matching is deliberately NOT used: it wrongly conflated sibling
@@ -50,6 +52,10 @@ def _resolve_drifted_key(bucket, stored_key, fav_display_name, normalize):
     if target_norm:
         for k in bucket:
             if normalize(k) == target_norm:
+                return k
+    if target_norm:
+        for k, v in bucket.items():
+            if target_norm in identity_set(k, v.get('aliases'), normalize):
                 return k
     target_name = (fav_display_name or '').lower()
     if target_name:
@@ -212,11 +218,13 @@ def browse_season(params):
                     if versions[0].get('img'):
                         listitem.setArt({'thumb': versions[0]['img']})
 
-                    ep_state_key = state_key_for({
+                    ep_state_key = resolve_state_key({
                         'series_name': series_name,
                         'season': season_num,
                         'episode': ep_num,
-                    })
+                        'legacy_movie_key': next(
+                            (v['legacy_movie_key'] for v in versions if v.get('legacy_movie_key')), None),
+                    }, series_data.get('aliases'))
                     state_cmds = apply_playback_state(listitem, ep_state_key)
 
                     commands = []
@@ -716,7 +724,8 @@ def browse_other(params):
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            state_key = build_mv_state_key(canonical_key)
+            state_key = resolve_state_key({'canonical_key': canonical_key},
+                                          movie_data.get('aliases'))
             state_cmds = apply_playback_state(listitem, state_key)
             if state_cmds:
                 listitem.addContextMenuItems(state_cmds)

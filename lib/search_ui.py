@@ -10,9 +10,9 @@ import xbmcgui
 import xbmcplugin
 
 from lib.api import api, parse_xml, is_ok, revalidate
-from lib.utils import todict, get_url, popinfo, ask, tolistitem, sizelize, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
+from lib.utils import todict, get_url, popinfo, ask, tolistitem, get_handle, get_addon, set_webshare_id, set_video_info, apply_playback_state
 from lib.cache import loadsearch, removesearch, storesearch, build_cache_key, cache_set, clear_cache
-from lib.state import build_mv_state_key, get_states
+from lib.state import build_mv_state_key, get_states, resolve_state_key
 from lib.grouping import fetch_and_group_series
 from lib.search import calculate_search_relevance
 from lib.logging import log_debug
@@ -245,7 +245,7 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
     _movie_keys = [k for t, k, _d, _s in page_items if t == 'movie']
     if _movie_keys:
         get_states([build_mv_state_key(k) for k in _movie_keys])
-    for item_type, key, data, score in page_items:
+    for item_type, key, data, _score in page_items:
         if item_type == 'series':
             series_name = key
             series_data = data
@@ -310,6 +310,7 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
             listitem.addContextMenuItems([add_favorite_context_entry({
                 'type': 'series',
                 'canonical_key': series_name,
+                'aliases': series_data.get('aliases'),
                 'display_name': display_name,
                 'search_query': what,
                 'category': category,
@@ -346,11 +347,13 @@ def display_series_list(grouped, what, category, sort, limit, page=0,
             if movie_data.get('plot'):
                 set_video_info(listitem, {'plot': movie_data['plot']})
 
-            state_key = build_mv_state_key(movie_key)
+            state_key = resolve_state_key({'canonical_key': movie_key},
+                                          movie_data.get('aliases'))
             state_cmds = apply_playback_state(listitem, state_key)
             fav_entry = add_favorite_context_entry({
                 'type': 'movie',
                 'canonical_key': movie_key,
+                'aliases': movie_data.get('aliases'),
                 'display_name': display_name,
                 'search_query': what,
                 'year': year,

@@ -7,7 +7,6 @@ import sys
 import xbmc
 import xbmcgui
 import xbmcaddon
-import xbmcplugin
 
 from lib.logging import log_debug
 
@@ -146,7 +145,7 @@ def todict(xml, skip=None):
     return result
 
 
-def sizelize(txtsize, units=['B', 'KB', 'MB', 'GB']):
+def sizelize(txtsize, units=('B', 'KB', 'MB', 'GB')):
     """Convert bytes to human-readable size."""
     if txtsize:
         # 'size' comes verbatim from the Webshare XML and may be a list
@@ -247,7 +246,7 @@ def apply_playback_state(listitem, state_key):
     return cmds
 
 
-def tolistitem(file, addcommands=[]):
+def tolistitem(file, addcommands=None):
     """Create Kodi ListItem from file dict."""
     label = labelize(file)
     listitem = xbmcgui.ListItem(label=label)
@@ -262,8 +261,8 @@ def tolistitem(file, addcommands=[]):
     listitem.setProperty('IsPlayable', 'true')
 
     try:
-        from lib.state import state_key_for
-        state_key = state_key_for(file)
+        from lib.state import resolve_state_key
+        state_key = resolve_state_key(file, file.get('series_aliases'))
     except Exception as e:
         log_debug("tolistitem: state_key_for failed ({}): {}".format(type(e).__name__, e))
         state_key = None

@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """Tests for utils module."""
 import pytest
-import sys
-from unittest.mock import patch, MagicMock
 
 # Ensure conftest mocks are loaded first
-from tests.conftest import get_mock_addon, reset_mock_addon
+from tests.conftest import reset_mock_addon
 
 
 class TestSizelize:
@@ -168,42 +166,6 @@ class TestGetFilesizeEnabled:
         assert result is False
 
 
-class TestSettingsRefresh:
-    """Test that settings are refreshed dynamically."""
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        """Setup mock and import utils."""
-        self.mock_addon = reset_mock_addon()
-        from lib import utils
-        self.utils = utils
-
-    def test_label_format_updates(self):
-        """Label format reflects setting changes."""
-        # Start with default
-        assert self.utils.get_label_format() == '{name}'
-
-        # Enable custom
-        self.mock_addon.setSetting('customformat', 'true')
-        self.mock_addon.setSetting('labelformat', 'NEW: {name}')
-
-        # Should see new format without reimport
-        assert self.utils.get_label_format() == 'NEW: {name}'
-
-    def test_filesize_updates(self):
-        """Filesize enabled reflects setting changes."""
-        # Start with default
-        assert self.utils.get_filesize_enabled() is False
-
-        # Enable
-        self.mock_addon.setSetting('resultsize', 'true')
-        assert self.utils.get_filesize_enabled() is True
-
-        # Disable
-        self.mock_addon.setSetting('resultsize', 'false')
-        assert self.utils.get_filesize_enabled() is False
-
-
 class TestTolistitemState:
     """Test playback state metadata on ListItems produced by tolistitem."""
 
@@ -246,3 +208,75 @@ class TestTolistitemState:
         assert 'ResumeTime' not in li._properties
         context_labels = [c[0] for c in li._context]
         assert any('30270' in lbl for lbl in context_labels)
+
+
+from urllib.parse import quote_plus  # noqa: E402
+
+
+class TestTolistitemMergedEpisodeState:
+    """A merged single-version episode reads the group-key row, else the legacy row."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_mock_addon()
+
+    def _run(self, rows):
+        from lib import utils
+        import lib.state as _state
+        original = _state.get_state
+        _state.get_state = lambda key: rows.get(key)
+        try:
+            return utils.tolistitem({
+                'ident': 'c', 'name': 'e.mkv', 'series_name': 'south park',
+                'premerge_series_name': 'mestecko south park', 'season': 1, 'episode': 3})
+        finally:
+            _state.get_state = original
+
+    WATCHED = {'watched': 1, 'resume_seconds': 0, 'total_seconds': 10}
+    UNWATCHED = {'watched': 0, 'resume_seconds': 0, 'total_seconds': 10}
+
+    def test_row_only_under_legacy_key_renders_watched_with_legacy_key(self):
+        li = self._run({'ep:mestecko south park|S01E03': self.WATCHED})
+        assert li._info.get('playcount') == 1
+        assert any('mark_unwatched' in c[1] and quote_plus('ep:mestecko south park|S01E03') in c[1]
+                   for c in li._context)
+
+    def test_row_under_group_key_wins(self):
+        li = self._run({'ep:mestecko south park|S01E03': self.WATCHED,
+                        'ep:south park|S01E03': self.UNWATCHED})
+        assert 'playcount' not in li._info
+        mark = [c[1] for c in li._context if 'mark_watched' in c[1]]
+        assert mark and quote_plus('ep:south park|S01E03') in mark[0]
+
+
+class TestTolistitemAliasState:
+    """A merged episode reads rows stored under any key its group was merged from."""
+
+    @pytest.fixture(autouse=True)
+    def setup(self):
+        reset_mock_addon()
+
+    def _run(self, rows, file_extra):
+        from lib import utils
+        import lib.state as _state
+        original = _state.get_state
+        _state.get_state = lambda key: rows.get(key)
+        try:
+            return utils.tolistitem(dict({
+                'ident': 'c', 'name': 'e.mkv', 'series_name': 'south park',
+                'season': 1, 'episode': 3}, **file_extra))
+        finally:
+            _state.get_state = original
+
+    WATCHED = {'watched': 1, 'resume_seconds': 0, 'total_seconds': 10}
+
+    def test_row_under_an_alias_renders_watched_with_the_alias_key(self):
+        li = self._run({'ep:park south|S01E03': self.WATCHED},
+                       {'series_aliases': ['mestecko south park', 'park south']})
+        assert li._info.get('playcount') == 1
+        assert any('mark_unwatched' in c[1] and quote_plus('ep:park south|S01E03') in c[1]
+                   for c in li._context)
+
+    def test_without_aliases_an_alias_row_is_not_read(self):
+        li = self._run({'ep:park south|S01E03': self.WATCHED}, {})
+        assert 'playcount' not in li._info

@@ -13,7 +13,7 @@ from lib.utils import get_url, popinfo, get_handle, get_addon
 from lib.keys import NONE_WHAT
 from lib.favorites import (
     load_favorites, add_favorite, remove_favorite, is_favorited,
-    find_favorite_by_name,
+    find_favorite_by_name, find_favorite_by_aliases,
 )
 from lib.logging import log_debug
 
@@ -181,7 +181,8 @@ def add_favorite_context_entry(entry):
 
     # is_favorited normalizes the key, so it already recognizes a favorite
     # stored under a drifted canonical_key — pass the current key to remove
-    # (it normalizes back to the same identity). find_favorite_by_name is a
+    # (it normalizes back to the same identity). find_favorite_by_aliases finds
+    # one stored under a key the group was merged from. find_favorite_by_name is a
     # last resort for when the aliases differ so much the normalized keys
     # can't bridge (English-only vs Czech-only fetch); there we must remove
     # by the STORED key, since the current key won't normalize to a match.
@@ -189,7 +190,8 @@ def add_favorite_context_entry(entry):
     if is_favorited(t, key):
         remove_key = key
     elif t in ('series', 'movie'):
-        existing = find_favorite_by_name(t, entry.get('display_name', ''))
+        existing = (find_favorite_by_aliases(t, key, entry.get('aliases'))
+                    or find_favorite_by_name(t, entry.get('display_name', '')))
         if existing:
             remove_key = existing.get('canonical_key', key)
 

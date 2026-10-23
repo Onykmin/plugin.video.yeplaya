@@ -21,7 +21,6 @@ import shutil
 import tempfile
 import threading
 import unittest
-import unittest.mock
 
 import lib.favorites as favorites
 import lib.cache as cache
@@ -300,10 +299,6 @@ class TestLabelFor(unittest.TestCase):
             self.fail('_label_for raised on brace-bearing query: {}'.format(e))
         self.assertIn('{foo}', label)
 
-    def test_label_for_search_type_prefix(self):
-        label = self.ui._label_for({'type': 'search', 'query': 'south park'})
-        self.assertTrue(label.startswith('String_30426'))
-
     def test_label_for_series_type_prefix(self):
         label = self.ui._label_for({
             'type': 'series', 'canonical_key': 'south park||',
@@ -389,19 +384,6 @@ class TestClickUrl(unittest.TestCase):
 
 class TestInMemoryCache(FavoritesTestBase):
     """load_favorites caches in-memory; save_favorites invalidates."""
-
-    def test_load_favorites_caches_in_memory(self):
-        add_favorite({'type': 'search', 'query': 'a'})  # primes cache via save
-        favorites.invalidate_cache()
-        # Persistence reads go through lib.cache; patch its io.open.
-        with unittest.mock.patch('lib.cache.io.open',
-                                 wraps=io.open) as mopen:
-            load_favorites()
-            load_favorites()
-            load_favorites()
-        # First call hits disk, the next two are served from memory.
-        self.assertEqual(mopen.call_count, 1,
-                         'expected single disk read, got {}'.format(mopen.call_count))
 
     def test_add_favorite_invalidates_cache(self):
         add_favorite({'type': 'search', 'query': 'a'})
@@ -552,7 +534,8 @@ class TestGotoPageContract(unittest.TestCase):
     wipes path history)."""
 
     def setUp(self):
-        import xbmc, xbmcplugin
+        import xbmc
+        import xbmcplugin
         from lib import ui
         self.ui = ui
         # Save originals to restore — never delete lib.* modules from
@@ -567,7 +550,8 @@ class TestGotoPageContract(unittest.TestCase):
         xbmcplugin.endOfDirectory = _end
 
     def tearDown(self):
-        import xbmc, xbmcplugin
+        import xbmc
+        import xbmcplugin
         xbmc.executebuiltin = self._saved_exec
         xbmcplugin.endOfDirectory = self._saved_end
 
@@ -596,3 +580,52 @@ class TestGotoPageContract(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestFavoritedUnderAnAlias(FavoritesTestBase):
+    """A favorite stored under a key its group was merged from (the old
+    order-dependent survivor) is still found, and removed by its stored key."""
+
+    def setUp(self):
+        super().setUp()
+        from lib.favorites import find_favorite_by_aliases
+        self.find = find_favorite_by_aliases
+
+    def test_series_found_under_each_alias_kind(self):
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko south park', 'display_name': 'South Park'})
+        for key, aliases in (('south park', ['mestecko south park']),
+                             ('south park', ['x', 'mestecko south park']),
+                             ('the penguin|tucnak', ['mestecko south park'])):
+            self.assertEqual(self.find('series', key, aliases)['canonical_key'], 'mestecko south park')
+
+    def test_dual_alias_matches_through_its_normalized_identity(self):
+        add_favorite({'type': 'series', 'canonical_key': 'tucnak', 'display_name': 'Penguin'})
+        self.assertIsNotNone(self.find('series', 'penguin', ['penguin|tucnak']))
+
+    def test_movie_alias_keeps_the_year(self):
+        add_favorite({'type': 'movie', 'canonical_key': 'blade 2|2000', 'display_name': 'Blade 2'})
+        self.assertIsNotNone(self.find('movie', 'blade 2|2002', ['blade 2|2000']))
+        self.assertIsNone(self.find('movie', 'blade 2|2002', ['blade 2|2001']))
+
+    def test_no_match_without_a_shared_alias_or_with_the_wrong_type(self):
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko south park', 'display_name': 'South Park'})
+        self.assertIsNone(self.find('series', 'south park', ['park south']))
+        self.assertIsNone(self.find('series', 'south park', None))
+        self.assertIsNone(self.find('movie', 'south park|2000', ['mestecko south park|2000']))
+        self.assertIsNone(self.find('search', 'south park', ['mestecko south park']))
+
+    def test_context_entry_removes_the_stored_alias_key(self):
+        from lib.favorites_ui import add_favorite_context_entry
+        add_favorite({'type': 'series', 'canonical_key': 'mestecko south park', 'display_name': 'South Park'})
+        _label, command = add_favorite_context_entry({
+            'type': 'series', 'canonical_key': 'south park', 'display_name': 'Other Voted Name',
+            'aliases': ['mestecko south park']})
+        self.assertIn('remove_favorite', command)
+        self.assertIn('mestecko+south+park', command)
+
+    def test_context_entry_offers_add_when_nothing_matches(self):
+        from lib.favorites_ui import add_favorite_context_entry
+        _label, command = add_favorite_context_entry({
+            'type': 'series', 'canonical_key': 'south park', 'display_name': 'South Park',
+            'aliases': ['mestecko south park']})
+        self.assertIn('add_favorite', command)

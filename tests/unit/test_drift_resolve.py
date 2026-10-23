@@ -55,6 +55,16 @@ class TestResolveDriftedKey(unittest.TestCase):
                             self.norm_movie)
         self.assertEqual(out, 'alias cz|penguin|2022')
 
+    def test_favorite_under_an_old_season_marker_key_resolves_through_aliases(self):
+        bucket = {'dragon ball z': {'display_name': 'Dragon Ball Z',
+                                    'aliases': ['dragon ball z s01', 'dragon ball z s05']},
+                  'dragon ball gt': {'display_name': 'Dragon Ball GT', 'aliases': []}}
+        for stored in ('dragon ball z s05', 'dragon ball z s01'):
+            self.assertEqual(self._resolve(bucket, stored, 'Dragon Ball Z S05', self.norm_series),
+                             'dragon ball z')
+        # an old key that is no alias of any live group stays unresolved
+        self.assertEqual(self._resolve(bucket, 'dragon ball z s07', 'x', self.norm_series), 'dragon ball z s07')
+
     def test_empty_bucket_returns_stored(self):
         self.assertEqual(
             self._resolve({}, 'x', 'X', self.norm_series), 'x')

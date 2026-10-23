@@ -6,6 +6,8 @@
 import datetime
 import re
 
+from lib.keys import season_in_key
+
 _CURRENT_YEAR = datetime.datetime.now().year
 
 # Max filename length fed to the lazy `(.+?)[sep]+` parsing regexes. Beyond
@@ -22,21 +24,81 @@ except ImportError:
         return ''.join([c for c in normalized if not unicodedata.combining(c)])
 
 # Compiled regex patterns for performance
-_PATTERN_S00E00 = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?[Ss](\d{1,2})[Ee](\d{1,3})[\)\]]?')
-_PATTERN_S00E00_REVERSED = re.compile(r'^[Ss](\d{1,2})[Ee](\d{1,3})[\s_\.\-]+(.+?)$')  # Episode marker first
+# Season/episode marker, groups (season, episode): "S01E05", "S01 E001", "S03.E13", "S02 EP01",
+# "S01EP02", "S3 Ep 05", "S04xE13", "S1x25", "SE1 EP035" (but not the codec in "S01x265" or the "S0XE01" placeholder). A gap or
+# dot between the season and episode part is still ONE marker, else the season digits leak into
+# the series name.
+_SE_MARKER = r'[Ss][Ee]?(\d{1,2})(?:(?<![Ss]0)[xX](?!26[45])[Ee]?|[\s_.\-]{0,3}[Ee][Pp]?[\s.]?)(\d{1,3})'
+_PATTERN_S00E00 = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?' + _SE_MARKER + r'[\)\]]?')
+# The marker anywhere (movie-vs-series gate): a bracketed/gapped marker next to a year still routes to series.
+EPISODE_MARKER_ANYWHERE = re.compile(
+    r'(?<![A-Za-z0-9])(?:' + _SE_MARKER + r'|\d{1,2}x\d{1,3})(?![A-Za-z0-9])')
+# The marker gate before gap/dot/EP spellings were recognised: with a release year such a file was a movie
+# (legacy movie-key derivation only).
+LEGACY_EPISODE_MARKER_ANYWHERE = re.compile(
+    r'(?<![A-Za-z0-9])(?:[Ss]\d{1,2}[Ee]\d{1,3}|\d{1,2}x\d{1,3})(?![A-Za-z0-9])')
+_PATTERN_S00E00_REVERSED = re.compile(r'^' + _SE_MARKER + r'[\s_\.\-]+(.+?)$')  # Episode marker first
 _PATTERN_0x00 = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?(\d{1,2})x(\d{1,3})[\)\]]?')
-_PATTERN_MULTI_EP = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?[Ss](\d{1,2})[Ee](\d{1,3})(?:[\-\.]?[Ee]?(\d{1,3}))?[\)\]]?')
+# The marker format before the gap/dot/EP spellings were recognised (legacy-key derivation only).
+_PATTERN_S00E00_LEGACY = re.compile(r'^(.+?)[\s_\.\-]+[\(\[]?[Ss](\d{1,2})[Ee](\d{1,3})[\)\]]?')
 _PATTERN_ABSOLUTE_EP = re.compile(r'^(.+?)[\s\.\-]+(?:ep?\.?\s*)?(\d{1,3})(?!\d)', re.IGNORECASE)
 # Prefer a spaced " - N" dash before the general pattern so titles with an
 # earlier bare number ("Show - Part 2 - 05") bind the episode after the LAST
 # " - " rather than the first number. Strictly more restrictive, so it only
 # reorders which number binds; when it doesn't match, the general one is used.
 _PATTERN_ABSOLUTE_EP_DASH = re.compile(r'^(.+?)\s+-\s+(?:ep?\.?\s*)?(\d{1,3})(?!\d)', re.IGNORECASE)
-_PATTERN_SEASON_TEXT = re.compile(r'(?:Season\s*(\d{1,2})|(\d{1,2})(?:st|nd|rd|th)\s*Season|(?:^|\s)S(?:eason)?\s+(\d{1,2})(?!\s*[Ee]))', re.IGNORECASE)
+# `Name NN - MM`: the 1-2 digit token before the dash is either the season or a part of the name.
+_PATTERN_BARE_SEASON_BEFORE_DASH = re.compile(r'^(.*\S)\s+(\d{1,2})$')
+# "Season 2", "2nd Season", and the bare "S3" / "S 3" token ("Jujutsu Kaisen S3 - 01"). A digit
+# or letter glued behind it ("S1080", "S3P1", "S7EN") is not a season.
+_PATTERN_SEASON_TEXT = re.compile(
+    r'(?:Season\s*(\d{1,2})|(\d{1,2})(?:st|nd|rd|th)\s*Season|(?:^|\s)S\s*(\d{1,2})(?![\dA-Za-z])(?!\s*[Ee]))',
+    re.IGNORECASE)
+# What counted as season text before the bare "S3" token (legacy-key derivation only).
+_PATTERN_SEASON_TEXT_LEGACY = re.compile(
+    r'(?:Season\s*(\d{1,2})|(\d{1,2})(?:st|nd|rd|th)\s*Season|(?:^|\s)S(?:eason)?\s+(\d{1,2})(?!\s*[Ee]))',
+    re.IGNORECASE)
+# Single-word title glued to a 3-digit absolute number: "Naruto006.mkv", "Naruto066-067.mkv".
+# Needs zero padding or a "-NNN" range as evidence, so "Fahrenheit451.mkv" / "Catch22" stay titles.
+_PATTERN_ABSOLUTE_GLUED = re.compile(r'^([^\W\d_]{4,})(\d{3})(-\d{3})?\.[A-Za-z0-9]{2,4}$')
 _PATTERN_QUALITY = re.compile(r'\b(1080p|720p|2160p|4K|BluRay|WEB-DL|HDTV|WEBRip|BRRip)\b', re.IGNORECASE)
 _PATTERN_CODEC = re.compile(r'\b(x264|x265|H\.?264|H\.?265|HEVC|XviD)\b', re.IGNORECASE)
 _PATTERN_AUDIO = re.compile(r'\b(DD5\.1|DTS|AC3|AAC)\b', re.IGNORECASE)
-_PATTERN_YEAR = re.compile(r'\[?\d{4}\]?')
+# A release year (19xx/20xx) not touching other digits: "The.4400" and "Show 123456" keep their digits.
+_PATTERN_YEAR = re.compile(r'(?<!\d)\[?(?:19|20)\d{2}\]?(?!\d)')
+# WxH pixel size ("1920x1080"); stripped before the year so it leaves no stray "x" in a key.
+_PATTERN_PIXELS = re.compile(r'(?<!\d)\d{3,4}x\d{3,4}(?!\d)')
+# Release-site prefix ("7HitMovies.cool - ", "www.site.org - "): a domain followed by a spaced dash.
+# Only TLDs that are neither English words nor plausible title endings ("The.Net", "Reality.TV"):
+# the TLD alone is evidence enough. Every other site TLD needs the host evidence below.
+_RE_SITE_PREFIX = re.compile(
+    r'^\s*(?:www\.)?[\w-]+(?:\.[\w-]+)*\.(?:com|org|xyz|cc|ws|io|eu)\s+-\s+',
+    re.IGNORECASE)
+# The pre-word-TLD list incl. its word TLDs, ungated: only for deriving older keys (`legacy`).
+_RE_SITE_PREFIX_LEGACY = re.compile(
+    r'^\s*(?:www\.)?[\w-]+(?:\.[\w-]+)*\.(?:com|org|net|info|biz|cool|club|site|top|vip|xyz|live|cc|ws|tv|to|me|io|eu)\s+-\s+',
+    re.IGNORECASE)
+# Junk-site TLDs that are also English words ("The.Dead.Zone - S01E01", "Danger.Zone - 05"), so the
+# TLD alone is no evidence: lowercase TLD, ONE host label, and a host that looks like a site name
+# (a digit or capital after its first character: "7HitMovies", "SkyMoviesHD", "bolly4u").
+# "com.de" is a two-label suffix, but the host in front of it is still ONE label, so the guard holds.
+_RE_SITE_PREFIX_WORD_TLD = re.compile(
+    r'^\s*(?:[wW]{3}\.)?[\w-](?=[\w-]*[\dA-Z])[\w-]*\.(?:dad|forum|buzz|diy|best|moe|zone|watch|green|com\.de|cool|club|site|top|live|to|me|net|info|biz|tv|vip)\s+-\s+')
+# Audio channels ("5.1") or bit depth ("10bit") where an absolute episode number would sit.
+_RE_SPEC_NOT_EPISODE = re.compile(r'[2567]\.[01](?!\d)|\d+\s?-?bit\b', re.IGNORECASE)
+# A bare language tag or release-kind label is not a second title.
+_RE_LANG_ONLY = re.compile(
+    r'^(?:CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)(?:[\s._-]*(?:dab(?:ing)?|tit(?:ulky)?|sub(?:s|titles)?|dub))?$',
+    re.IGNORECASE)
+# Upload tag leading a "second name" ("Dark.Feed.2013-CZ-NOVINKA"): upper-case only, so
+# real titles that merely start like a code ("En route", "It") stay possible aliases.
+_RE_LANG_LEAD = re.compile(r'^(?:CZ|SK|EN)(?=[\s._-]|$)')
+_RE_RELEASE_LABEL = re.compile(
+    r'^(?:the\s+)?(?:movie|film|ova|oad|ona|special|specials|extras?|bonus|complete|collection|trailer|sample)$',
+    re.IGNORECASE)
+_RE_DOTTED_DASH = re.compile(r'[._]-[._]')
+_RE_SPACED_DASH = re.compile(r'\s[-\u2013\u2014]\s')
+_RE_UPPER_START = re.compile(r'[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]')
 _PATTERN_LANG = re.compile(r'\b(CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)\b|[\(\[](?:CZ|EN|SK|DE|FR|ES|IT|PL|RU|JP|KR)[\)\]]', re.IGNORECASE)
 _PATTERN_SEPARATORS = re.compile(r'[\-_\.\,\:\;]+')
 _PATTERN_EPISODE_MARKER = re.compile(r'\b[Ss]\d{1,2}[Ee]\d{1,3}\b')
@@ -47,6 +109,32 @@ _RE_RELEASE_GROUP = re.compile(r'[-\s]+(sparks|fgt|yify|yts|rarbg|etrg|ettv|fum|
 # ============================================================================
 # Quality Parsing
 # ============================================================================
+
+# Resolution tokens. `\b` cannot be used: "_" is a word char, so "Dune_720p" and
+# "peaky_blinders.2x03.720p_hdtv" never matched, and a letter-glued "odevzdanosti1080p"
+# is a real upload style. Instead the token must not touch a digit on the left
+# (rejects "21080p") nor a letter/digit on the right (rejects "1080pm").
+_RES_P_OR_4K = re.compile(
+    r'(?:(?<![0-9])(2160p|1080p|720p|480p)(?![A-Za-z0-9])|(?<![A-Za-z0-9])(4K)(?![A-Za-z0-9]))',
+    re.IGNORECASE)
+_RES_WXH = re.compile(r'(?<![A-Za-z0-9])(3840x2160|1920x1080|1280x720|720x480)(?![A-Za-z0-9])', re.IGNORECASE)
+# Marketing tags, weaker than an explicit pixel token: only used when none is present.
+_RES_TAG = re.compile(r'(?<![A-Za-z0-9])(?:(FULL\s?HD|FHD)|(UHD(?:RDV|R)?))(?![A-Za-z0-9])', re.IGNORECASE)
+_RES_WXH_LABEL = {'3840x2160': '2160p', '1920x1080': '1080p', '1280x720': '720p', '720x480': '480p'}
+
+
+def _detect_resolution(filename):
+    """Return '2160p'/'4k'/'1080p'/'720p'/'480p' or None. Precedence: p-token/4K, WxH, FullHD/FHD/UHD."""
+    m = _RES_P_OR_4K.search(filename)
+    if m:
+        return (m.group(1) or m.group(2)).lower()
+    m = _RES_WXH.search(filename)
+    if m:
+        return _RES_WXH_LABEL[m.group(1).lower()]
+    m = _RES_TAG.search(filename)
+    if m:
+        return '1080p' if m.group(1) else '2160p'
+    return None
 
 def parse_quality_metadata(filename):
     """Extract quality metadata from filename for ranking duplicates.
@@ -69,9 +157,8 @@ def parse_quality_metadata(filename):
     }
 
     # Extract quality/resolution
-    quality_match = re.search(r'\b(2160p|4K|1080p|720p|480p)\b', filename, re.IGNORECASE)
-    if quality_match:
-        quality = quality_match.group(1).lower()
+    quality = _detect_resolution(filename)
+    if quality:
         result['quality'] = quality
 
         if quality in ('2160p', '4k'):
@@ -180,6 +267,31 @@ def _looks_like_episode_title(name2):
     return len(name2.split()) >= 3
 
 
+def strip_site_prefix(filename, legacy=False):
+    """Drop a leading release-site domain ("7HitMovies.cool - Show.S01E01") from a filename.
+
+    `legacy` is the list before the word TLDs: only for deriving the keys older versions gave a file.
+    """
+    if legacy:
+        return _RE_SITE_PREFIX_LEGACY.sub('', filename, count=1)
+    stripped = _RE_SITE_PREFIX.sub('', filename, count=1)
+    if stripped != filename:
+        return stripped
+    return _RE_SITE_PREFIX_WORD_TLD.sub('', filename, count=1)
+
+
+def legacy_site_prefix_key(filename):
+    """Key the old parser built from a site prefix alone ("7hitmovies best"), else None.
+
+    Only a prefix the word-TLD pattern recognises counts. That key names every title the site
+    posted, so it can identify none of them and is never kept as an alias.
+    """
+    stripped = strip_site_prefix(filename)
+    if stripped == strip_site_prefix(filename, legacy=True):
+        return None
+    return clean_series_name(filename[:len(filename) - len(stripped)])
+
+
 def _strip_episode_title_suffix(raw_name):
     """Drop a descriptive ' - <episode title>' suffix from a series name.
 
@@ -188,9 +300,11 @@ def _strip_episode_title_suffix(raw_name):
     legit dual names ("The Penguin - Tucnak") and short suffixes are untouched.
     Prevents one series fragmenting into one canonical key per episode (#16).
     """
-    if ' - ' not in raw_name:
+    # an en/em dash between spaces is the same separator as ' - '
+    parts = _RE_SPACED_DASH.split(raw_name, maxsplit=1)
+    if len(parts) != 2:
         return raw_name
-    head, _, tail = raw_name.partition(' - ')
+    head, tail = parts
     if (head.strip() and _looks_like_episode_title(tail.strip())
             and not extract_dual_names(raw_name)):
         return head.strip()
@@ -206,6 +320,8 @@ def _dual_name2_is_false_positive(name2):
     if re.match(r'^[Ss]\d{1,2}[Ee]\d{1,3}', name2):
         return True
     if re.match(r'^(?:19|20)\d{2}$', name2):
+        return True
+    if _RE_LANG_ONLY.match(name2) or _RE_LANG_LEAD.match(name2) or _RE_RELEASE_LABEL.match(name2):
         return True
     quality_keywords = ['720p', '1080p', '2160p', '4k', 'x264', 'x265', 'hevc',
                         'h264', 'h265', 'bluray', 'webrip', 'webdl', 'hdtv',
@@ -230,6 +346,10 @@ def extract_dual_names(raw_name):
 
     Returns: (name1, name2) tuple or None if not dual-name format
     """
+    # "The.Penguin.-.Tučňák": dots/underscores stand for spaces around the dash.
+    if _RE_DOTTED_DASH.search(raw_name):
+        raw_name = re.sub(r'[._]+', ' ', raw_name)
+
     # Try brackets format: "Name1 [Name2]"
     bracket_match = re.match(r'^(.+?)\s*\[([^\]]+)\]', raw_name)
     if bracket_match:
@@ -287,10 +407,10 @@ def extract_dual_names(raw_name):
                 return (name1, name2)
 
     # Try dash separator without spaces
-    dash_match = re.match(r'^([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ][^-]+)-([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ].+)$', raw_name)
-    if dash_match:
-        name1 = dash_match.group(1).strip()
-        name2 = dash_match.group(2).strip()
+    head, _, tail = raw_name.partition('-')
+    if len(head) > 1 and _RE_UPPER_START.match(head) and _RE_UPPER_START.match(tail):
+        name1 = head.strip()
+        name2 = tail.strip()
 
         if re.search(r'[IVX]+\s*\(\d+\)', name1):
             return None
@@ -301,10 +421,13 @@ def extract_dual_names(raw_name):
         if _norm_title_eq(name1, name2) or _dual_name2_is_false_positive(name2):
             return None
 
+        # A trailing language tag ("Shadows.CZ") must not make a one-word title look
+        # like a second name through its capital letters.
+        core2 = _PATTERN_LANG.sub('', name2).strip(' ._-')
         if (name1 and name2 and len(name1) > 1 and len(name2) > 1 and
-            (' ' in name1 or ' ' in name2 or
+            (' ' in name1 or ' ' in core2 or
              sum(1 for c in name1 if c.isupper()) > 1 or
-             sum(1 for c in name2 if c.isupper()) > 1)):
+             sum(1 for c in core2 if c.isupper()) > 1)):
             return (name1, name2)
 
     # Try slash separator
@@ -377,6 +500,7 @@ def clean_series_name(name):
     name = _PATTERN_CODEC.sub('', name)
     name = _PATTERN_AUDIO.sub('', name)
     name = _PATTERN_LANG.sub('', name)
+    name = _PATTERN_PIXELS.sub('', name)
     # Strip years, but preserve if the name IS a year (e.g., series "1883")
     name_before_year_strip = name
     name = _PATTERN_YEAR.sub('', name)
@@ -450,9 +574,20 @@ def extract_language_tag(filename):
 
 def get_display_name(filename):
     """Extract display-friendly series name (preserves case)."""
-    match = _PATTERN_S00E00.match(filename) or _PATTERN_0x00.match(filename)
+    match = match_episode_marker(filename)
+    glued = _match_glued_episode(filename)
     if match:
         raw_name = _strip_episode_title_suffix(match.group(1))
+    elif glued:
+        raw_name = glued.group(1)
+    else:
+        # Absolute numbering ("Mashle - 01", "One.Piece.009"): the title is what
+        # precedes the number, as in parse_episode_info.
+        _, unseasoned = extract_season_from_text(filename)
+        match = (_PATTERN_ABSOLUTE_EP_DASH.match(unseasoned)
+                 or _PATTERN_ABSOLUTE_EP.match(unseasoned))
+        raw_name = match.group(1) if match else None
+    if raw_name is not None:
         name = raw_name.replace('.', ' ').replace('_', ' ')
         name = _PATTERN_QUALITY.sub('', name)
         name = _PATTERN_CODEC.sub('', name)
@@ -478,37 +613,107 @@ def extract_season_from_text(filename):
         "Series Season 3 E05.mkv" -> (3, "Series E05.mkv")
         "Normal S01E01.mkv" -> (None, "Normal S01E01.mkv")
     """
-    match = _PATTERN_SEASON_TEXT.search(filename)
-    if not match:
-        return None, filename
+    return _strip_season_text(filename, _PATTERN_SEASON_TEXT, first_only=False)
 
-    # Extract season number from any of the three capture groups
+
+def _strip_season_text(filename, pattern, first_only):
+    """(first season number found, filename without the season text spans)."""
     season = None
-    for group in match.groups():
-        if group:
-            season = int(group)
-            break
-
-    if season is None:
-        return None, filename
-
-    # Remove the season text span, keeping the head (series name) and tail
-    # (episode separator + number) intact. Tidy ONLY the seam left by the
-    # removal — do NOT collapse separators across the whole string, which
-    # corrupted the episode dash and re-inserted it at the wrong position (#34).
-    head = filename[:match.start()].rstrip(' -_.')
-    tail = filename[match.end():].lstrip(' _.')  # keep a leading '-' on the tail
-    cleaned = '{} {}'.format(head, tail) if (head and tail) else (head or tail)
-    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip()
-
-    return season, cleaned
+    while True:
+        match = pattern.search(filename)
+        if not match:
+            return season, filename
+        if season is None:
+            season = int(next(g for g in match.groups() if g))
+        # Remove the season text span, keeping the head (series name) and tail
+        # (episode separator + number) intact. Tidy ONLY the seam left by the
+        # removal — do NOT collapse separators across the whole string, which
+        # corrupted the episode dash and re-inserted it at the wrong position (#34).
+        head = filename[:match.start()].rstrip(' -_.')
+        tail = filename[match.end():].lstrip(' _.')  # keep a leading '-' on the tail
+        cleaned = '{} {}'.format(head, tail) if (head and tail) else (head or tail)
+        filename = re.sub(r'\s{2,}', ' ', cleaned).strip()
+        if first_only:
+            return season, filename
 
 
 # ============================================================================
 # Episode & Movie Parsing
 # ============================================================================
 
-def parse_episode_info(filename):
+def match_episode_marker(text):
+    """Match of the S##E## / ##x## marker that comes first in `text` (groups: name, season, episode).
+
+    The earlier marker wins ("Big.Bang.Theory-07x18 (S07E18)" is 07x18); S##E## on a tie.
+    """
+    found = [m for m in (_PATTERN_S00E00.match(text), _PATTERN_0x00.match(text)) if m]
+    return min(found, key=lambda m: len(m.group(1))) if found else None
+
+
+def _match_glued_episode(filename):
+    match = _PATTERN_ABSOLUTE_GLUED.match(filename)
+    return match if match and (match.group(3) or match.group(2).startswith('0')) else None
+
+
+def _with_legacy_name(info, legacy_raw, leaked_season=None):
+    """Record the series key the parser used before season markers were parsed as coordinates.
+
+    A marker it could not read ("S03.E13", "S3 - 11", "Naruto066-067") used to stay in the name
+    ("suits s03", "attack on titan s3", "naruto066") with season 1. Rows and favorites stored
+    under such a key resolve through the group aliases, so a changed key is reported as
+    `legacy_series_name`. `legacy_raw` is the old name text (None: key unchanged). With
+    `leaked_season` the old name only counts when it carried that season's token: otherwise
+    the old parser bound the number elsewhere or rejected the file, and no such key existed.
+    """
+    legacy = clean_series_name(legacy_raw) if legacy_raw else None
+    if legacy and leaked_season is not None and season_in_key(legacy) != leaked_season:
+        return info
+    if legacy and legacy != info['series_name']:
+        info['legacy_series_name'] = legacy
+    return info
+
+
+def _legacy_absolute_name(filename, until=None):
+    """Raw series text the absolute-numbering fallback bound before season markers were read."""
+    _, cleaned = _strip_season_text(filename, _PATTERN_SEASON_TEXT_LEGACY, first_only=True)
+    if cleaned == until:
+        return None
+    old = _PATTERN_ABSOLUTE_EP_DASH.match(cleaned) or _PATTERN_ABSOLUTE_EP.match(cleaned)
+    return old.group(1) if old else None
+
+
+def _season_reading(raw_name):
+    """The `Name NN - MM` season reading of a dash-bound name ({'series_name', 'season'}), else None."""
+    found = _PATTERN_BARE_SEASON_BEFORE_DASH.match(raw_name.rstrip(' .-_'))
+    base = clean_series_name(found.group(1)) if found else None
+    if not base or len(base) < 2 or not int(found.group(2)):
+        return None
+    return {'series_name': base, 'season': int(found.group(2))}
+
+
+def apply_season_readings(infos):
+    """Settle `Name NN - MM` files (parse_episode_info's `season_reading`) as season NN or absolute.
+
+    "Peaky Blinders  02 - 05" is season 2 episode 5, "Mashle 05 - 12" is absolute episode 12 of a
+    show named "mashle 05": season NN only when the show has a season >= NN in files that carry
+    no such ambiguity. Those files are the evidence, so the answer depends neither on the ambiguous
+    files themselves nor on their order. `infos` (parse results, None allowed) is updated in place;
+    a switched file keeps its absolute-reading name as `legacy_series_name` so rows and favorites
+    stored under it still resolve.
+    """
+    seen = {}
+    for info in infos:
+        if info and info.get('is_series') and 'season_reading' not in info:
+            seen[info['series_name']] = max(seen.get(info['series_name'], 0), info['season'])
+    for info in infos:
+        reading = info.get('season_reading') if info else None
+        if reading and reading['season'] <= seen.get(reading['series_name'], 0):
+            info.setdefault('legacy_series_name', info['series_name'])
+            info['series_name'] = reading['series_name']
+            info['season'] = reading['season']
+
+
+def parse_episode_info(filename, legacy_site=False):
     """Parse TV series info from filename.
 
     Supports multiple episode numbering formats:
@@ -526,6 +731,7 @@ def parse_episode_info(filename):
         'episode': 5,
         'original_name': filename
     }
+    `legacy_site` (key derivation only): read the filename with the site-prefix list older versions used.
     """
     # Cap length before regex work: the lazy `(.+?)[\s_.\-]+` patterns below
     # backtrack O(n^2) on pathological separator runs. Real filenames are well
@@ -536,10 +742,12 @@ def parse_episode_info(filename):
     # Strip leading release group tags like "[SubsPlease] " or "(Lena) "
     # Only strips if at the very start of filename
     filename = re.sub(r'^[\(\[]([^)\]]+)[\)\]]\s*', '', filename)
+    filename = strip_site_prefix(filename, legacy_site)
 
-    # Try S##E## format (normal: series name first)
+    # Try S##E## format (normal: series name first; an earlier ##x## marker wins)
     match = _PATTERN_S00E00.match(filename)
     if match:
+        match = match_episode_marker(filename)
         raw_name = match.group(1)
         try:
             season = int(match.group(2))
@@ -547,13 +755,18 @@ def parse_episode_info(filename):
         except (ValueError, TypeError):
             return None
         series_name = clean_series_name(_strip_episode_title_suffix(raw_name))
-        return {
+        strict = _PATTERN_S00E00_LEGACY.match(filename)
+        if strict:
+            legacy_raw = _strip_episode_title_suffix(strict.group(1))
+        else:  # gap/dot/EP spelling: the season stayed in the name
+            legacy_raw = _legacy_absolute_name(filename) if match.re is _PATTERN_S00E00 else None
+        return _with_legacy_name({
             'is_series': True,
             'series_name': series_name,
             'season': season,
             'episode': episode,
             'original_name': filename
-        }
+        }, legacy_raw, None if strict else season)
 
     # Try S##E## format (reversed: episode marker first, like "S01E02 Chainsaw Man")
     match = _PATTERN_S00E00_REVERSED.match(filename)
@@ -604,6 +817,18 @@ def parse_episode_info(filename):
             'original_name': filename
         }
 
+    # Single word glued to its zero-padded absolute number ("Naruto066-067.mkv"): first number
+    # of a range is the episode.
+    glued = _match_glued_episode(filename)
+    if glued:
+        return _with_legacy_name({
+            'is_series': True,
+            'series_name': clean_series_name(glued.group(1)),
+            'season': 1,
+            'episode': int(glued.group(2)),
+            'original_name': filename
+        }, glued.group(1) + glued.group(2) if glued.group(3) else None)
+
     # Try absolute episode number format (e.g., "Mashle - 01", "Series 12", "mashle ep9")
     # First check for season text markers
     season_from_text, cleaned_filename = extract_season_from_text(filename)
@@ -615,6 +840,9 @@ def parse_episode_info(filename):
 
         # Check if this looks like a quality/codec/audio marker
         match_end = match.end()
+
+        if _RE_SPEC_NOT_EPISODE.match(cleaned_filename, match.start(2)):
+            return None
 
         # Skip quality markers like "720p", "1080p"
         if match_end < len(cleaned_filename) and cleaned_filename[match_end:match_end+1].lower() == 'p':
@@ -683,13 +911,17 @@ def parse_episode_info(filename):
             if ('-' not in gap and len(episode_str) == 1 and episode_str != '0'):
                 return None
 
-        return {
+        info = _with_legacy_name({
             'is_series': True,
             'series_name': series_name,
             'season': season,
             'episode': int(episode) if isinstance(episode, float) and episode.is_integer() else episode,
             'original_name': filename
-        }
+        }, _legacy_absolute_name(filename, until=cleaned_filename), season_from_text)
+        reading = _season_reading(raw_name) if match.re is _PATTERN_ABSOLUTE_EP_DASH and not season_from_text else None
+        if reading:
+            info['season_reading'] = reading
+        return info
 
     return None
 
@@ -699,7 +931,8 @@ def parse_episode_info(filename):
 # The `(?!x\d{3,4})` lookahead rejects a WIDTH that is part of a resolution
 # ("1920x1080", "2020x1080") so the resolution width is never read as the
 # release year (audit round-2 #2/#3).
-_RE_YEAR_TOKEN_SCAN = re.compile(r'[\(\[]?((?:19|20)\d{2})(?!x\d{3,4})[\)\]]?')
+# "1920i"/"1080p"-style interlaced/progressive tokens are not years either.
+_RE_YEAR_TOKEN_SCAN = re.compile(r'[\(\[]?(?<!\d)((?:19|20)\d{2})(?!\d|x\d{3,4}|[ip](?![A-Za-z]))[\)\]]?')
 _RE_BRACKETED_YEAR = re.compile(r'[\(\[]((?:19|20)\d{2})(?!x\d{3,4})[\)\]]')
 # Known video/archive extensions only — used to strip a trailing extension from
 # a "(year) Title.ext" title without eating dotted sequel suffixes ("Rocky.IV").
@@ -766,15 +999,17 @@ def _select_movie_year(filename):
     return None
 
 
-def parse_movie_info(filename):
+def parse_movie_info(filename, legacy_site=False):
     """Extract movie title and year from filename.
 
     Returns:
         {'is_movie': True, 'title': str, 'year': int, 'raw_title': str, 'dual_names': tuple|None}
         or None if not a movie pattern
+    `legacy_site` (key derivation only): read the filename with the site-prefix list older versions used.
     """
     if filename and len(filename) > _MAX_PARSE_LEN:
         filename = filename[:_MAX_PARSE_LEN]
+    filename = strip_site_prefix(filename, legacy_site)
     selected = _select_movie_year(filename)
     if selected:
         raw_title, year = selected
@@ -807,11 +1042,3 @@ def parse_movie_info(filename):
         }
     return None
 
-
-# Export regex patterns for use in other modules
-def get_s00e00_pattern():
-    return _PATTERN_S00E00
-
-
-def get_0x00_pattern():
-    return _PATTERN_0x00

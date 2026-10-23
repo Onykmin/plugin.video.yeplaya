@@ -16,9 +16,9 @@ import time
 
 from lib.cache import (locked_read_text, atomic_write_text, profile_dir,
                        file_lock)
-from lib.keys import normalize_series_key, normalize_movie_key
+from lib.keys import normalize_series_key, normalize_movie_key, identity_set
 from lib.search import _normalize
-from lib.logging import log_warning, log_error, log_debug
+from lib.logging import log_warning, log_debug
 
 
 FAVORITES = 'favorites'
@@ -232,6 +232,23 @@ def is_favorited(type_, key):
         if _entry_key(it) == target:
             return True
     return False
+
+
+def find_favorite_by_aliases(type_, key, aliases):
+    """The favorite stored under `key` or any of its group's `aliases`, else None.
+
+    Merges used to pick a group's key by input order, so a favorite may be
+    stored under a key the group was merged from. Returns the stored entry
+    (callers remove it by its own stored key).
+    """
+    if type_ not in ('series', 'movie') or not key:
+        return None
+    normalize = normalize_series_key if type_ == 'series' else normalize_movie_key
+    identities = identity_set(key, aliases, normalize)
+    for it in _cached_list():
+        if it.get('type') == type_ and _normalize_canonical(type_, it.get('canonical_key')) in identities:
+            return it
+    return None
 
 
 def find_favorite_by_name(type_, display_name):
