@@ -243,7 +243,7 @@ git commit -m "Release vX.X.X: description"
 
 # 4. Merge to main and tag
 git checkout main
-git merge develop
+git merge feature/my-change
 git tag vX.X.X
 git push origin main --tags
 
@@ -257,14 +257,16 @@ git push origin main --tags
 #### Release Workflow
 
 **Branches:**
-- `develop` - Active development
-- `main` - Production releases only
+- `main` - The only long-lived branch; releases are tagged from it
+- `feature/*` - Short-lived work branches, always cut from an up-to-date `main`
 
 **Creating a Release:**
 
-1. **Work on develop branch:**
+1. **Work on a feature branch off current main:**
    ```bash
-   git checkout develop
+   git checkout main
+   git pull
+   git checkout -b feature/my-change
    # Make changes, commit
    ```
 
@@ -272,23 +274,21 @@ git push origin main --tags
    - Edit `addon.xml`: change `version="X.X.X"`
    - Update `<news>` section with changes
 
-3. **Commit and push to develop:**
+3. **Commit and push the feature branch:**
    ```bash
    git add addon.xml [other files]
    git commit -m "Release vX.X.X: description"
-   git push origin develop
+   git push origin feature/my-change
    ```
 
 4. **Merge to main and tag:**
    ```bash
    git checkout main
-   git merge develop
+   git merge feature/my-change
    git push origin main
 
    git tag vX.X.X
    git push origin vX.X.X
-
-   git checkout develop
    ```
 
 5. **GitHub Action runs automatically:**
@@ -309,7 +309,7 @@ python3 repo_generator.py
 #### Contributing
 
 1. **Report bugs** via [GitHub Issues](https://github.com/Onykmin/plugin.video.yeplaya/issues)
-2. **Submit PRs** to `develop` branch with clear descriptions
+2. **Submit PRs** to `main` branch with clear descriptions
 3. **Follow existing code style** (4-space indentation, descriptive names)
 4. **Test thoroughly** with different Kodi versions and configurations
 
