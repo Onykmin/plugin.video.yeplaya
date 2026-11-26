@@ -331,6 +331,68 @@ def savesearch(history):
     atomic_write_text(os.path.join(_profile, SEARCH_HISTORY), json.dumps(history))
 
 
+RANDOM_PLAYED = 'random_played.json'
+
+
+def _random_played_path():
+    return os.path.join(_profile, RANDOM_PLAYED)
+
+
+def _read_random_played_all():
+    """Whole {scope: [[season, episode], ...]} dict; {} on miss/corrupt/non-dict."""
+    raw = locked_read_text(_random_played_path())
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except ValueError as e:
+        log_warning("random_played: corrupt JSON: {}".format(e))
+        return {}
+    if not isinstance(data, dict):
+        log_warning("random_played: non-dict JSON on disk ({})".format(
+            type(data).__name__))
+        return {}
+    return data
+
+
+def load_random_played(scope):
+    """Played (season, episode) pairs for a "<series>|<season or all>" scope."""
+    items = _read_random_played_all().get(scope)
+    if not isinstance(items, list):
+        return set()
+    played = set()
+    for item in items:
+        if (isinstance(item, (list, tuple)) and len(item) == 2
+                and all(isinstance(n, int) and not isinstance(n, bool) for n in item)):
+            played.add((item[0], item[1]))
+    return played
+
+
+def _update_random_played(scope, keys):
+    """Replace (keys) or drop (None) one scope under the sidecar lock. Never raises."""
+    path = _random_played_path()
+    try:
+        with file_lock(path + '.lock'):
+            data = _read_random_played_all()
+            if keys is None:
+                data.pop(scope, None)
+            else:
+                data[scope] = sorted([s, e] for s, e in keys)
+            atomic_write_text(path, json.dumps(data))
+    except Exception as e:
+        log_error("random_played: update failed: {}".format(e))
+
+
+def save_random_played(scope, keys):
+    """Persist the played (season, episode) set for a scope (replaces it)."""
+    _update_random_played(scope, set(keys or ()))
+
+
+def clear_random_played(scope):
+    """Forget the played set of one scope."""
+    _update_random_played(scope, None)
+
+
 def storesearch(what):
     """Add search term to history.
 
