@@ -561,3 +561,19 @@ msgstr ""
 msgctxt "#30460"
 msgid "Next random episode: {0}"
 msgstr ""
+
+msgctxt "#30461"
+msgid "Search & Results"
+msgstr ""
+
+msgctxt "#30462"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#30463"
+msgid "Random picker"
+msgstr ""
+
+msgctxt "#30464"
+msgid "Advanced"
+msgstr ""

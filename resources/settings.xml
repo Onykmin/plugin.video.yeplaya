@@ -1,41 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
-    <category label="30204">
-        <setting label="30030" type="lsep" />
+    <category label="30030">
         <setting label="30031" id="wsuser" type="text" default="" />
         <setting label="30032" id="wspass" type="text" default="" option="hidden" />
         <setting id="token" type="text" visible="false" />
-        <setting type="lsep" label="30010" />
+        <setting id="duuid" type="text" visible="false" default="" />
+    </category>
+    <category label="30461">
         <setting label="30011" id="scategory" type="select" lvalues="30012|30013|30014|30015|30016|30017|30018" default="1"/>
         <setting label="30020" id="ssort" type="select" lvalues="30021|30022|30023|30024|30025" default="0"/>
         <setting label="30028" id="slimit" type="number" default="25" />
-        <setting label="30029" id="shistory" type="number" default="20"/>
+        <setting label="30220" id="default_view" type="select" lvalues="30221|30222" default="0"/>
+        <setting label="30260" id="group_movies" type="bool" default="true" />
+        <setting label="30261" id="filter_irrelevant" type="bool" default="true" />
         <setting label="30057" id="resultsize" type="bool" default="true"/>
         <setting label="30058" id="customformat" type="bool" default="false"/>
         <setting label="30059" id="labelformat" type="text" default="" enable="eq(-1,true)"/>
-        <setting label="30220" id="default_view" type="select" lvalues="30221|30222" default="0"/>
-        <setting type="lsep" label="30040" />
-		<setting label="30041" id="dfolder" type="folder" default="" />
-        <setting label="30042" id="dnormalize" type="bool" default="true" />
-		<setting label="30043" id="dnotify" type="bool" default="true" />
-        <setting type="sep"/>
-        <setting label="30051" id="experimental" type="bool" default="false" />
-        <setting label="30260" id="group_movies" type="bool" default="true" />
-        <setting label="30261" id="filter_irrelevant" type="bool" default="true" />
-        <setting id="duuid" type="text" visible="false" default="" />
-        <setting type="lsep" label="30070" />
+        <setting label="30029" id="shistory" type="number" default="20"/>
+    </category>
+    <category label="30462">
         <setting label="30071" id="audio_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30072" id="audio_lang2" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30073" id="sub_lang" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30074" id="sub_lang2" type="select" values="Disabled|English|Czech|Slovak|German|French|Spanish|Italian|Portuguese|Russian|Ukrainian|Polish|Hungarian|Japanese|Korean|Chinese|Arabic|Turkish|Dutch|Swedish|Norwegian|Danish|Finnish|Greek|Romanian|Bulgarian|Croatian|Serbian|Hindi|Thai" default="Disabled" />
         <setting label="30075" id="sub_auto" type="bool" default="false" />
-        <setting type="lsep" label="30290" />
         <setting label="30291" id="track_resume" type="bool" default="true" />
         <setting label="30292" id="track_watched" type="bool" default="true" />
-        <setting type="lsep" label="30433" />
+    </category>
+    <category label="30463">
         <setting label="30439" id="random_episode" type="bool" default="false" />
         <setting label="30456" id="random_episode_next" type="select" lvalues="30457|30458|30459" default="0" enable="eq(-1,true)" />
         <setting label="30451" id="random_movie" type="bool" default="false" />
+    </category>
+    <category label="30040">
+        <setting label="30041" id="dfolder" type="folder" default="" />
+        <setting label="30042" id="dnormalize" type="bool" default="true" />
+        <setting label="30043" id="dnotify" type="bool" default="true" />
+    </category>
+    <category label="30464">
+        <setting label="30051" id="experimental" type="bool" default="false" />
         <setting label="30444" id="show_changelog" type="bool" default="true" />
         <setting id="changelog_seen_version" type="text" visible="false" default="" />
     </category>

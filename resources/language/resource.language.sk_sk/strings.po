@@ -561,3 +561,19 @@ msgstr "Automaticky prehrať ďalšiu náhodnú epizódu"
 msgctxt "#30460"
 msgid "Next random episode: {0}"
 msgstr "Ďalšia náhodná epizóda: {0}"
+
+msgctxt "#30461"
+msgid "Search & Results"
+msgstr "Vyhľadávanie a výsledky"
+
+msgctxt "#30462"
+msgid "Playback"
+msgstr "Prehrávanie"
+
+msgctxt "#30463"
+msgid "Random picker"
+msgstr "Náhodný výber"
+
+msgctxt "#30464"
+msgid "Advanced"
+msgstr "Pokročilé"
