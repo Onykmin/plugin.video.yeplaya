@@ -48,10 +48,12 @@ def _tracking_on():
     return (r != 'false') or (w != 'false')
 
 
-def resolve_and_play(ident, name, token, state_key=None):
+def resolve_and_play(ident, name, token, state_key=None, on_ended=None):
     """Get stream link, attach headers, resolve URL and wait for playback.
 
     Returns True on success, False on failure. Calls setResolvedUrl internally.
+    `on_ended` (no-arg callable) runs after playback only if it ended naturally
+    (not stop, error or timeout); its failure never affects the return value.
     """
     from lib.player import YePlayer
     link = getlink(ident, token)
@@ -65,6 +67,11 @@ def resolve_and_play(ident, name, token, state_key=None):
         listitem.setProperty('mimetype', 'application/octet-stream')
         xbmcplugin.setResolvedUrl(_handle, True, listitem)
         player.wait_for_playback()
+        if on_ended is not None and player.ended:
+            try:
+                on_ended()
+            except Exception as e:
+                xbmc.log("yeplaya: on_ended hook failed: " + str(e), xbmc.LOGERROR)
         return True
     else:
         popinfo(_addon.getLocalizedString(30308), icon=xbmcgui.NOTIFICATION_ERROR)
@@ -100,7 +107,13 @@ def play(params):
             xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
             return
         state_key = _build_state_key(params)
-        resolve_and_play(params['ident'], params['name'], token, state_key=state_key)
+        if params.get('rnd') == '1':
+            # Deferred: series_ui imports this module at load time.
+            from lib.series_ui import continue_random_episode
+            resolve_and_play(params['ident'], params['name'], token, state_key=state_key,
+                             on_ended=lambda: continue_random_episode(params))
+        else:
+            resolve_and_play(params['ident'], params['name'], token, state_key=state_key)
     except requests.exceptions.RequestException as e:
         xbmc.log("yeplaya: Network error in play: " + str(e), xbmc.LOGERROR)
         popinfo(_addon.getLocalizedString(30305), icon=xbmcgui.NOTIFICATION_ERROR)

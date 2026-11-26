@@ -388,3 +388,138 @@ def test_continue_fetches_grouped_with_url_params():
     args, kwargs = r.fetch.call_args
     assert args[0]['what'] == 'q' and args[0]['category'] == 'tvshow'
     assert args[0]['sort'] == 'largest'
+
+
+# ---------------------------------------------------------------------------
+# resolve_and_play(on_ended=...) hook and play() wiring (A6)
+# ---------------------------------------------------------------------------
+
+from lib import playback  # noqa: E402
+
+
+class _FakePlayer:
+    """Stands in for YePlayer: wait_for_playback leaves `ended` as configured."""
+
+    def __init__(self, ended):
+        self.ended = ended
+        self.waited = 0
+
+    def wait_for_playback(self):
+        self.waited += 1
+
+
+def _resolve(ended, on_ended, link='http://x/f'):
+    """Run resolve_and_play with a fake player; returns (result, player, log)."""
+    player = _FakePlayer(ended)
+    log = MagicMock()
+    with ExitStack() as stack:
+        for p in (
+            patch.object(playback, 'getlink', return_value=link),
+            patch.object(playback, 'popinfo'),
+            patch.object(playback.xbmc, 'log', log),
+            patch.object(playback.xbmcgui, 'ListItem', MagicMock()),
+            patch.object(playback.xbmcplugin, 'setResolvedUrl'),
+            patch('lib.player.YePlayer', lambda **kw: player),
+        ):
+            stack.enter_context(p)
+        result = playback.resolve_and_play('id', 'n', 'tok', state_key='k', on_ended=on_ended)
+    return result, player, log
+
+
+def test_hook_called_once_when_playback_ended():
+    hook = MagicMock()
+    result, player, _ = _resolve(True, hook)
+    assert result is True and player.waited == 1
+    hook.assert_called_once_with()
+
+
+def test_hook_not_called_when_not_ended():
+    # stop, error, backstop timeout and no-callback all leave ended False
+    hook = MagicMock()
+    result, player, _ = _resolve(False, hook)
+    assert result is True and player.waited == 1
+    hook.assert_not_called()
+
+
+def test_hook_default_none_is_harmless_when_ended():
+    result, _, _ = _resolve(True, None)
+    assert result is True
+
+
+def test_hook_exception_never_breaks_playback_and_is_logged():
+    hook = MagicMock(side_effect=RuntimeError('boom'))
+    result, _, log = _resolve(True, hook)
+    assert result is True
+    hook.assert_called_once_with()
+    log.assert_called()
+
+
+def test_hook_not_called_when_link_fails():
+    hook = MagicMock()
+    result, player, _ = _resolve(True, hook, link=None)
+    assert result is False and player.waited == 0
+    hook.assert_not_called()
+
+
+def test_hook_runs_after_wait_for_playback():
+    order = []
+    player = _FakePlayer(True)
+    player.wait_for_playback = lambda: order.append('wait')
+    hook = MagicMock(side_effect=lambda: order.append('hook'))
+    with ExitStack() as stack:
+        for p in (
+            patch.object(playback, 'getlink', return_value='http://x/f'),
+            patch.object(playback.xbmcgui, 'ListItem', MagicMock()),
+            patch.object(playback.xbmcplugin, 'setResolvedUrl'),
+            patch('lib.player.YePlayer', lambda **kw: player),
+        ):
+            stack.enter_context(p)
+        playback.resolve_and_play('id', 'n', 'tok', on_ended=hook)
+    assert order == ['wait', 'hook']
+
+
+def _play(params, ended=True):
+    """Run playback.play with a fake player; returns the continue_random_episode mock."""
+    cont = MagicMock()
+    player = _FakePlayer(ended)
+    with ExitStack() as stack:
+        for p in (
+            patch.object(playback, 'revalidate', return_value='tok'),
+            patch.object(playback, 'getlink', return_value='http://x/f'),
+            patch.object(playback.xbmcgui, 'ListItem', MagicMock()),
+            patch.object(playback.xbmcplugin, 'setResolvedUrl'),
+            patch('lib.player.YePlayer', lambda **kw: player),
+            patch.object(series_ui, 'continue_random_episode', cont),
+        ):
+            stack.enter_context(p)
+        playback.play(params)
+    return cont
+
+
+def test_hook_play_with_rnd_continues_with_play_params_on_end():
+    cont = _play(dict(_PLAY_PARAMS), ended=True)
+    cont.assert_called_once_with(_PLAY_PARAMS)
+
+
+def test_hook_play_with_rnd_does_not_continue_on_stop():
+    cont = _play(dict(_PLAY_PARAMS), ended=False)
+    cont.assert_not_called()
+
+
+def test_hook_play_without_rnd_never_continues():
+    params = {k: v for k, v in _PLAY_PARAMS.items() if k != 'rnd'}
+    cont = _play(params, ended=True)
+    cont.assert_not_called()
+
+
+def test_hook_play_with_rnd_other_than_one_never_continues():
+    cont = _play(dict(_PLAY_PARAMS, rnd='0'), ended=True)
+    cont.assert_not_called()
+
+
+def test_hook_play_without_rnd_keeps_old_call_shape():
+    params = {'ident': 'abc', 'name': 'f.mkv', 'series': 'show', 'season': '1', 'episode': '2'}
+    with patch.object(playback, 'revalidate', return_value='tok'), \
+         patch.object(playback, 'resolve_and_play') as rp:
+        playback.play(params)
+    rp.assert_called_once_with('abc', 'f.mkv', 'tok', state_key='ep:show|S01E02')
