@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <addons>
-    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.5.0" provider-name="onykmin">
+    <addon id="plugin.video.yeplaya" name="Ye-Playa" version="1.6.0" provider-name="onykmin">
         <requires>
             <import addon="xbmc.python" version="3.0.0" />
             <import addon="script.module.requests" version="2.18.4" />
@@ -21,6 +21,10 @@
                 <icon>resources/icon.png</icon>
             </assets>
             <news>
+[B]1.6.0[/B]
+- new: when a random episode ends, Ye-Playa can offer the next random episode or play it automatically (Settings → Random picker → "Next random episode": Off / Ask / Autoplay)
+- new: settings are split into tabs: Account, Search &amp; Results, Playback, Random picker, Downloads, Advanced
+- new: download progress notifications are shown every 10% (the interval setting was removed)
 [B]1.5.0[/B]
 - new: series grouping gives the same result every time, whatever order Webshare returns the files in
 - fix: unrelated shows are no longer merged (e.g. Star Wars series, Barbie), and split shows are joined (Game of Thrones, Suits, Peaky Blinders, Dragon Ball)
