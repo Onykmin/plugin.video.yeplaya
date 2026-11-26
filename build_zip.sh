@@ -37,6 +37,7 @@ zip -r "${ADDON_ID}/${EXPORT_DIR}/${ZIP_NAME}" "${ADDON_ID}" \
     -x "${ADDON_ID}/.idea/*" \
     -x "${ADDON_ID}/.vscode/*" \
     -x "${ADDON_ID}/.claude/*" \
+    -x "${ADDON_ID}/.pipeline/*" \
     -x "${ADDON_ID}/exports/*" \
     -x "${ADDON_ID}/tests/*" \
     -x "${ADDON_ID}/test-grouping/*" \
