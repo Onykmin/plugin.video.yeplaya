@@ -24,6 +24,7 @@ class YePlayer(xbmc.Player):
         self._av_started = False
         self._playback_done = False
         self._had_error = False
+        self._ended = False
         self._state_key = state_key
         self._tracking_enabled = tracking_enabled
         self._monitor = xbmc.Monitor()
@@ -44,7 +45,20 @@ class YePlayer(xbmc.Player):
             self._last_pos = float(pos or 0)
             self._last_total = float(total)
 
-    def wait_for_playback(self, timeout=30):
+    @property
+    def ended(self):
+        """True only when playback reached its natural end (onPlayBackEnded)."""
+        return self._ended
+
+    def _await_end_callback(self, grace):
+        """Give a late onPlayBackEnded/Stopped a short window after isPlaying() went False."""
+        for _ in range(int(grace / 0.25)):
+            if self._playback_done:
+                return
+            if self._monitor.waitForAbort(0.25):
+                return
+
+    def wait_for_playback(self, timeout=30, end_grace=3.0):
         """Keep the plugin script alive across the whole playback session.
 
         Phase 1: wait up to `timeout` seconds for playback to actually start
@@ -77,6 +91,7 @@ class YePlayer(xbmc.Player):
                 if not self.isPlaying():
                     xbmc.log(_LOG + "wait_for_playback: isPlaying() False, exiting",
                              xbmc.LOGDEBUG)
+                    self._await_end_callback(end_grace)
                     break
             except Exception:
                 break
@@ -148,6 +163,7 @@ class YePlayer(xbmc.Player):
         self._playback_done = True
 
     def onPlayBackEnded(self):
+        self._ended = not self._had_error
         self._capture_state(force_watched=True)
         self._playback_done = True
 
