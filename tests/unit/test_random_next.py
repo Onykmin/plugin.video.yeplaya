@@ -205,3 +205,186 @@ def test_handoff_pick_version_back_out_then_play_still_carries_context():
                extra_patches=extra_patches)
     assert len(r.urls) == 1
     assert _query(r.urls[0])['rnd'] == '1'
+
+
+# ---------------------------------------------------------------------------
+# continue_random_episode (A5)
+# ---------------------------------------------------------------------------
+
+class _HeadingDialog(_ScriptedDialog):
+    """_ScriptedDialog that also records the heading of every select()."""
+
+    def __init__(self, selections):
+        super().__init__(selections)
+        self.headings = []
+
+    def select(self, heading, listitems, useDetails=False):
+        self.headings.append(heading)
+        return super().select(heading, listitems, useDetails)
+
+
+_PLAY_PARAMS = {'ident': 'cur', 'name': 'cur.mkv', 'series': 'show', 'season': '1',
+                'episode': '1', 'rnd': '1', 'what': 'q', 'category': 'tvshow',
+                'sort': 'largest'}
+
+_THREE = {1: {1: _versions('a'), 2: _versions('b'), 3: _versions('c')}}
+
+
+def _continue(seasons, params, script, selections, mode, saved=(), grouped='default',
+              grouped_side_effect=None):
+    """Run continue_random_episode with the real _play_via_handoff.
+
+    Returns what the continuation did: PlayMedia URLs, save calls, dialog,
+    popinfo and setResolvedUrl mocks, the random stub and the grouped mock.
+    """
+    if grouped == 'default':
+        grouped = _grouped_series(seasons)
+    rand = _ScriptedRandom(script)
+    dialog = _HeadingDialog(selections)
+    settings = {'random_episode_next': mode}
+    save = MagicMock()
+    builtin = MagicMock()
+    popinfo = MagicMock()
+    resolved = MagicMock()
+    fetch = MagicMock(return_value=('ck', grouped), side_effect=grouped_side_effect)
+    with ExitStack() as stack:
+        for p in (
+            patch.object(series_ui, 'revalidate', return_value='tok'),
+            patch.object(series_ui, 'get_or_fetch_grouped', fetch),
+            patch.object(series_ui, 'load_random_played', return_value=set(saved)),
+            patch.object(series_ui, 'save_random_played', save),
+            patch.object(series_ui, 'random', rand),
+            patch.object(series_ui, 'popinfo', popinfo),
+            patch.object(series_ui, '_enrich_displayed_version'),
+            patch.object(series_ui.xbmc, 'executebuiltin', builtin),
+            patch.object(series_ui.xbmc, 'log'),
+            patch.object(sys.modules['xbmcgui'], 'Dialog', lambda: dialog),
+            patch.object(sys.modules['xbmcplugin'], 'setResolvedUrl', resolved),
+            patch.object(series_ui._addon, 'getSetting',
+                         side_effect=lambda k: settings.get(k, '')),
+            patch.object(series_ui._addon, 'getLocalizedString',
+                         side_effect=lambda i: 'S{0} {{0}}'.format(i)),
+        ):
+            stack.enter_context(p)
+        series_ui.continue_random_episode(params)
+    return SimpleNamespace(urls=[c.args[0] for c in builtin.call_args_list], save=save,
+                           dialog=dialog, popinfo=popinfo, resolved=resolved,
+                           rand=rand, fetch=fetch)
+
+
+def test_continue_off_is_noop():
+    for mode in ('0', '', 'abc', '7'):
+        r = _continue(_THREE, _PLAY_PARAMS, [], [], mode)
+        assert r.urls == [] and r.dialog.shown == [], mode
+        r.fetch.assert_not_called()
+        r.save.assert_not_called()
+
+
+def test_continue_ask_shows_dialog_with_heading_and_play_hands_off():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [0], '1')
+    assert r.dialog.headings == ['S30460 Show']
+    assert len(r.urls) == 1
+    q = _query(r.urls[0])
+    assert q['action'] == 'play' and q['ident'] == 'b'
+    assert q['season'] == '1' and q['episode'] == '2'
+    assert q['rnd'] == '1' and q['what'] == 'q' and q['sort'] == 'largest'
+    r.save.assert_called_once_with('show|all', {(1, 1), (1, 2)})
+
+
+def test_continue_ask_cancel_hands_off_nothing_and_never_resolves():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [-1], '1')
+    assert r.urls == []
+    r.resolved.assert_not_called()
+    r.save.assert_not_called()
+
+
+def test_continue_ask_dialog_rows_are_play_reroll_cancel():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [-1], '1')
+    assert len(r.dialog.shown[0]) == 3  # Play, Reroll, Cancel
+
+
+def test_continue_ask_reroll_reuses_picker_and_excludes_both_shown():
+    # Reroll -> second pick; script must come from the pool minus current + first
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2), (1, 3)], [1, 0], '1')
+    assert r.rand.calls[1] == [(1, 3)]
+    assert len(r.urls) == 1 and _query(r.urls[0])['episode'] == '3'
+    r.resolved.assert_not_called()
+
+
+def test_continue_ask_start_over_redraws_when_pool_runs_out():
+    seasons = {1: {1: _versions('a'), 2: _versions('b')}}
+    # pick (1,2): Reroll finds the pool empty -> rows Play, Start over, Cancel;
+    # 1 = Start over clears the set and draws (1,1); 0 = Play
+    r = _continue(seasons, _PLAY_PARAMS, [(1, 2), (1, 1)], [1, 1, 0], '1')
+    assert len(r.dialog.shown) == 3
+    assert len(r.urls) == 1 and _query(r.urls[0])['episode'] == '1'
+
+
+def test_continue_autoplay_hands_off_without_dialog_and_grows_played_set():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 3)], [], '2', saved={(1, 2)})
+    assert r.dialog.shown == []
+    assert len(r.urls) == 1
+    q = _query(r.urls[0])
+    assert q['ident'] == 'c' and q['rnd'] == '1' and q['what'] == 'q'
+    r.save.assert_called_once_with('show|all', {(1, 1), (1, 2), (1, 3)})
+    r.resolved.assert_not_called()
+
+
+def test_continue_autoplay_exhausted_notifies_and_stops():
+    seasons = {1: {1: _versions('a'), 2: _versions('b')}}
+    r = _continue(seasons, _PLAY_PARAMS, [], [], '2', saved={(1, 2)})
+    assert r.urls == [] and r.dialog.shown == []
+    r.popinfo.assert_called_once()
+    assert r.popinfo.call_args.args[0] == 'S30441 {0}'
+    r.save.assert_not_called()
+
+
+def test_continue_ask_exhausted_notifies_and_shows_no_dialog():
+    seasons = {1: {1: _versions('a'), 2: _versions('b')}}
+    r = _continue(seasons, _PLAY_PARAMS, [], [], '1', saved={(1, 2)})
+    assert r.urls == [] and r.dialog.shown == []
+    assert r.popinfo.call_args.args[0] == 'S30441 {0}'
+
+
+def test_continue_current_episode_is_excluded_from_pick():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [-1], '1')
+    assert r.rand.calls[0] == [(1, 2), (1, 3)]
+
+
+def test_continue_played_set_is_excluded_from_pick():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 3)], [], '2', saved={(1, 2)})
+    assert r.rand.calls[0] == [(1, 3)]
+
+
+def test_continue_season_scope_honoured():
+    seasons = {1: {1: _versions('a')}, 2: {1: _versions('b'), 2: _versions('c')}}
+    params = dict(_PLAY_PARAMS, season='2', episode='1', rseason='2')
+    r = _continue(seasons, params, [(2, 2)], [], '2')
+    assert r.rand.calls[0] == [(2, 2)]
+    q = _query(r.urls[0])
+    assert q['rseason'] == '2' and q['season'] == '2' and q['episode'] == '2'
+    r.save.assert_called_once_with('show|2', {(2, 1), (2, 2)})
+
+
+def test_continue_cache_miss_notifies_and_stops():
+    r = _continue(_THREE, _PLAY_PARAMS, [], [], '2', grouped=None)
+    assert r.urls == []
+    assert r.popinfo.call_args.args[0] == 'S30431 {0}'
+
+
+def test_continue_series_missing_from_grouped_notifies_and_stops():
+    r = _continue(_THREE, _PLAY_PARAMS, [], [], '2', grouped={'series': {}})
+    assert r.urls == [] and r.popinfo.call_args.args[0] == 'S30431 {0}'
+
+
+def test_continue_exception_is_logged_never_raised():
+    r = _continue(_THREE, _PLAY_PARAMS, [], [], '2',
+                  grouped_side_effect=RuntimeError('boom'))
+    assert r.urls == []
+
+
+def test_continue_fetches_grouped_with_url_params():
+    r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [-1], '1')
+    args, kwargs = r.fetch.call_args
+    assert args[0]['what'] == 'q' and args[0]['category'] == 'tvshow'
+    assert args[0]['sort'] == 'largest'

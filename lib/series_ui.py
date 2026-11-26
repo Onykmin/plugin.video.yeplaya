@@ -16,7 +16,7 @@ from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_w
 from lib.state import state_key_for, build_mv_state_key, get_states, resolve_state_key
 from lib.keys import normalize_series_key, normalize_movie_key, identity_set
 from lib.parsing import parse_quality_metadata
-from lib.cache import get_or_fetch_grouped, save_random_played
+from lib.cache import get_or_fetch_grouped, save_random_played, load_random_played
 from lib.grouping import deduplicate_versions, _safe_size
 from lib.metadata import enrich_file_metadata
 from lib.logging import log_debug
@@ -629,11 +629,23 @@ def show_random_episode_dialog(params):
         xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
         return
 
-    excluded = set()
+    _random_picker_loop(series_name, display_name, series_data, all_keys, set(), token,
+                        season_num=season_num,
+                        extra=_random_next_extra(params, season_num))
+
+
+def _random_picker_loop(series_name, display_name, series_data, all_keys, excluded, token,
+                        resolve_handle=True, heading=None, extra=None, season_num=None):
+    """The pick / Play / Pick version / Reroll / Start over dialog loop.
+
+    `excluded` is mutated in place. `resolve_handle=False` skips every
+    setResolvedUrl(False): the end-of-episode continuation runs in a `play`
+    process whose handle is already resolved. `heading` overrides the dialog
+    title. `extra` is merged into the handoff URL (see _random_next_extra).
+    """
     last_pick = None
     shown_best = shown_season = shown_ep = None
     shown_versions = None
-    extra = _random_next_extra(params, season_num)
 
     def _handoff(version, s_num, e_num):
         # Persist what was shown (incl. rerolls) so the continuation never
@@ -641,6 +653,10 @@ def show_random_episode_dialog(params):
         if extra:
             save_random_played(_random_scope(series_name, season_num), excluded)
         _play_via_handoff(version, series_name, s_num, e_num, extra=extra or None)
+
+    def _abort():
+        if resolve_handle:
+            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
 
     while True:
         picked, exhausted = _pick_random(all_keys, excluded)
@@ -650,7 +666,7 @@ def show_random_episode_dialog(params):
             # Start over that can never produce anything.
             if shown_best is None:
                 popinfo(_addon.getLocalizedString(30440), icon=xbmcgui.NOTIFICATION_WARNING)
-                xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+                _abort()
                 return
             # Keep the current pick on screen, but swap Reroll -> Start over
             # so clearing the exclusion set is an explicit user choice.
@@ -682,7 +698,7 @@ def show_random_episode_dialog(params):
             version_count = len(shown_versions)
             listitems, actions = _build_dialog_rows(
                 shown_best, shown_season, shown_ep, pool_state, version_count)
-            selected = xbmcgui.Dialog().select(display_name, listitems, useDetails=True)
+            selected = xbmcgui.Dialog().select(heading or display_name, listitems, useDetails=True)
             action = actions[selected] if 0 <= selected < len(actions) else 'cancel'
 
             if action == 'play':
@@ -709,8 +725,82 @@ def show_random_episode_dialog(params):
                     excluded.add(last_pick)
                 break
 
-            xbmcplugin.setResolvedUrl(_handle, False, xbmcgui.ListItem())
+            _abort()
             return
+
+
+def continue_random_episode(params):
+    """Follow-up after a random episode ended naturally (`play` process).
+
+    `params` is the finished episode's play query (series/season/episode plus
+    the `what`/`category`/`sort`/`rseason` context from _random_next_extra).
+    Setting Off: nothing. Ask: the random dialog again. Autoplay: next unplayed
+    episode, no dialog. Never raises — it runs during playback teardown.
+    """
+    try:
+        _continue_random_episode(params)
+    except Exception as e:
+        xbmc.log("yeplaya: continue_random_episode failed: " + str(e), xbmc.LOGERROR)
+
+
+def _continue_random_episode(params):
+    try:
+        mode = int(_addon.getSetting('random_episode_next'))
+    except (ValueError, TypeError):
+        return
+    if mode not in (1, 2):
+        return
+
+    series_name = params.get('series')
+    if not series_name:
+        return
+    season_num = int(params['rseason']) if 'rseason' in params else None
+
+    token = revalidate()
+    if not token:
+        popinfo(_addon.getLocalizedString(30102), icon=xbmcgui.NOTIFICATION_ERROR)
+        return
+    cache_key, grouped = get_or_fetch_grouped(params, token, check_key=series_name, check_type='series')
+    if not grouped or series_name not in grouped.get('series', {}):
+        popinfo(_addon.getLocalizedString(30431), icon=xbmcgui.NOTIFICATION_WARNING)
+        return
+
+    series_data = grouped['series'][series_name]
+    display_name = series_data.get('display_name') or series_name
+    all_keys = _flatten_episode_keys(series_data, season_num)
+    if not all_keys:
+        popinfo(_addon.getLocalizedString(30440), icon=xbmcgui.NOTIFICATION_WARNING)
+        return
+
+    excluded = load_random_played(_random_scope(series_name, season_num))
+    try:
+        excluded.add((int(params['season']), int(params['episode'])))
+    except (KeyError, ValueError, TypeError):
+        pass
+    if all(k in excluded for k in all_keys):
+        popinfo(_addon.getLocalizedString(30441), icon=xbmcgui.NOTIFICATION_INFO)
+        return
+
+    extra = _random_next_extra(params, season_num)
+    if mode == 1:
+        _random_picker_loop(series_name, display_name, series_data, all_keys, excluded, token,
+                            resolve_handle=False,
+                            heading=_addon.getLocalizedString(30460).format(display_name),
+                            extra=extra, season_num=season_num)
+        return
+
+    while True:
+        picked, exhausted = _pick_random(all_keys, excluded)
+        if exhausted:
+            popinfo(_addon.getLocalizedString(30441), icon=xbmcgui.NOTIFICATION_INFO)
+            return
+        excluded.add(picked)
+        versions = deduplicate_versions(series_data['seasons'][picked[0]][picked[1]])
+        if versions:
+            break
+    _rank_versions(versions)
+    save_random_played(_random_scope(series_name, season_num), excluded)
+    _play_via_handoff(versions[0], series_name, picked[0], picked[1], extra=extra or None)
 
 
 def browse_other(params):
