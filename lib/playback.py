@@ -263,11 +263,7 @@ def _do_download(params, token):
 
     normalize = 'true' == _addon.getSetting('dnormalize')
     notify = 'true' == _addon.getSetting('dnotify')
-    every = _addon.getSetting('dnevery')
-    try:
-        every = int(re.sub(r'[^\d]+', '', every))
-    except (ValueError, TypeError):
-        every = 10
+    every = 10
 
     name = None
     filepath = None

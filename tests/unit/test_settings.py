@@ -69,3 +69,24 @@ def test_random_episode_next_strings_exist_in_every_language(lang):
     present = _po_ids(lang)
     missing = [str(i) for i in range(30456, 30461) if str(i) not in present]
     assert missing == []
+
+
+PLAYBACK_PY = os.path.join(os.path.dirname(__file__), '..', '..', 'lib', 'playback.py')
+
+
+def test_dnevery_setting_is_removed(settings):
+    assert 'dnevery' not in settings
+
+
+def test_dnevery_dnotify_has_no_dependent_sibling():
+    nodes = [s for s in ET.parse(SETTINGS).getroot().iter('setting')]
+    ids = [s.get('id') for s in nodes]
+    following = nodes[ids.index('dnotify') + 1]
+    assert 'eq(-1' not in (following.get('visible') or '') + (following.get('enable') or '')
+
+
+def test_dnevery_is_no_longer_read_and_downloads_notify_every_10():
+    with open(PLAYBACK_PY, encoding='utf8') as f:
+        src = f.read()
+    assert 'dnevery' not in src
+    assert re.search(r'^\s+every = 10$', src, re.M)
