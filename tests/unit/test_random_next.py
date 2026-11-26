@@ -298,6 +298,17 @@ def test_continue_ask_cancel_hands_off_nothing_and_never_resolves():
     r.save.assert_not_called()
 
 
+def test_continue_ask_heading_kept_after_pick_version_back_out():
+    two = [{'ident': 'v1', 'name': 'Show.S01E02.720p.mkv', 'size': '100'},
+           {'ident': 'v2', 'name': 'Show.S01E02.1080p.mkv', 'size': '900'}]
+    seasons = {1: {1: _versions('a'), 2: two, 3: _versions('c')}}
+    with patch.object(series_ui, '_prepare_episode_versions', side_effect=lambda v, t: v), \
+         patch.object(series_ui, '_build_version_listitems', return_value=[MagicMock()] * 2):
+        # main dialog -> Pick version -> back out -> main dialog -> cancel
+        r = _continue(seasons, _PLAY_PARAMS, [(1, 2)], [1, -1, -1], '1')
+    assert r.dialog.headings == ['S30460 Show', 'Show - S01E02', 'S30460 Show']
+
+
 def test_continue_ask_dialog_rows_are_play_reroll_cancel():
     r = _continue(_THREE, _PLAY_PARAMS, [(1, 2)], [-1], '1')
     assert len(r.dialog.shown[0]) == 3  # Play, Reroll, Cancel

@@ -708,8 +708,8 @@ def _random_picker_loop(series_name, display_name, series_data, all_keys, exclud
             if action == 'pick_version':
                 ordered = _prepare_episode_versions(list(shown_versions), token)
                 version_listitems = _build_version_listitems(ordered)
-                heading = '{0} - S{1:02d}E{2:02d}'.format(display_name, shown_season, shown_ep)
-                version_selected = xbmcgui.Dialog().select(heading, version_listitems, useDetails=True)
+                version_heading = '{0} - S{1:02d}E{2:02d}'.format(display_name, shown_season, shown_ep)
+                version_selected = xbmcgui.Dialog().select(version_heading, version_listitems, useDetails=True)
                 if version_selected >= 0:
                     _handoff(ordered[version_selected], shown_season, shown_ep)
                     return
