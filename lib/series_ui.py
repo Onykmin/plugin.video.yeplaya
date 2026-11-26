@@ -16,7 +16,7 @@ from lib.utils import get_url, popinfo, tolistitem, get_handle, get_addon, set_w
 from lib.state import state_key_for, build_mv_state_key, get_states, resolve_state_key
 from lib.keys import normalize_series_key, normalize_movie_key, identity_set
 from lib.parsing import parse_quality_metadata
-from lib.cache import get_or_fetch_grouped
+from lib.cache import get_or_fetch_grouped, save_random_played
 from lib.grouping import deduplicate_versions, _safe_size
 from lib.metadata import enrich_file_metadata
 from lib.logging import log_debug
@@ -502,7 +502,31 @@ def _build_dialog_rows(best, season_num, ep_num, pool_state, version_count):
     return listitems, actions
 
 
-def _play_via_handoff(version, series_name=None, season=None, episode=None):
+def _random_scope(series_name, season_num):
+    """Played-set scope key: one set per series, or per season when restricted."""
+    return '{0}|{1}'.format(series_name, 'all' if season_num is None else season_num)
+
+
+def _random_next_extra(params, season_num):
+    """Extra play-URL params that let a natural end continue the random chain.
+
+    Empty when `random_episode_next` is Off/unset/invalid, so the URL (and the
+    Kodi resume bookmark keyed on it) is unchanged for the default setting.
+    `what`/`category`/`sort` rebuild the grouped data in the next process;
+    `rseason` keeps a season-scoped pick inside that season.
+    """
+    try:
+        mode = int(_addon.getSetting('random_episode_next'))
+    except (ValueError, TypeError):
+        return {}
+    if mode not in (1, 2):
+        return {}
+    extra = {'rnd': '1', 'what': params.get('what'), 'category': params.get('category'),
+             'sort': params.get('sort'), 'rseason': season_num}
+    return {k: v for k, v in extra.items() if v is not None}
+
+
+def _play_via_handoff(version, series_name=None, season=None, episode=None, extra=None):
     """Play `version` through the normal `play` action instead of resolving it
     against the picker's own URL.
 
@@ -557,9 +581,11 @@ def _play_via_handoff(version, series_name=None, season=None, episode=None):
     addon rather than using a shorter, lossier form. The args default to None
     and get_url drops None values (lib/utils.py:97,106-107), so omitting them
     yields a byte-identical URL to the old form.
+
+    `extra` (dict) is merged into the URL query; None/empty leaves it unchanged.
     """
     url = get_url(action='play', ident=version['ident'], name=version['name'],
-                  series=series_name, season=season, episode=episode)
+                  series=series_name, season=season, episode=episode, **(extra or {}))
     xbmc.executebuiltin('PlayMedia({})'.format(url))
 
 
@@ -607,6 +633,14 @@ def show_random_episode_dialog(params):
     last_pick = None
     shown_best = shown_season = shown_ep = None
     shown_versions = None
+    extra = _random_next_extra(params, season_num)
+
+    def _handoff(version, s_num, e_num):
+        # Persist what was shown (incl. rerolls) so the continuation never
+        # repeats it; skipped entirely when random-next is Off.
+        if extra:
+            save_random_played(_random_scope(series_name, season_num), excluded)
+        _play_via_handoff(version, series_name, s_num, e_num, extra=extra or None)
 
     while True:
         picked, exhausted = _pick_random(all_keys, excluded)
@@ -652,7 +686,7 @@ def show_random_episode_dialog(params):
             action = actions[selected] if 0 <= selected < len(actions) else 'cancel'
 
             if action == 'play':
-                _play_via_handoff(shown_best, series_name, shown_season, shown_ep)
+                _handoff(shown_best, shown_season, shown_ep)
                 return
 
             if action == 'pick_version':
@@ -661,8 +695,7 @@ def show_random_episode_dialog(params):
                 heading = '{0} - S{1:02d}E{2:02d}'.format(display_name, shown_season, shown_ep)
                 version_selected = xbmcgui.Dialog().select(heading, version_listitems, useDetails=True)
                 if version_selected >= 0:
-                    _play_via_handoff(ordered[version_selected], series_name,
-                                      shown_season, shown_ep)
+                    _handoff(ordered[version_selected], shown_season, shown_ep)
                     return
                 # Backed out of the picker — redraw the same episode's rows,
                 # no setResolvedUrl (we haven't resolved anything yet).
