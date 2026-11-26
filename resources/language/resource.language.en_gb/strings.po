@@ -541,3 +541,23 @@ msgstr ""
 msgctxt "#30455"
 msgid "Preparing movie list, this may take a moment..."
 msgstr ""
+
+msgctxt "#30456"
+msgid "When a random episode ends"
+msgstr ""
+
+msgctxt "#30457"
+msgid "Do nothing"
+msgstr ""
+
+msgctxt "#30458"
+msgid "Offer another random episode"
+msgstr ""
+
+msgctxt "#30459"
+msgid "Play another random episode automatically"
+msgstr ""
+
+msgctxt "#30460"
+msgid "Next random episode: {0}"
+msgstr ""

@@ -541,3 +541,23 @@ msgstr "Náhodný výber filmu je už otvorený"
 msgctxt "#30455"
 msgid "Preparing movie list, this may take a moment..."
 msgstr "Pripravujem zoznam filmov, môže to chvíľu trvať…"
+
+msgctxt "#30456"
+msgid "When a random episode ends"
+msgstr "Po skončení náhodnej epizódy"
+
+msgctxt "#30457"
+msgid "Do nothing"
+msgstr "Nič nerobiť"
+
+msgctxt "#30458"
+msgid "Offer another random episode"
+msgstr "Ponúknuť ďalšiu náhodnú epizódu"
+
+msgctxt "#30459"
+msgid "Play another random episode automatically"
+msgstr "Automaticky prehrať ďalšiu náhodnú epizódu"
+
+msgctxt "#30460"
+msgid "Next random episode: {0}"
+msgstr "Ďalšia náhodná epizóda: {0}"
